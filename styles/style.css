@@ -1,0 +1,540 @@
+/* General Reset and Body Styling */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(to bottom, #fffce1, #fffbd3);
+  color: #111;
+  line-height: 1.6;
+  padding-top: 100px;
+}
+
+/* Logo and Title Styling */
+header {
+  text-align: center;
+  padding: 1rem;
+  background: white;
+  border-bottom: 5px solid black;
+}
+
+.logo {
+  max-width: 100px;
+  margin: 0 auto 0.5rem;
+}
+
+/* Navigation Bar */
+nav {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  background: black;
+  padding: 1rem 0;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  z-index: 1000;
+}
+
+nav a {
+  color: white;
+  text-decoration: none;
+  font-weight: bold;
+  transition: all 0.3s ease-in-out;
+}
+
+nav a:hover {
+  color: yellow;
+  transform: scale(1.1);
+}
+
+/* Sections */
+section {
+  max-width: 700px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: fadeIn 1s ease forwards;
+  opacity: 0;
+}
+
+section:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+}
+
+/* Titles */
+h1, h2 {
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+h3 {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+p {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+/* Lists */
+ul {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+}
+
+/* Button Styling */
+button {
+  background: yellow;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 6px;
+  box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+button:hover {
+  background: gold;
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.7), 0 0 30px rgba(255, 215, 0, 0.5);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: skewX(-45deg);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* AI Status Indicator */
+.ai-status {
+  background: #e3f2fd;
+  border: 2px solid #2196f3;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  text-align: center;
+  font-weight: bold;
+}
+
+.ai-status p {
+  margin: 0;
+  color: #1976d2;
+}
+
+/* Enhanced Generate Button */
+.generate-button {
+  background: linear-gradient(135deg, #ff6b6b, #ff4757, #ff3742);
+  color: white;
+  border: none;
+  padding: 1.2rem 2.5rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+  position: relative;
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.generate-button:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(255, 107, 107, 0.6);
+  background: linear-gradient(135deg, #ff5252, #ff3742, #ff2729);
+}
+
+.generate-button:disabled {
+  background: linear-gradient(135deg, #ccc, #bbb);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.generate-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.6s;
+}
+
+.generate-button:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 1rem;
+  background: black;
+  color: white;
+  font-size: 0.9rem;
+  margin-top: 2rem;
+}
+
+.footer-links {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.footer-links a {
+  color: yellow;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+  color: white;
+}
+
+/* Animation Keyframes */
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+section {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Social Buttons */
+.social-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.social-button {
+  text-decoration: none;
+  padding: 0.6rem 1.2rem;
+  background: black;
+  color: yellow;
+  font-weight: bold;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.social-button:hover {
+  background: yellow;
+  color: black;
+  transform: translateY(-2px);
+}
+
+/* Token Stats Section */
+.token-stats {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  border-left: 4px solid #ffcc00;
+}
+
+.token-stats h3 {
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.token-stats p {
+  margin-bottom: 0.5rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+/* Pumper Floating Animation */
+.pumper-float {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.pumper-float img {
+  width: 200px;
+  height: auto;
+  animation: floaty 3s ease-in-out infinite;
+}
+
+@keyframes floaty {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+  100% { transform: translateY(0); }
+}
+
+/* Meme Upload Section */
+.meme-upload {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.upload-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px dashed #ddd;
+  transition: all 0.3s ease;
+}
+
+.upload-section:hover {
+  border-color: #ff6b6b;
+  background: #fff5f5;
+}
+
+.upload-section label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.meme-upload input[type="file"] {
+  margin: 1rem auto;
+  display: block;
+  padding: 1rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  width: 100%;
+  max-width: 300px;
+}
+
+.meme-upload input[type="file"]:hover {
+  border-color: #ff6b6b;
+  background: #fff5f5;
+}
+
+.meme-upload input[type="file"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #f5f5f5;
+}
+
+.file-selected {
+  color: #28a745;
+  font-weight: bold;
+  margin-top: 1rem;
+  font-size: 1rem;
+  padding: 0.5rem;
+  background: #d4edda;
+  border-radius: 6px;
+  border: 1px solid #c3e6cb;
+}
+
+.generate-section {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.meme-preview-placeholder {
+  margin-top: 2rem;
+  border: 3px dashed #ddd;
+  padding: 2rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fffef3, #fefdf0);
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.meme-preview-placeholder:hover {
+  border-color: #ffcc00;
+  background: linear-gradient(135deg, #fff9e6, #fff5d6);
+}
+
+.meme-preview-placeholder img {
+  max-width: 400px;
+  width: 100%;
+  height: auto;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.meme-preview-placeholder p {
+  font-size: 1.1rem;
+  margin: 0;
+  color: #555;
+}
+
+/* Error Message Styling */
+.error-message {
+  background: linear-gradient(135deg, #ffe6e6, #ffd6d6);
+  border: 2px solid #ff6b6b;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  color: #d63031;
+  font-weight: 500;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.2);
+}
+
+/* Community Memes Section */
+.community-memes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.meme-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.meme-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.meme-card img {
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.meme-card p {
+  margin: 0;
+  font-weight: bold;
+  color: #666;
+}
+
+/* Roadmap List Styling */
+#roadmap ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+#roadmap li {
+  padding: 0.75rem;
+  margin: 0.5rem 0;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #ffcc00;
+  transition: background-color 0.3s ease;
+}
+
+#roadmap li:hover {
+  background: #e9ecef;
+}
+
+/* Animation Classes */
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  nav {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.5rem 0;
+  }
+  
+  section {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+  
+  .pumper-float img {
+    width: 150px;
+  }
+  
+  .social-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .community-memes {
+    grid-template-columns: 1fr;
+  }
+  
+  .generate-button {
+    padding: 1rem 2rem;
+    font-size: 1rem;
+  }
+  
+  .meme-preview-placeholder img {
+    max-width: 280px;
+  }
+  
+  .upload-section {
+    padding: 1rem;
+  }
+}
