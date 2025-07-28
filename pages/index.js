@@ -509,9 +509,7 @@ export default function Home() {
               <img src="https://via.placeholder.com/300x300.png?text=Meme+2" alt="Community Meme 2" />
               <p>Created by @solanagang</p>
             </div>
-            <div class
-
-ame-card">
+           <div className="meme-card">
               <img src="https://via.placeholder.com/300x300.png?text=Meme+3" alt="Community Meme 3" />
               <p>Created by @pumpersfan</p>
             </div>
