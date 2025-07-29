@@ -66,20 +66,22 @@ export default function Home() {
     loadFaceDetection();
   }, []);
 
-  // Initialize Solana Wallet Adapter
+  // Initialize Jupiter Terminal properly
   useEffect(() => {
-    const connectWallet = async () => {
-      if (typeof window !== 'undefined' && window.solana) {
-        try {
-          const response = await window.solana.connect({ onlyIfTrusted: true });
-          setWalletAddress(response.publicKey.toString());
-        } catch (error) {
-          console.log('Wallet not connected');
-        }
-      }
-    };
-    connectWallet();
-  }, []);
+    if (window.Jupiter && walletAddress) {
+      window.Jupiter.init({
+        displayMode: 'integrated',
+        integratedTargetId: 'integrated-terminal',
+        endpoint: 'https://api.mainnet-beta.solana.com',
+        formProps: {
+          initialInputMint: 'So11111111111111111111111111111111111111112',
+          initialOutputMint: 'B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk',
+          fixedInputMint: false,
+          fixedOutputMint: true,
+        },
+      });
+    }
+  }, [walletAddress]);
 
   // Initialize Jupiter Terminal
   useEffect(() => {
@@ -196,13 +198,9 @@ export default function Home() {
       return;
     }
     
-    // Use Jupiter's exact URL format with input/output mint parameters
-    const inputMint = 'So11111111111111111111111111111111111111112'; // SOL
-    const outputMint = 'B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk'; // $PUMPIT
-    
-    // Jupiter URL with query parameters
-    const jupiterUrl = `https://jup.ag/?inputMint=${inputMint}&outputMint=${outputMint}&swapMode=ExactIn`;
-    window.open(jupiterUrl, '_blank');
+    // For now, let's use DexScreener's swap feature which properly recognizes tokens
+    const dexScreenerUrl = `https://dexscreener.com/solana/gwp5365zcuwbprwnmrcaqp9bectjf6xtza4hkdpbasfk`;
+    window.open(dexScreenerUrl, '_blank');
   };
 
   const toggleSection = (section) => {
@@ -536,6 +534,7 @@ export default function Home() {
         <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossOrigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossOrigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossOrigin="anonymous"></script>
+        <script src="https://terminal.jup.ag/main-v2.js" data-preload></script>
       </Head>
 
       <div className="desktop-social-buttons">
@@ -1328,6 +1327,29 @@ export default function Home() {
           font-size: 0.9rem;
         }
 
+        .alternative-links {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          margin-top: 1rem;
+        }
+
+        .alt-link {
+          color: #FFFF00;
+          text-decoration: none;
+          padding: 0.5rem 1rem;
+          border: 1px solid #FFFF00;
+          border-radius: 20px;
+          transition: all 0.3s ease;
+          font-size: 0.9rem;
+        }
+
+        .alt-link:hover {
+          background: #FFFF00;
+          color: black;
+          transform: scale(1.05);
+        }
+
         /* Token Link */
         .token-link {
           display: inline-block;
@@ -1658,6 +1680,63 @@ export default function Home() {
           padding: 2rem;
           background: rgba(0, 0, 0, 0.5);
           margin-top: 4rem;
+        }
+
+        /* Swap Modal */
+        .swap-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.9);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 3000;
+          padding: 20px;
+        }
+
+        .swap-modal-content {
+          background: #1a1a1a;
+          border-radius: 20px;
+          padding: 2rem;
+          max-width: 500px;
+          width: 100%;
+          max-height: 90vh;
+          overflow: auto;
+          position: relative;
+          border: 2px solid #FFFF00;
+        }
+
+        .close-button {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: none;
+          border: none;
+          color: #FFFF00;
+          font-size: 2rem;
+          cursor: pointer;
+          transition: transform 0.3s ease;
+        }
+
+        .close-button:hover {
+          transform: scale(1.2);
+        }
+
+        .swap-container {
+          margin: 2rem 0;
+          border-radius: 15px;
+          overflow: hidden;
+          border: 1px solid rgba(255, 255, 0, 0.3);
+        }
+
+        .swap-info {
+          text-align: center;
+          color: #aaa;
+          font-size: 0.9rem;
+          margin-top: 1rem;
         }
 
         /* Animations */
