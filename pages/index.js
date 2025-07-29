@@ -22,6 +22,7 @@ export default function Home() {
     vision: false,
     about: false
   });
+  const [jupiterLoaded, setJupiterLoaded] = useState(false);  // FIXED: Added this line
 
   // Load Jupiter Terminal script
   useEffect(() => {
@@ -35,6 +36,7 @@ export default function Home() {
     // Cleanup
     return () => clearInterval(checkJupiter);
   }, []);
+  
   useEffect(() => {
     const loadFaceDetection = async () => {
       try {
