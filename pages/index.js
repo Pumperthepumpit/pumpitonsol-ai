@@ -198,9 +198,8 @@ export default function Home() {
       return;
     }
     
-    // For now, let's use DexScreener's swap feature which properly recognizes tokens
-    const dexScreenerUrl = `https://dexscreener.com/solana/gwp5365zcuwbprwnmrcaqp9bectjf6xtza4hkdpbasfk`;
-    window.open(dexScreenerUrl, '_blank');
+    // Open Jupiter
+    window.open('https://jup.ag', '_blank');
   };
 
   const toggleSection = (section) => {
