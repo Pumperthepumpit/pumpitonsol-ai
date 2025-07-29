@@ -16,6 +16,10 @@ export default function Home() {
   const [xHandle, setXHandle] = useState('');
   const [showXForm, setShowXForm] = useState(false);
   const [communityMemes, setCommunityMemes] = useState([]);
+  const [expandedSections, setExpandedSections] = useState({
+    vision: false,
+    about: false
+  });
 
   // Initialize MediaPipe Face Detection
   useEffect(() => {
@@ -145,6 +149,13 @@ export default function Home() {
     } else if (window.Jupiter) {
       window.Jupiter.toggle();
     }
+  };
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
   };
 
   const handleFileSelect = (event) => {
@@ -295,7 +306,7 @@ export default function Home() {
             }
           }
           
-          drawCartoonLips(ctx, faceRegion, mouthPosition);
+          drawPumperStyleLips(ctx, faceRegion, mouthPosition);
           drawSideExclamationMarks(ctx, faceRegion, index % 2 === 0);
         });
         
@@ -348,49 +359,65 @@ export default function Home() {
     a.click();
   };
 
-  // Cartoon-style lip drawing
-  const drawCartoonLips = (ctx, faceRegion, mouthPosition) => {
+  // Pumper-style lip drawing
+  const drawPumperStyleLips = (ctx, faceRegion, mouthPosition) => {
     const mouthX = mouthPosition.x;
     const mouthY = mouthPosition.y;
     
     const faceSize = Math.min(faceRegion.width, faceRegion.height);
-    const lipWidth = faceSize * 0.4;
-    const lipHeight = faceSize * 0.15;
+    const lipWidth = faceSize * 0.45;
+    const lipHeight = faceSize * 0.25;
     
     ctx.save();
     
     // Black outline
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = Math.max(4, faceSize * 0.015);
+    ctx.lineWidth = Math.max(5, faceSize * 0.02);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     
-    // Upper lip
+    // Draw full lips shape
     ctx.beginPath();
-    ctx.moveTo(mouthX - lipWidth/2, mouthY);
-    ctx.quadraticCurveTo(mouthX - lipWidth/4, mouthY - lipHeight/2, mouthX - lipWidth/6, mouthY - lipHeight/3);
-    ctx.quadraticCurveTo(mouthX, mouthY - lipHeight/2.5, mouthX, mouthY - lipHeight/3);
-    ctx.quadraticCurveTo(mouthX, mouthY - lipHeight/2.5, mouthX + lipWidth/6, mouthY - lipHeight/3);
-    ctx.quadraticCurveTo(mouthX + lipWidth/4, mouthY - lipHeight/2, mouthX + lipWidth/2, mouthY);
     
-    // Lower lip
-    ctx.quadraticCurveTo(mouthX + lipWidth/3, mouthY + lipHeight/2, mouthX, mouthY + lipHeight/1.5);
-    ctx.quadraticCurveTo(mouthX - lipWidth/3, mouthY + lipHeight/2, mouthX - lipWidth/2, mouthY);
+    // Upper lip - cupid's bow shape
+    ctx.moveTo(mouthX - lipWidth/2, mouthY);
+    ctx.quadraticCurveTo(mouthX - lipWidth/3, mouthY - lipHeight/3, mouthX - lipWidth/4, mouthY - lipHeight/2.5);
+    ctx.quadraticCurveTo(mouthX - lipWidth/8, mouthY - lipHeight/2, mouthX, mouthY - lipHeight/3);
+    ctx.quadraticCurveTo(mouthX + lipWidth/8, mouthY - lipHeight/2, mouthX + lipWidth/4, mouthY - lipHeight/2.5);
+    ctx.quadraticCurveTo(mouthX + lipWidth/3, mouthY - lipHeight/3, mouthX + lipWidth/2, mouthY);
+    
+    // Lower lip - fuller shape
+    ctx.quadraticCurveTo(mouthX + lipWidth/2.5, mouthY + lipHeight/1.5, mouthX, mouthY + lipHeight);
+    ctx.quadraticCurveTo(mouthX - lipWidth/2.5, mouthY + lipHeight/1.5, mouthX - lipWidth/2, mouthY);
+    
     ctx.closePath();
     
-    // Fill red
-    ctx.fillStyle = '#FF0000';
+    // Fill with red
+    ctx.fillStyle = '#DC143C';
     ctx.fill();
     ctx.stroke();
     
-    // Add highlights
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    // Inner line between lips
     ctx.beginPath();
-    ctx.ellipse(mouthX - lipWidth/4, mouthY - lipHeight/4, lipWidth/8, lipHeight/4, -0.2, 0, Math.PI * 2);
+    ctx.moveTo(mouthX - lipWidth/2, mouthY);
+    ctx.quadraticCurveTo(mouthX, mouthY + lipHeight/8, mouthX + lipWidth/2, mouthY);
+    ctx.stroke();
+    
+    // Add highlights for glossy effect
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    
+    // Upper lip highlights
+    ctx.beginPath();
+    ctx.ellipse(mouthX - lipWidth/4, mouthY - lipHeight/4, lipWidth/10, lipHeight/5, -0.3, 0, Math.PI * 2);
     ctx.fill();
     
     ctx.beginPath();
-    ctx.ellipse(mouthX + lipWidth/5, mouthY + lipHeight/3, lipWidth/6, lipHeight/3, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(mouthX + lipWidth/4, mouthY - lipHeight/4, lipWidth/10, lipHeight/5, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Lower lip highlight
+    ctx.beginPath();
+    ctx.ellipse(mouthX, mouthY + lipHeight/2, lipWidth/5, lipHeight/4, 0, 0, Math.PI);
     ctx.fill();
     
     ctx.restore();
@@ -469,7 +496,7 @@ export default function Home() {
         <script src="https://terminal.jup.ag/main-v4.js" data-preload></script>
       </Head>
 
-      <div className="social-buttons">
+      <div className="desktop-social-buttons">
         <a href="https://x.com/pumpitonsol" target="_blank" rel="noopener noreferrer" className="social-button">
           🐦 X
         </a>
@@ -496,318 +523,401 @@ export default function Home() {
         </button>
       </div>
 
-      <header>
-        <div className="pumper-float">
-          <img src="/pumper.png" alt="Pumper - PumpItOnSol Mascot" />
-        </div>
-        <h1>$PUMPIT</h1>
-        <p>Solana's most recognized meme</p>
-      </header>
+      <div className="mobile-top-buttons">
+        {walletAddress ? (
+          <button className="social-button wallet-button">
+            {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
+          </button>
+        ) : (
+          <button onClick={connectWallet} className="social-button wallet-button">
+            Connect Wallet
+          </button>
+        )}
+        <button 
+          onClick={handleBuyClick}
+          className="social-button buy-button"
+        >
+          🚀 Buy $PUMPIT
+        </button>
+      </div>
 
-      <nav className="main-nav">
-        <div className="nav-container">
-          <a href="#vision">Vision</a>
-          <a href="#token-info">Token</a>
-          <a href="#about">About</a>
-          <a href="#generator">Generate</a>
-          <a href="#roadmap">Roadmap</a>
-          <a href="#social">Social</a>
-        </div>
-      </nav>
-
-      <main>
-        <section id="vision" className="reveal">
-          <h2>Our Vision</h2>
-          <p>
-            $PUMPIT. Created with one purpose: to become the most recognized meme on Solana. 
-            Launched on Bonk, $PUMPIT is focused on real growth. Pumper has the ability to adapt — 
-            changing his face to support other strong tokens and communities he believes are the best ones to be in.
-          </p>
-          
-          <div className="token-stats">
-            <h3>📊 Token Stats</h3>
-            <p>Contract Address: B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk</p>
-            <p>Total Supply: 1,000,000,000 $PUMPIT</p>
-            <a 
-              href="https://letsbonk.fun/token/B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="token-link"
-            >
-              View on LetsBonk.fun →
-            </a>
+      <div className="container">
+        <header>
+          <div className="pumper-float">
+            <img src="/pumper.png" alt="Pumper - PumpItOnSol Mascot" />
           </div>
-        </section>
+          <div className="header-content">
+            <h1>$PUMPIT</h1>
+            <p>Solana's most recognized meme</p>
+            <div className="mobile-social-icons">
+              <a href="https://x.com/pumpitonsol" target="_blank" rel="noopener noreferrer" title="X/Twitter">
+                🐦
+              </a>
+              <a href="https://www.tiktok.com/@pumper.the.pumpit" target="_blank" rel="noopener noreferrer" title="TikTok">
+                🎵
+              </a>
+              <a href="https://t.me/Pumpetcto" target="_blank" rel="noopener noreferrer" title="Telegram">
+                💬
+              </a>
+            </div>
+          </div>
+        </header>
 
-        <section id="token-info" className="reveal token-info-section">
-          <h2>💎 $PUMPIT Live Data</h2>
-          <div className="token-grid">
-            <div className="token-card">
-              <h4>Price</h4>
-              {isLoadingPrice ? (
-                <p className="loading">Loading...</p>
+        <nav className="main-nav">
+          <div className="nav-container">
+            <a href="#vision">Vision</a>
+            <a href="#token-info">Token</a>
+            <a href="#about">About</a>
+            <a href="#generator">Generate</a>
+            <a href="#roadmap">Roadmap</a>
+            <a href="#social">Social</a>
+          </div>
+        </nav>
+
+        <main>
+          <section id="vision" className="reveal">
+            <h2>Our Vision</h2>
+            <div className={`expandable-content ${expandedSections.vision ? 'expanded' : ''}`}>
+              <p className="preview-text">
+                <strong>$PUMPIT. Created with one purpose: to become the most recognized meme on Solana.</strong>
+                {!expandedSections.vision && '...'}
+              </p>
+              {expandedSections.vision && (
+                <div className="full-content">
+                  <p>
+                    Launched on Bonk, $PUMPIT is focused on real growth. Pumper has the ability to adapt — 
+                    changing his face to support other strong tokens and communities he believes are the best ones to be in.
+                  </p>
+                </div>
+              )}
+              <button onClick={() => toggleSection('vision')} className="read-more-btn">
+                {expandedSections.vision ? 'Show Less' : 'Read More'}
+              </button>
+            </div>
+            
+            <div className="token-stats">
+              <h3>📊 Token Stats</h3>
+              <p>Contract Address: B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk</p>
+              <p>Total Supply: 1,000,000,000 $PUMPIT</p>
+              <a 
+                href="https://letsbonk.fun/token/B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="token-link"
+              >
+                View on LetsBonk.fun →
+              </a>
+            </div>
+          </section>
+
+          <section id="token-info" className="reveal token-info-section">
+            <h2>💎 $PUMPIT Live Data</h2>
+            <div className="token-grid">
+              <div className="token-card">
+                <h4>Price</h4>
+                {isLoadingPrice ? (
+                  <p className="loading">Loading...</p>
+                ) : (
+                  <>
+                    <p className="price">${tokenPrice?.toFixed(6) || '0.000000'}</p>
+                    <p className={`price-change ${priceChange24h >= 0 ? 'positive' : 'negative'}`}>
+                      {priceChange24h >= 0 ? '+' : ''}{priceChange24h?.toFixed(2)}% (24h)
+                    </p>
+                  </>
+                )}
+              </div>
+              
+              <div className="token-card">
+                <h4>Market Cap</h4>
+                <p className="value">
+                  ${tokenData?.marketCap?.toLocaleString() || '0'}
+                </p>
+              </div>
+              
+              <div className="token-card">
+                <h4>24h Volume</h4>
+                <p className="value">
+                  ${tokenData?.volume24h?.toLocaleString() || '0'}
+                </p>
+              </div>
+              
+              <div className="token-card">
+                <h4>Liquidity</h4>
+                <p className="value">
+                  ${tokenData?.liquidity?.toLocaleString() || '0'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="buy-section">
+              <button 
+                onClick={handleBuyClick}
+                className="buy-button-large"
+              >
+                🚀 Buy $PUMPIT Now
+              </button>
+              <p className="buy-info">
+                Buy directly with SOL using Jupiter DEX aggregator
+              </p>
+            </div>
+          </section>
+
+          <section id="about" className="reveal">
+            <h2>About Us</h2>
+            <div className={`expandable-content ${expandedSections.about ? 'expanded' : ''}`}>
+              <p className="preview-text">
+                <strong>Yes — $PUMPIT faced setbacks before. We've been rugged. Not once, but twice.</strong>
+                {!expandedSections.about && '...'}
+              </p>
+              {expandedSections.about && (
+                <div className="full-content">
+                  <p>
+                    But here's the difference: We learn. We adapt. We grow. To take $PUMPIT to the next level, 
+                    we've made key updates to our meme identity. Originally, the project was linked to an old meme format. 
+                    But in order to grow and collaborate with bigger communities, we needed a fresh, clear look — 
+                    without using anyone's real face or risking ownership issues.
+                  </p>
+                  <p>
+                    Now meet <strong>Pumper</strong> — the official face of $PUMPIT. From now on, $PUMPIT's official meme template includes:
+                  </p>
+                  <ul>
+                    <li>The same suit, phone, and oversized lips</li>
+                    <li>Exclamation marks — because we support bonk.fun and its ecosystem</li>
+                    <li>The face changes — replaced by the popular tokens we support</li>
+                  </ul>
+                  <p>
+                    Pumper represents not just $PUMPIT, but the entire community: A clean, recognizable identity 
+                    that can feature any token while staying true to our roots.
+                  </p>
+                  <p>
+                    <strong>Why?</strong> Because we're not just building a token — we're building connections. 
+                    By adapting the face, we connect with other communities while keeping our own brand locked in. 
+                    Every time we feature a token, we advertise for both $PUMPIT and them. More exposure. 
+                    More partnerships. Bigger growth.
+                  </p>
+                  <p>
+                    And most importantly: We're working for you — the community. Those who believed in us, 
+                    the CTO leaders. We're here to make this a successful adventure — and as fun as possible. 
+                    This community is only the beginning. <strong>Thank you all for believing, supporting, 
+                    and pushing $PUMPIT forward.</strong>
+                  </p>
+                </div>
+              )}
+              <button onClick={() => toggleSection('about')} className="read-more-btn">
+                {expandedSections.about ? 'Show Less' : 'Read More'}
+              </button>
+            </div>
+          </section>
+
+          <section id="generator" className="reveal">
+            <h2>🤖 AI-Powered Meme Generator</h2>
+            <p>
+              Upload your image and our AI will automatically detect faces and transform them into $PUMPIT-style memes — 
+              with perfectly positioned red lips, exclamation marks, and more!
+            </p>
+            
+            {showXForm && (
+              <div className="x-form-modal">
+                <form onSubmit={handleXHandleSubmit} className="x-form">
+                  <h3>Enter your X handle to continue</h3>
+                  <input
+                    type="text"
+                    placeholder="@yourhandle"
+                    value={xHandle}
+                    onChange={(e) => setXHandle(e.target.value)}
+                    required
+                  />
+                  <button type="submit">Continue</button>
+                </form>
+              </div>
+            )}
+            
+            <div className="ai-status">
+              {faceDetection === null && <p>🔄 Loading AI face detection...</p>}
+              {faceDetection === 'fallback' && <p>⚠️ Using basic positioning (AI unavailable)</p>}
+              {faceDetection && faceDetection !== 'fallback' && <p>🤖 AI face detection ready!</p>}
+            </div>
+            
+            <div className="meme-upload">
+              <div className="upload-section">
+                <label htmlFor="memeImage">📸 Choose Your Image:</label>
+                <input 
+                  type="file" 
+                  id="memeImage" 
+                  accept="image/*" 
+                  onChange={handleFileSelect}
+                  disabled={isProcessing}
+                />
+                
+                {selectedFile && xHandle && (
+                  <p className="file-selected">
+                    ✅ Selected: {selectedFile.name} | Creator: {xHandle}
+                  </p>
+                )}
+              </div>
+              
+              <div className="generate-section">
+                <button 
+                  onClick={generateMeme}
+                  disabled={!selectedFile || isProcessing || !xHandle}
+                  className="generate-button"
+                >
+                  {isProcessing ? '🤖 AI Generating Your $PUMPIT Meme...' : '🔥 Generate AI $PUMPIT Meme'}
+                </button>
+                
+                {generatedMeme && (
+                  <button 
+                    onClick={downloadMeme}
+                    className="generate-button"
+                    style={{marginLeft: '1rem', background: 'linear-gradient(135deg, #FFFF00, #FFD700)'}}
+                  >
+                    💾 Download Meme
+                  </button>
+                )}
+              </div>
+              
+              {error && (
+                <div className="error-message">
+                  ⚠️ {error}
+                </div>
+              )}
+              
+              <div className="meme-preview-placeholder">
+                <img 
+                  src={preview} 
+                  alt="Meme Preview" 
+                  style={{
+                    opacity: isProcessing ? 0.7 : 1,
+                    transition: 'opacity 0.3s ease'
+                  }}
+                />
+                {isProcessing ? (
+                  <p><strong>🤖 AI is detecting faces and generating your meme...</strong></p>
+                ) : selectedFile ? (
+                  generatedMeme ? (
+                    <p><strong>🎉 Your AI-powered $PUMPIT meme is ready!</strong></p>
+                  ) : (
+                    <p><strong>👆 Click "Generate AI $PUMPIT Meme" for automatic face detection!</strong></p>
+                  )
+                ) : (
+                  <p><strong>Upload an image to get started</strong></p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section id="roadmap" className="reveal">
+            <h2>🗺️ Roadmap</h2>
+            <ul>
+              <li>✅ Phase 1: Launch $PUMPIT on Bonk.fun with meme identity + Pumper reveal</li>
+              <li>🤖 Phase 2: AI-powered meme generator with face detection goes live</li>
+              <li>📋 Phase 3: Collaborate with top meme communities</li>
+              <li>📋 Phase 4: Community meme automation & viral campaigns</li>
+              <li>📚 Phase 5: Pumper Comic Series - Exclusive stories for $PUMPIT holders! Watch Pumper meet new characters representing other promising tokens. Only holders can unlock these adventures!</li>
+            </ul>
+          </section>
+
+          <section id="community" className="reveal">
+            <h2>🔥 Latest Community Memes</h2>
+            <div className="community-memes">
+              {communityMemes.length > 0 ? (
+                communityMemes.map((meme, index) => (
+                  <div key={index} className="meme-card">
+                    <img src={meme.url} alt={`Community Meme ${index + 1}`} />
+                    <p>Created by {meme.creator}</p>
+                  </div>
+                ))
               ) : (
                 <>
-                  <p className="price">${tokenPrice?.toFixed(6) || '0.000000'}</p>
-                  <p className={`price-change ${priceChange24h >= 0 ? 'positive' : 'negative'}`}>
-                    {priceChange24h >= 0 ? '+' : ''}{priceChange24h?.toFixed(2)}% (24h)
-                  </p>
+                  <div className="meme-card placeholder">
+                    <div className="placeholder-content">
+                      <p>🎨 Be the first to create a meme!</p>
+                    </div>
+                  </div>
+                  <div className="meme-card placeholder">
+                    <div className="placeholder-content">
+                      <p>🚀 Your meme here</p>
+                    </div>
+                  </div>
+                  <div className="meme-card placeholder">
+                    <div className="placeholder-content">
+                      <p>💎 Join the fun!</p>
+                    </div>
+                  </div>
                 </>
               )}
             </div>
-            
-            <div className="token-card">
-              <h4>Market Cap</h4>
-              <p className="value">
-                ${tokenData?.marketCap?.toLocaleString() || '0'}
-              </p>
-            </div>
-            
-            <div className="token-card">
-              <h4>24h Volume</h4>
-              <p className="value">
-                ${tokenData?.volume24h?.toLocaleString() || '0'}
-              </p>
-            </div>
-            
-            <div className="token-card">
-              <h4>Liquidity</h4>
-              <p className="value">
-                ${tokenData?.liquidity?.toLocaleString() || '0'}
-              </p>
-            </div>
-          </div>
-          
-          <div className="buy-section">
-            <button 
-              onClick={handleBuyClick}
-              className="buy-button-large"
-            >
-              🚀 Buy $PUMPIT Now
-            </button>
-            <p className="buy-info">
-              Buy directly with SOL using Jupiter DEX aggregator
-            </p>
-          </div>
-        </section>
+          </section>
 
-        <section id="about" className="reveal">
-          <h2>About</h2>
-          <p>
-            Yes — $PUMPIT faced setbacks before. We've been rugged. Not once, but twice. 
-            But here's the difference: We learn. We adapt. We grow. To take $PUMPIT to the next level, 
-            we've made key updates to our meme identity.
-          </p>
-        </section>
-
-        <section id="generator" className="reveal">
-          <h2>🤖 AI-Powered Meme Generator</h2>
-          <p>
-            Upload your image and our AI will automatically detect faces and transform them into $PUMPIT-style memes — 
-            with perfectly positioned red lips, exclamation marks, and more!
-          </p>
-          
-          {showXForm && (
-            <div className="x-form-modal">
-              <form onSubmit={handleXHandleSubmit} className="x-form">
-                <h3>Enter your X handle to continue</h3>
-                <input
-                  type="text"
-                  placeholder="@yourhandle"
-                  value={xHandle}
-                  onChange={(e) => setXHandle(e.target.value)}
-                  required
-                />
-                <button type="submit">Continue</button>
-              </form>
-            </div>
-          )}
-          
-          <div className="ai-status">
-            {faceDetection === null && <p>🔄 Loading AI face detection...</p>}
-            {faceDetection === 'fallback' && <p>⚠️ Using basic positioning (AI unavailable)</p>}
-            {faceDetection && faceDetection !== 'fallback' && <p>🤖 AI face detection ready!</p>}
-          </div>
-          
-          <div className="meme-upload">
-            <div className="upload-section">
-              <label htmlFor="memeImage">📸 Choose Your Image:</label>
-              <input 
-                type="file" 
-                id="memeImage" 
-                accept="image/*" 
-                onChange={handleFileSelect}
-                disabled={isProcessing}
-              />
+          <section id="social" className="reveal">
+            <h2>🌐 Join the $PUMPIT Community</h2>
+            <div className="social-grid">
+              <div className="social-card">
+                <h3>🐦 Latest from X/Twitter</h3>
+                <div className="twitter-embed">
+                  <a 
+                    className="twitter-timeline" 
+                    data-height="400"
+                    data-theme="dark"
+                    href="https://twitter.com/pumpitonsol?ref_src=twsrc%5Etfw"
+                  >
+                    Tweets by @pumpitonsol
+                  </a>
+                  <script async src="https://platform.twitter.com/widgets.js" charSet="utf-8"></script>
+                </div>
+              </div>
               
-              {selectedFile && xHandle && (
-                <p className="file-selected">
-                  ✅ Selected: {selectedFile.name} | Creator: {xHandle}
-                </p>
-              )}
-            </div>
-            
-            <div className="generate-section">
-              <button 
-                onClick={generateMeme}
-                disabled={!selectedFile || isProcessing || !xHandle}
-                className="generate-button"
-              >
-                {isProcessing ? '🤖 AI Generating Your $PUMPIT Meme...' : '🔥 Generate AI $PUMPIT Meme'}
-              </button>
-              
-              {generatedMeme && (
-                <button 
-                  onClick={downloadMeme}
-                  className="generate-button"
-                  style={{marginLeft: '1rem', background: 'linear-gradient(135deg, #FFFF00, #FFD700)'}}
-                >
-                  💾 Download Meme
-                </button>
-              )}
-            </div>
-            
-            {error && (
-              <div className="error-message">
-                ⚠️ {error}
-              </div>
-            )}
-            
-            <div className="meme-preview-placeholder">
-              <img 
-                src={preview} 
-                alt="Meme Preview" 
-                style={{
-                  opacity: isProcessing ? 0.7 : 1,
-                  transition: 'opacity 0.3s ease'
-                }}
-              />
-              {isProcessing ? (
-                <p><strong>🤖 AI is detecting faces and generating your meme...</strong></p>
-              ) : selectedFile ? (
-                generatedMeme ? (
-                  <p><strong>🎉 Your AI-powered $PUMPIT meme is ready!</strong></p>
-                ) : (
-                  <p><strong>👆 Click "Generate AI $PUMPIT Meme" for automatic face detection!</strong></p>
-                )
-              ) : (
-                <p><strong>Upload an image to get started</strong></p>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section id="roadmap" className="reveal">
-          <h2>🗺️ Roadmap</h2>
-          <ul>
-            <li>✅ Phase 1: Launch $PUMPIT on Bonk.fun with meme identity + Pumper reveal</li>
-            <li>🤖 Phase 2: AI-powered meme generator with face detection goes live</li>
-            <li>📋 Phase 3: Collaborate with top meme communities</li>
-            <li>📋 Phase 4: Community meme automation & viral campaigns</li>
-            <li>📚 Phase 5: Pumper Comic Series - Exclusive stories for $PUMPIT holders! Watch Pumper meet new characters representing other promising tokens. Only holders can unlock these adventures!</li>
-          </ul>
-        </section>
-
-        <section id="community" className="reveal">
-          <h2>🔥 Latest Community Memes</h2>
-          <div className="community-memes">
-            {communityMemes.length > 0 ? (
-              communityMemes.map((meme, index) => (
-                <div key={index} className="meme-card">
-                  <img src={meme.url} alt={`Community Meme ${index + 1}`} />
-                  <p>Created by {meme.creator}</p>
+              <div className="social-card">
+                <h3>💬 Community Updates</h3>
+                <div className="community-links">
+                  <a 
+                    href="https://t.me/Pumpetcto" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="community-button telegram"
+                  >
+                    <span className="icon">💬</span>
+                    <div>
+                      <strong>Telegram Community</strong>
+                      <p>Join our active Telegram group</p>
+                    </div>
+                  </a>
+                  
+                  <a 
+                    href="https://www.tiktok.com/@pumper.the.pumpit" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="community-button tiktok"
+                  >
+                    <span className="icon">🎵</span>
+                    <div>
+                      <strong>TikTok Videos</strong>
+                      <p>Watch Pumper's latest content</p>
+                    </div>
+                  </a>
+                  
+                  <a 
+                    href="https://x.com/pumpitonsol" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="community-button twitter"
+                  >
+                    <span className="icon">🐦</span>
+                    <div>
+                      <strong>X / Twitter</strong>
+                      <p>Follow for real-time updates</p>
+                    </div>
+                  </a>
                 </div>
-              ))
-            ) : (
-              <>
-                <div className="meme-card placeholder">
-                  <div className="placeholder-content">
-                    <p>🎨 Be the first to create a meme!</p>
-                  </div>
-                </div>
-                <div className="meme-card placeholder">
-                  <div className="placeholder-content">
-                    <p>🚀 Your meme here</p>
-                  </div>
-                </div>
-                <div className="meme-card placeholder">
-                  <div className="placeholder-content">
-                    <p>💎 Join the fun!</p>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </section>
-
-        <section id="social" className="reveal">
-          <h2>🌐 Join the $PUMPIT Community</h2>
-          <div className="social-grid">
-            <div className="social-card">
-              <h3>🐦 Latest from X/Twitter</h3>
-              <div className="twitter-embed">
-                <a 
-                  className="twitter-timeline" 
-                  data-height="400"
-                  data-theme="dark"
-                  href="https://twitter.com/pumpitonsol?ref_src=twsrc%5Etfw"
-                >
-                  Tweets by @pumpitonsol
-                </a>
-                <script async src="https://platform.twitter.com/widgets.js" charSet="utf-8"></script>
               </div>
             </div>
-            
-            <div className="social-card">
-              <h3>💬 Community Updates</h3>
-              <div className="community-links">
-                <a 
-                  href="https://t.me/Pumpetcto" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="community-button telegram"
-                >
-                  <span className="icon">💬</span>
-                  <div>
-                    <strong>Telegram Community</strong>
-                    <p>Join our active Telegram group</p>
-                  </div>
-                </a>
-                
-                <a 
-                  href="https://www.tiktok.com/@pumper.the.pumpit" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="community-button tiktok"
-                >
-                  <span className="icon">🎵</span>
-                  <div>
-                    <strong>TikTok Videos</strong>
-                    <p>Watch Pumper's latest content</p>
-                  </div>
-                </a>
-                
-                <a 
-                  href="https://x.com/pumpitonsol" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="community-button twitter"
-                >
-                  <span className="icon">🐦</span>
-                  <div>
-                    <strong>X / Twitter</strong>
-                    <p>Follow for real-time updates</p>
-                  </div>
-                </a>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
+          </section>
+        </main>
 
-      <footer>
-        <p>© 2025 PumpItOnSol. Powered by AI and the community. 🤖🚀</p>
-      </footer>
+        <footer>
+          <p>© 2025 PumpItOnSol. Powered by AI and the community. 🤖🚀</p>
+        </footer>
+      </div>
 
       <style jsx global>{`
         * {
@@ -824,16 +934,16 @@ export default function Home() {
           overflow-x: hidden;
         }
 
-        /* Container width fix */
-        main {
+        /* Container for proper centering */
+        .container {
           max-width: 1200px;
           margin: 0 auto;
-          padding: 1rem;
+          padding: 0 20px;
           width: 100%;
         }
 
-        /* Social buttons at top */
-        .social-buttons {
+        /* Desktop social buttons */
+        .desktop-social-buttons {
           position: fixed;
           top: 10px;
           right: 10px;
@@ -842,6 +952,33 @@ export default function Home() {
           z-index: 1000;
           flex-wrap: wrap;
           max-width: calc(100vw - 20px);
+        }
+
+        /* Mobile top buttons */
+        .mobile-top-buttons {
+          display: none;
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          gap: 0.5rem;
+          z-index: 1000;
+        }
+
+        /* Mobile social icons in header */
+        .mobile-social-icons {
+          display: none;
+          gap: 1rem;
+          margin-top: 1rem;
+          font-size: 1.5rem;
+        }
+
+        .mobile-social-icons a {
+          text-decoration: none;
+          transition: transform 0.3s ease;
+        }
+
+        .mobile-social-icons a:hover {
+          transform: scale(1.2);
         }
 
         .social-button {
@@ -887,6 +1024,12 @@ export default function Home() {
           padding: 4rem 1rem 2rem;
           position: relative;
           overflow: hidden;
+          margin-top: 60px;
+        }
+
+        .header-content {
+          position: relative;
+          z-index: 2;
         }
 
         .pumper-float {
@@ -894,14 +1037,15 @@ export default function Home() {
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          opacity: 0.1;
+          opacity: 0.3;
           animation: float 6s ease-in-out infinite;
           pointer-events: none;
+          filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
         }
 
         .pumper-float img {
-          width: 250px;
-          height: 250px;
+          width: 300px;
+          height: 300px;
         }
 
         @keyframes float {
@@ -927,7 +1071,7 @@ export default function Home() {
           background: rgba(0, 0, 0, 0.9);
           backdrop-filter: blur(10px);
           padding: 0.5rem 0;
-          margin-bottom: 2rem;
+          margin: 0 -20px 2rem;
         }
 
         .nav-container {
@@ -954,6 +1098,10 @@ export default function Home() {
           transform: translateY(-2px);
         }
 
+        main {
+          width: 100%;
+        }
+
         section {
           margin: 2rem 0;
           padding: 2rem;
@@ -966,6 +1114,44 @@ export default function Home() {
           font-size: 2.2rem;
           margin-bottom: 1.5rem;
           color: #FFFF00;
+        }
+
+        /* Expandable content */
+        .expandable-content {
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+
+        .preview-text {
+          margin-bottom: 1rem;
+        }
+
+        .full-content {
+          animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .read-more-btn {
+          background: none;
+          border: 2px solid #FFFF00;
+          color: #FFFF00;
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-weight: bold;
+          margin-top: 0.5rem;
+        }
+
+        .read-more-btn:hover {
+          background: #FFFF00;
+          color: black;
+          transform: scale(1.05);
         }
 
         .token-stats {
@@ -1433,23 +1619,34 @@ export default function Home() {
 
         /* Responsive Design */
         @media (max-width: 768px) {
+          .desktop-social-buttons {
+            display: none;
+          }
+
+          .mobile-top-buttons {
+            display: flex;
+          }
+
+          .mobile-social-icons {
+            display: flex;
+            justify-content: center;
+          }
+
+          header {
+            margin-top: 70px;
+          }
+
+          .pumper-float img {
+            width: 250px;
+            height: 250px;
+          }
+
           h1 {
             font-size: 2.5rem;
           }
 
           h2 {
             font-size: 1.8rem;
-          }
-
-          .social-buttons {
-            right: 5px;
-            top: 5px;
-            gap: 0.3rem;
-          }
-
-          .social-button {
-            padding: 0.3rem 0.6rem;
-            font-size: 0.8rem;
           }
 
           .nav-container {
@@ -1494,6 +1691,16 @@ export default function Home() {
         }
 
         @media (max-width: 480px) {
+          .mobile-top-buttons {
+            right: 5px;
+            top: 5px;
+          }
+
+          .social-button {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+          }
+
           .token-grid {
             grid-template-columns: 1fr;
           }
@@ -1505,6 +1712,15 @@ export default function Home() {
           .pumper-float img {
             width: 200px;
             height: 200px;
+          }
+
+          h1 {
+            font-size: 2rem;
+          }
+
+          .mobile-social-icons {
+            font-size: 1.2rem;
+            gap: 0.8rem;
           }
         }
       `}</style>
