@@ -12,11 +12,11 @@ export default function Home() {
   const [tokenData, setTokenData] = useState(null);
   const [priceChange24h, setPriceChange24h] = useState(0);
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
+  // Remove Jupiter Terminal initialization since we'll use direct link
   const [walletAddress, setWalletAddress] = useState(null);
   const [xHandle, setXHandle] = useState('');
   const [showXForm, setShowXForm] = useState(false);
   const [communityMemes, setCommunityMemes] = useState([]);
-  const [jupiterLoaded, setJupiterLoaded] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     vision: false,
     about: false
@@ -193,35 +193,12 @@ export default function Home() {
   const handleBuyClick = async () => {
     if (!walletAddress) {
       await connectWallet();
-    } else {
-      // Ensure Jupiter is initialized
-      if (!window.Jupiter) {
-        console.error('Jupiter not loaded');
-        return;
-      }
-      
-      // Toggle Jupiter Terminal
-      try {
-        window.Jupiter.toggle();
-      } catch (error) {
-        console.error('Error opening Jupiter:', error);
-        // Fallback: Try to reinitialize
-        window.Jupiter.init({
-          displayMode: 'widget',
-          endpoint: 'https://api.mainnet-beta.solana.com',
-          strictTokenList: false,
-          defaultExplorer: 'Solscan',
-          formProps: {
-            initialInputTokenAddress: 'So11111111111111111111111111111111111111112',
-            initialOutputTokenAddress: 'B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk',
-            initialAmount: '100000000',
-            fixedOutputMint: true,
-          },
-          enableWalletPassthrough: true,
-        });
-        setTimeout(() => window.Jupiter.toggle(), 100);
-      }
+      return;
     }
+    
+    // Direct link to Jupiter with $PUMPIT pre-selected
+    const jupiterUrl = `https://jup.ag/swap/SOL-B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk`;
+    window.open(jupiterUrl, '_blank');
   };
 
   const toggleSection = (section) => {
@@ -555,7 +532,6 @@ export default function Home() {
         <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossOrigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossOrigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossOrigin="anonymous"></script>
-        <script src="https://terminal.jup.ag/main-v4.js" data-preload></script>
       </Head>
 
       <div className="desktop-social-buttons">
