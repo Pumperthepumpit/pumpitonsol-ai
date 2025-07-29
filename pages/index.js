@@ -8,12 +8,11 @@ export default function Home() {
   const [error, setError] = useState('');
   const [generatedMeme, setGeneratedMeme] = useState(null);
   const [faceDetection, setFaceDetection] = useState(null);
-  const [useGemini, setUseGemini] = useState(true); // Try Gemini first
+  const [useGemini, setUseGemini] = useState(true);
   const [tokenPrice, setTokenPrice] = useState(null);
   const [tokenData, setTokenData] = useState(null);
   const [priceChange24h, setPriceChange24h] = useState(0);
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
-  // Remove Jupiter Terminal initialization since we'll use direct link
   const [walletAddress, setWalletAddress] = useState(null);
   const [xHandle, setXHandle] = useState('');
   const [showXForm, setShowXForm] = useState(false);
@@ -22,12 +21,8 @@ export default function Home() {
     vision: false,
     about: false
   });
-<<<<<<< HEAD
-  const [jupiterLoaded, setJupiterLoaded] = useState(false);  // FIXED: Added this line
-=======
->>>>>>> 99d54a621e412c7552fe0a22bcd64c29a5d246a7
+  const [jupiterLoaded, setJupiterLoaded] = useState(false);
 
-  // Load Jupiter Terminal script
   useEffect(() => {
     const checkJupiter = setInterval(() => {
       if (window.Jupiter) {
@@ -35,14 +30,9 @@ export default function Home() {
         clearInterval(checkJupiter);
       }
     }, 100);
-
-    // Cleanup
     return () => clearInterval(checkJupiter);
   }, []);
-<<<<<<< HEAD
   
-=======
->>>>>>> 99d54a621e412c7552fe0a22bcd64c29a5d246a7
   useEffect(() => {
     const loadFaceDetection = async () => {
       try {
@@ -75,7 +65,6 @@ export default function Home() {
     loadFaceDetection();
   }, []);
 
-  // Initialize Jupiter Terminal properly
   useEffect(() => {
     if (window.Jupiter && walletAddress) {
       window.Jupiter.init({
@@ -92,7 +81,6 @@ export default function Home() {
     }
   }, [walletAddress]);
 
-  // Initialize Jupiter Terminal
   useEffect(() => {
     const initJupiter = () => {
       if (window.Jupiter && walletAddress) {
@@ -105,7 +93,7 @@ export default function Home() {
           formProps: {
             initialInputTokenAddress: 'So11111111111111111111111111111111111111112',
             initialOutputTokenAddress: 'B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk',
-            initialAmount: '100000000', // 0.1 SOL
+            initialAmount: '100000000',
             fixedOutputMint: true,
           },
           enableWalletPassthrough: true,
@@ -117,7 +105,6 @@ export default function Home() {
           },
         });
         
-        // Pass wallet context to Jupiter
         if (window.solana && window.Jupiter.syncProps) {
           window.Jupiter.syncProps({
             passthroughWalletContextState: {
@@ -141,13 +128,11 @@ export default function Home() {
       }
     };
 
-    // Initialize when wallet connects
     if (walletAddress) {
       initJupiter();
     }
   }, [walletAddress]);
 
-  // Fetch token price data from DexScreener
   useEffect(() => {
     const fetchTokenData = async () => {
       try {
@@ -168,7 +153,6 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Error fetching token data:', error);
-        // Fallback data
         setTokenPrice(0.000042);
         setPriceChange24h(15.7);
         setTokenData({
@@ -207,7 +191,6 @@ export default function Home() {
       return;
     }
     
-    // Open Jupiter
     window.open('https://jup.ag', '_blank');
   };
 
@@ -280,7 +263,6 @@ export default function Home() {
   };
 
   const detectFaces = async (imageElement) => {
-    // Try Face-api.js first for 68 landmark points
     if (faceDetection === 'faceapi' && window.faceapi) {
       try {
         console.log('🔍 Using advanced Face-api.js detection...');
@@ -303,13 +285,11 @@ export default function Home() {
 
         console.log(`✅ Found ${detections.length} face(s) with 68 landmarks!`);
         
-        // Convert Face-api.js format to our format
         return detections.map(detection => {
           const landmarks = detection.landmarks;
           const mouth = landmarks.getMouth();
           const nose = landmarks.getNose();
           
-          // Calculate face angle from nose tip to nose base
           const noseTop = nose[0];
           const noseBottom = nose[6];
           const faceAngle = Math.atan2(noseBottom.x - noseTop.x, noseBottom.y - noseTop.y);
@@ -332,7 +312,6 @@ export default function Home() {
       }
     }
     
-    // MediaPipe fallback
     if (faceDetection && faceDetection !== 'fallback' && faceDetection !== 'faceapi') {
       try {
         console.log('🔍 Using MediaPipe detection...');
@@ -365,7 +344,6 @@ export default function Home() {
       }
     }
     
-    // Ultimate fallback
     return [{
       boundingBox: {
         originX: imageElement.width * 0.2,
@@ -414,7 +392,6 @@ export default function Home() {
         let faces = null;
         let usingGemini = false;
         
-        // Try Gemini first if enabled
         if (useGemini) {
           const reader = new FileReader();
           const imageDataUrl = await new Promise((resolve) => {
@@ -428,27 +405,36 @@ export default function Home() {
           }
         }
         
-        // Fallback to Face-api.js or MediaPipe
         if (!faces) {
           faces = await detectFaces(img);
         }
         
         console.log(`🤖 Processing ${faces.length} face(s) ${usingGemini ? 'with Gemini AI' : 'with local detection'}...`);
         
-        faces.forEach((face, index) => {
-          console.log(`🎨 Adding $PUMPIT elements to face ${index + 1}...`);
-          
-          if (usingGemini) {
-            // Use Gemini's precise coordinates
-            const mouthCenter = {
-              x: face.mouth.centerX,
-              y: face.mouth.centerY
-            };
+        if (usingGemini && faces) {
+          faces.forEach((face, index) => {
+            console.log(`🤖 Processing face ${index + 1} with Gemini precision...`);
+            console.log('Gemini face data:', face);
             
-            drawAdvancedLips(ctx, mouthCenter, face.mouth.width, face.mouth.height, face.faceAngle || 0);
-            drawDirectionalExclamations(ctx, face.boundingBox, face.faceDirection || 'center');
-          } else {
-            // Use existing detection logic
+            if (face.mouth && typeof face.mouth.centerX === 'number' && typeof face.mouth.centerY === 'number') {
+              console.log(`Mouth detected at: (${face.mouth.centerX}, ${face.mouth.centerY})`);
+              drawStandardizedLips(ctx, face.mouth, face.faceAngle || 0);
+            } else {
+              console.warn('Gemini face missing mouth coordinates, using face center estimate');
+              const estimatedMouth = {
+                centerX: face.boundingBox.x + face.boundingBox.width / 2,
+                centerY: face.boundingBox.y + face.boundingBox.height * 0.75,
+                width: face.boundingBox.width * 0.25
+              };
+              drawStandardizedLips(ctx, estimatedMouth, face.faceAngle || 0);
+            }
+            
+            drawStandardizedExclamations(ctx, face.boundingBox, face.faceDirection || 'center');
+          });
+        } else {
+          faces.forEach((face, index) => {
+            console.log(`🎨 Adding $PUMPIT elements to face ${index + 1}...`);
+            
             const faceRegion = {
               x: face.boundingBox.originX,
               y: face.boundingBox.originY,
@@ -469,10 +455,15 @@ export default function Home() {
               };
               
               const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
-              const mouthHeight = Math.abs(mouthBottom.y - mouthTop.y);
               
-              drawAdvancedLips(ctx, mouthCenter, mouthWidth, mouthHeight, face.faceAngle);
-              drawDirectionalExclamations(ctx, faceRegion, face.faceDirection);
+              const mouthData = {
+                centerX: mouthCenter.x,
+                centerY: mouthCenter.y,
+                width: mouthWidth
+              };
+              
+              drawStandardizedLips(ctx, mouthData, face.faceAngle);
+              drawStandardizedExclamations(ctx, faceRegion, face.faceDirection);
             } else {
               let mouthPosition = { x: faceRegion.x + faceRegion.width / 2, y: faceRegion.y + faceRegion.height * 0.75 };
               
@@ -487,11 +478,17 @@ export default function Home() {
                 }
               }
               
-              drawPumperStyleLips(ctx, faceRegion, mouthPosition);
-              drawSideExclamationMarks(ctx, faceRegion, index % 2 === 0);
+              const mouthData = {
+                centerX: mouthPosition.x,
+                centerY: mouthPosition.y,
+                width: faceRegion.width * 0.25
+              };
+              
+              drawStandardizedLips(ctx, mouthData, 0);
+              drawStandardizedExclamations(ctx, faceRegion, 'center');
             }
-          }
-        });
+          });
+        }
         
         canvas.toBlob((blob) => {
           const memeUrl = URL.createObjectURL(blob);
@@ -499,7 +496,6 @@ export default function Home() {
           setGeneratedMeme(memeUrl);
           setIsProcessing(false);
           
-          // Add to community memes
           const newMeme = {
             url: memeUrl,
             creator: xHandle,
@@ -542,231 +538,129 @@ export default function Home() {
     a.click();
   };
 
-  // Advanced lip drawing with exact positioning
-  const drawAdvancedLips = (ctx, mouthCenter, mouthWidth, mouthHeight, faceAngle) => {
+  // Standardized lips - always the same style as your reference image
+  const drawStandardizedLips = (ctx, mouthData, faceAngle = 0) => {
     ctx.save();
     
-    // Translate and rotate based on face angle
-    ctx.translate(mouthCenter.x, mouthCenter.y);
+    const mouthCenterX = mouthData.centerX;
+    const mouthCenterY = mouthData.centerY;
+    
+    console.log(`Placing standardized lips at: (${mouthCenterX}, ${mouthCenterY})`);
+    
+    ctx.translate(mouthCenterX, mouthCenterY);
     ctx.rotate(faceAngle);
     
-    // Scale lips to be oversized but proportional
-    const lipWidth = mouthWidth * 1.8;
-    const lipHeight = Math.max(mouthHeight * 3, lipWidth * 0.5);
+    const detectedMouthWidth = mouthData.width || 50;
+    const lipScale = Math.max(detectedMouthWidth / 60, 0.8);
     
-    // Thick black outline
+    const lipWidth = 80 * lipScale;
+    const lipHeight = 50 * lipScale;
+    
+    // Thick black outline - standardized thickness
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = Math.max(6, lipWidth * 0.05);
+    ctx.lineWidth = 6;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     
-    // Draw exaggerated cartoon lips
+    // Draw the exact lip shape from your reference image
     ctx.beginPath();
     
-    // Upper lip
+    // Upper lip curve
     ctx.moveTo(-lipWidth/2, 0);
-    ctx.quadraticCurveTo(-lipWidth/3, -lipHeight/2, 0, -lipHeight/2.5);
-    ctx.quadraticCurveTo(lipWidth/3, -lipHeight/2, lipWidth/2, 0);
+    ctx.quadraticCurveTo(-lipWidth/3, -lipHeight/2.2, 0, -lipHeight/2.5);
+    ctx.quadraticCurveTo(lipWidth/3, -lipHeight/2.2, lipWidth/2, 0);
     
-    // Lower lip
+    // Lower lip curve - full and pouty
     ctx.quadraticCurveTo(lipWidth/3, lipHeight * 0.8, 0, lipHeight * 0.9);
     ctx.quadraticCurveTo(-lipWidth/3, lipHeight * 0.8, -lipWidth/2, 0);
     
     ctx.closePath();
     
-    // Fill with bright red
+    // Standardized bright red color
     ctx.fillStyle = '#FF0000';
     ctx.fill();
     ctx.stroke();
     
-    // Add highlights
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    // Standardized highlights - match your reference image
+    ctx.fillStyle = 'rgba(255, 180, 180, 0.7)';
+    
+    // Top lip highlights (two small ovals)
     ctx.beginPath();
-    ctx.ellipse(0, -lipHeight/3, lipWidth/4, lipHeight/6, 0, 0, Math.PI * 2);
+    ctx.ellipse(-lipWidth/6, -lipHeight/3, lipWidth/8, lipHeight/10, 0, 0, Math.PI * 2);
     ctx.fill();
     
     ctx.beginPath();
-    ctx.ellipse(0, lipHeight/3, lipWidth/3, lipHeight/5, 0, 0, Math.PI);
+    ctx.ellipse(lipWidth/6, -lipHeight/3, lipWidth/8, lipHeight/10, 0, 0, Math.PI * 2);
     ctx.fill();
+    
+    // Bottom lip highlight (one large oval)
+    ctx.beginPath();
+    ctx.ellipse(0, lipHeight/3, lipWidth/4, lipHeight/8, 0, 0, Math.PI);
+    ctx.fill();
+    
+    // Lip separation line
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-lipWidth/3, 0);
+    ctx.quadraticCurveTo(0, lipHeight/6, lipWidth/3, 0);
+    ctx.stroke();
     
     ctx.restore();
   };
 
-  // Directional exclamation marks based on face direction
-  const drawDirectionalExclamations = (ctx, faceRegion, direction) => {
-    const { x, y, width, height } = faceRegion;
+  // Standardized exclamation marks - exactly like your reference image
+  const drawStandardizedExclamations = (ctx, faceBox, faceDirection = 'center') => {
+    const { x, y, width, height } = faceBox;
     
-    const exclamationSize = Math.max(width * 0.15, 25);
-    let baseX, offsetDirection;
+    // Standardized exclamation size
+    const exclamationHeight = 40;
+    const exclamationWidth = 12;
+    const dotRadius = 6;
     
-    // Position based on face direction
-    if (direction === 'left') {
-      baseX = x - exclamationSize * 0.5;
-      offsetDirection = -1;
-    } else if (direction === 'right') {
-      baseX = x + width + exclamationSize * 0.5;
-      offsetDirection = 1;
-    } else {
-      baseX = x + width / 2;
-      offsetDirection = 0;
+    // Position above head, offset based on face direction
+    let baseX = x + width / 2; // Default center
+    const baseY = y - 60; // Above the head
+    
+    // Adjust horizontal position based on face direction
+    if (faceDirection === 'left') {
+      baseX = x + width * 0.2; // Left side
+    } else if (faceDirection === 'right') {
+      baseX = x + width * 0.8; // Right side
     }
     
-    const baseY = y - exclamationSize * 0.5;
-    
+    // Three exclamation marks in a slight arc
     const positions = [
-      { x: baseX + offsetDirection * exclamationSize * 0.5, y: baseY - exclamationSize * 0.3, rotation: offsetDirection * 0.2 },
-      { x: baseX, y: baseY - exclamationSize * 0.8, rotation: 0 },
-      { x: baseX + offsetDirection * exclamationSize * 0.3, y: baseY - exclamationSize * 1.3, rotation: -offsetDirection * 0.1 }
+      { x: baseX - 25, y: baseY + 10, rotation: -0.1 },
+      { x: baseX, y: baseY, rotation: 0 },
+      { x: baseX + 25, y: baseY + 10, rotation: 0.1 }
     ];
-    
-    ctx.save();
     
     positions.forEach((pos) => {
       ctx.save();
       ctx.translate(pos.x, pos.y);
       ctx.rotate(pos.rotation);
       
-      // Bold red exclamation marks
+      // Standardized bright red - no shadows or outlines
       ctx.fillStyle = '#FF0000';
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = Math.max(4, exclamationSize * 0.08);
       
-      // Main body
-      const bodyWidth = exclamationSize * 0.35;
-      const bodyHeight = exclamationSize * 0.8;
-      
+      // Main exclamation body (tapered rectangle)
       ctx.beginPath();
-      ctx.moveTo(0, -bodyHeight);
-      ctx.lineTo(-bodyWidth/2, 0);
-      ctx.lineTo(bodyWidth/2, 0);
+      ctx.moveTo(0, -exclamationHeight);
+      ctx.lineTo(-exclamationWidth/3, -exclamationHeight/4);
+      ctx.lineTo(-exclamationWidth/2, 0);
+      ctx.lineTo(exclamationWidth/2, 0);
+      ctx.lineTo(exclamationWidth/3, -exclamationHeight/4);
       ctx.closePath();
       ctx.fill();
-      ctx.stroke();
       
       // Dot
-      const dotRadius = exclamationSize * 0.18;
       ctx.beginPath();
-      ctx.arc(0, dotRadius * 1.5, dotRadius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      
-      ctx.restore();
-    });
-    
-    ctx.restore();
-  };
-
-  // Original lip drawing function remains as fallback
-  const drawPumperStyleLips = (ctx, faceRegion, mouthPosition) => {
-    const mouthX = mouthPosition.x;
-    const mouthY = mouthPosition.y;
-    
-    const faceSize = Math.min(faceRegion.width, faceRegion.height);
-    const lipWidth = faceSize * 0.5;
-    const lipHeight = faceSize * 0.3;
-    
-    ctx.save();
-    
-    // Thick black outline
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = Math.max(6, faceSize * 0.025);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    
-    // Draw exaggerated pouty lips
-    ctx.beginPath();
-    
-    // Top lip - simple curved shape
-    ctx.moveTo(mouthX - lipWidth/2, mouthY);
-    ctx.quadraticCurveTo(mouthX, mouthY - lipHeight/2, mouthX + lipWidth/2, mouthY);
-    
-    // Bottom lip - very full
-    ctx.quadraticCurveTo(mouthX + lipWidth/3, mouthY + lipHeight, mouthX, mouthY + lipHeight * 1.2);
-    ctx.quadraticCurveTo(mouthX - lipWidth/3, mouthY + lipHeight, mouthX - lipWidth/2, mouthY);
-    
-    ctx.closePath();
-    
-    // Fill with bright red
-    ctx.fillStyle = '#FF0000';
-    ctx.fill();
-    ctx.stroke();
-    
-    // Add simple highlights
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    
-    // Top lip highlight
-    ctx.beginPath();
-    ctx.ellipse(mouthX, mouthY - lipHeight/4, lipWidth/4, lipHeight/6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Bottom lip highlight
-    ctx.beginPath();
-    ctx.ellipse(mouthX, mouthY + lipHeight/2, lipWidth/3, lipHeight/5, 0, 0, Math.PI);
-    ctx.fill();
-    
-    ctx.restore();
-  };
-
-  // Side exclamation marks
-  const drawSideExclamationMarks = (ctx, faceRegion, rightSide = true) => {
-    const { x, y, width, height } = faceRegion;
-    
-    const exclamationSize = Math.max(width * 0.15, 25);
-    const sideX = rightSide ? x + width + exclamationSize * 0.8 : x - exclamationSize * 1.8;
-    const centerY = y + height * 0.4;
-    
-    const positions = [
-      { x: sideX - exclamationSize * 0.3, y: centerY - exclamationSize, rotation: rightSide ? -0.4 : 0.4 },
-      { x: sideX, y: centerY, rotation: rightSide ? -0.2 : 0.2 },
-      { x: sideX - exclamationSize * 0.2, y: centerY + exclamationSize, rotation: rightSide ? 0.1 : -0.1 }
-    ];
-    
-    ctx.save();
-    
-    positions.forEach((pos) => {
-      ctx.save();
-      ctx.translate(pos.x, pos.y);
-      ctx.rotate(pos.rotation);
-      
-      // Thick black outline
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = Math.max(4, exclamationSize * 0.1);
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      
-      // Main elongated body
-      const bodyWidth = exclamationSize * 0.35;
-      const bodyHeight = exclamationSize * 0.8;
-      
-      // Body
-      ctx.beginPath();
-      ctx.moveTo(0, -bodyHeight);
-      ctx.lineTo(-bodyWidth/2, 0);
-      ctx.lineTo(bodyWidth/2, 0);
-      ctx.closePath();
-      
-      ctx.fillStyle = '#FF0000';
-      ctx.fill();
-      ctx.stroke();
-      
-      // Dot - closer to body
-      const dotRadius = exclamationSize * 0.18;
-      ctx.beginPath();
-      ctx.arc(0, dotRadius * 1.5, dotRadius, 0, Math.PI * 2);
-      ctx.fillStyle = '#FF0000';
-      ctx.fill();
-      ctx.stroke();
-      
-      // Simple highlight on body
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.beginPath();
-      ctx.ellipse(0, -bodyHeight/2, bodyWidth/4, bodyHeight/4, 0, 0, Math.PI * 2);
+      ctx.arc(0, dotRadius * 2, dotRadius, 0, Math.PI * 2);
       ctx.fill();
       
       ctx.restore();
     });
-    
-    ctx.restore();
   };
 
   return (
@@ -1214,7 +1108,6 @@ export default function Home() {
           box-sizing: border-box;
         }
 
-        /* Container for proper centering */
         body {
           font-family: 'Arial', sans-serif;
           background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
@@ -1233,10 +1126,9 @@ export default function Home() {
           position: relative;
         }
 
-        /* Main content container */
         main {
           width: 100%;
-          padding-top: 60px; /* Space for mobile buttons */
+          padding-top: 60px;
         }
         .desktop-social-buttons {
           position: fixed;
@@ -1249,7 +1141,6 @@ export default function Home() {
           max-width: calc(100vw - 20px);
         }
 
-        /* Mobile top buttons */
         .mobile-top-buttons {
           display: none;
           position: fixed;
@@ -1263,7 +1154,6 @@ export default function Home() {
           backdrop-filter: blur(10px);
         }
 
-        /* Mobile social icons in header */
         .mobile-social-icons {
           display: none;
           gap: 1rem;
@@ -1300,7 +1190,6 @@ export default function Home() {
           box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
         }
 
-        /* Buy button styling */
         .social-button.buy-button {
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
@@ -1363,7 +1252,6 @@ export default function Home() {
           z-index: 1;
         }
 
-        /* Fixed navigation */
         .main-nav {
           position: sticky;
           top: 0;
@@ -1419,7 +1307,6 @@ export default function Home() {
           color: #FFFF00;
         }
 
-        /* Expandable content */
         .expandable-content {
           position: relative;
           overflow: hidden;
@@ -1476,7 +1363,6 @@ export default function Home() {
           word-break: break-all;
         }
 
-        /* Token Information Section */
         .token-info-section {
           background: linear-gradient(135deg, rgba(255, 255, 0, 0.05), rgba(255, 215, 0, 0.05));
           border-radius: 20px;
@@ -1544,7 +1430,6 @@ export default function Home() {
           font-style: italic;
         }
 
-        /* Buy Section */
         .buy-section {
           text-align: center;
           margin-top: 2rem;
@@ -1606,7 +1491,6 @@ export default function Home() {
           transform: scale(1.05);
         }
 
-        /* Token Link */
         .token-link {
           display: inline-block;
           margin-top: 0.5rem;
@@ -1621,7 +1505,6 @@ export default function Home() {
           text-decoration: underline;
         }
 
-        /* X Form Modal */
         .x-form-modal {
           position: fixed;
           top: 0;
@@ -1676,7 +1559,6 @@ export default function Home() {
           transform: scale(1.05);
         }
 
-        /* Meme generator styles */
         .ai-status {
           background: rgba(0, 0, 0, 0.5);
           padding: 1rem;
@@ -1784,7 +1666,6 @@ export default function Home() {
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
-        /* Community memes */
         .community-memes {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -1834,7 +1715,6 @@ export default function Home() {
           font-size: 1.2rem;
         }
 
-        /* Social Feed Section */
         .social-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -1914,7 +1794,6 @@ export default function Home() {
           border-color: #1da1f2;
         }
 
-        /* Roadmap */
         #roadmap ul {
           list-style: none;
           padding-left: 0;
@@ -1941,7 +1820,6 @@ export default function Home() {
           margin-top: 4rem;
         }
 
-        /* Swap Modal */
         .swap-modal {
           position: fixed;
           top: 0;
@@ -1998,7 +1876,6 @@ export default function Home() {
           margin-top: 1rem;
         }
 
-        /* Animations */
         .reveal {
           opacity: 0;
           transform: translateY(30px);
@@ -2012,7 +1889,6 @@ export default function Home() {
           }
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
           .desktop-social-buttons {
             display: none;
@@ -2032,7 +1908,6 @@ export default function Home() {
             padding-top: 2rem;
           }
 
-          /* Mobile navigation adjustments */
           .main-nav {
             position: relative;
             top: auto;
