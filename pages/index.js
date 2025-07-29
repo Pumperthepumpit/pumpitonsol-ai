@@ -16,12 +16,24 @@ export default function Home() {
   const [xHandle, setXHandle] = useState('');
   const [showXForm, setShowXForm] = useState(false);
   const [communityMemes, setCommunityMemes] = useState([]);
+  const [jupiterLoaded, setJupiterLoaded] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     vision: false,
     about: false
   });
 
-  // Initialize MediaPipe Face Detection
+  // Load Jupiter Terminal script
+  useEffect(() => {
+    const checkJupiter = setInterval(() => {
+      if (window.Jupiter) {
+        setJupiterLoaded(true);
+        clearInterval(checkJupiter);
+      }
+    }, 100);
+
+    // Cleanup
+    return () => clearInterval(checkJupiter);
+  }, []);
   useEffect(() => {
     const loadFaceDetection = async () => {
       try {
@@ -71,23 +83,58 @@ export default function Home() {
 
   // Initialize Jupiter Terminal
   useEffect(() => {
-    if (window.Jupiter) {
-      window.Jupiter.init({
-        displayMode: 'widget',
-        integratedTargetId: 'jupiter-terminal',
-        endpoint: 'https://api.mainnet-beta.solana.com',
-        strictTokenList: false,
-        defaultExplorer: 'Solscan',
-        formProps: {
-          initialInputTokenAddress: 'So11111111111111111111111111111111111111112',
-          initialOutputTokenAddress: 'B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk',
-          initialAmount: '100000000', // 0.1 SOL
-          fixedOutputMint: true,
-        },
-        enableWalletPassthrough: true,
-      });
+    const initJupiter = () => {
+      if (window.Jupiter && walletAddress) {
+        window.Jupiter.init({
+          displayMode: 'widget',
+          integratedTargetId: 'jupiter-terminal',
+          endpoint: 'https://api.mainnet-beta.solana.com',
+          strictTokenList: false,
+          defaultExplorer: 'Solscan',
+          formProps: {
+            initialInputTokenAddress: 'So11111111111111111111111111111111111111112',
+            initialOutputTokenAddress: 'B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk',
+            initialAmount: '100000000', // 0.1 SOL
+            fixedOutputMint: true,
+          },
+          enableWalletPassthrough: true,
+          onSuccess: ({ txid }) => {
+            console.log('Swap successful:', txid);
+          },
+          onSwapError: ({ error }) => {
+            console.error('Swap error:', error);
+          },
+        });
+        
+        // Pass wallet context to Jupiter
+        if (window.solana && window.Jupiter.syncProps) {
+          window.Jupiter.syncProps({
+            passthroughWalletContextState: {
+              wallet: window.solana,
+              wallets: [],
+              select: () => {},
+              connect: async () => {
+                const response = await window.solana.connect();
+                return response.publicKey.toString();
+              },
+              disconnect: async () => {
+                await window.solana.disconnect();
+              },
+              connecting: false,
+              connected: !!walletAddress,
+              disconnecting: false,
+              publicKey: walletAddress ? { toBase58: () => walletAddress } : null,
+            }
+          });
+        }
+      }
+    };
+
+    // Initialize when wallet connects
+    if (walletAddress) {
+      initJupiter();
     }
-  }, []);
+  }, [walletAddress]);
 
   // Fetch token price data from DexScreener
   useEffect(() => {
@@ -143,11 +190,37 @@ export default function Home() {
     }
   };
 
-  const handleBuyClick = () => {
+  const handleBuyClick = async () => {
     if (!walletAddress) {
-      connectWallet();
-    } else if (window.Jupiter) {
-      window.Jupiter.toggle();
+      await connectWallet();
+    } else {
+      // Ensure Jupiter is initialized
+      if (!window.Jupiter) {
+        console.error('Jupiter not loaded');
+        return;
+      }
+      
+      // Toggle Jupiter Terminal
+      try {
+        window.Jupiter.toggle();
+      } catch (error) {
+        console.error('Error opening Jupiter:', error);
+        // Fallback: Try to reinitialize
+        window.Jupiter.init({
+          displayMode: 'widget',
+          endpoint: 'https://api.mainnet-beta.solana.com',
+          strictTokenList: false,
+          defaultExplorer: 'Solscan',
+          formProps: {
+            initialInputTokenAddress: 'So11111111111111111111111111111111111111112',
+            initialOutputTokenAddress: 'B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk',
+            initialAmount: '100000000',
+            fixedOutputMint: true,
+          },
+          enableWalletPassthrough: true,
+        });
+        setTimeout(() => window.Jupiter.toggle(), 100);
+      }
     }
   };
 
@@ -1072,7 +1145,7 @@ export default function Home() {
           background: rgba(0, 0, 0, 0.95);
           backdrop-filter: blur(10px);
           padding: 0.5rem 0;
-          margin: 0 -20px 2rem;
+          margin: 0 0 2rem 0;
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         }
 
