@@ -1514,12 +1514,13 @@ export default function Home() {
         }
 
         .meme-preview-placeholder {
-          margin-top: 2rem;
+          margin: 2rem auto;
           text-align: center;
           padding: 2rem;
           background: rgba(0, 0, 0, 0.5);
           border-radius: 15px;
           min-height: 400px;
+          max-width: 600px;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -1528,7 +1529,9 @@ export default function Home() {
 
         .meme-preview-placeholder img {
           max-width: 100%;
-          max-height: 500px;
+          max-height: 400px;
+          width: auto;
+          height: auto;
           border-radius: 10px;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
