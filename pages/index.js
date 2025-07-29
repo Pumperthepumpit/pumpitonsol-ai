@@ -196,8 +196,12 @@ export default function Home() {
       return;
     }
     
-    // Direct link to Jupiter with $PUMPIT pre-selected
-    const jupiterUrl = `https://jup.ag/swap/SOL-B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk`;
+    // Use Jupiter's exact URL format with input/output mint parameters
+    const inputMint = 'So11111111111111111111111111111111111111112'; // SOL
+    const outputMint = 'B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk'; // $PUMPIT
+    
+    // Jupiter URL with query parameters
+    const jupiterUrl = `https://jup.ag/?inputMint=${inputMint}&outputMint=${outputMint}&swapMode=ExactIn`;
     window.open(jupiterUrl, '_blank');
   };
 
