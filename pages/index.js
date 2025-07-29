@@ -270,14 +270,15 @@ export default function Home() {
         await new Promise((resolve, reject) => {
           lipImage.onload = resolve;
           lipImage.onerror = () => reject(new Error('Failed to load lips.png - make sure it exists in /public/meme-assets/'));
-          lipImage.src = '/meme-assets/lips.png';
+        lipImage.src = '/lips.png';
+
         });
         
         // Load exclamations
         await new Promise((resolve, reject) => {
           exclamationImage.onload = resolve;
           exclamationImage.onerror = () => reject(new Error('Failed to load exclamation.png - make sure it exists in /public/meme-assets/'));
-          exclamationImage.src = '/meme-assets/exclamation.png';
+          exclamationImage.src = '/exclamation.png';
         });
         
         console.log('✅ PNG assets loaded successfully');
