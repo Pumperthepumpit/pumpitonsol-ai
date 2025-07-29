@@ -915,20 +915,23 @@ export default function Home() {
           box-sizing: border-box;
         }
 
+        /* Container for proper centering */
         body {
           font-family: 'Arial', sans-serif;
           background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
           color: #ffffff;
           min-height: 100vh;
           overflow-x: hidden;
+          margin: 0;
+          padding: 0;
         }
 
-        /* Container for proper centering */
         .container {
           max-width: 1200px;
           margin: 0 auto;
           padding: 0 20px;
           width: 100%;
+          position: relative;
         }
 
         /* Main content container */
@@ -1065,11 +1068,12 @@ export default function Home() {
         .main-nav {
           position: sticky;
           top: 0;
-          z-index: 100;
-          background: rgba(0, 0, 0, 0.9);
+          z-index: 99;
+          background: rgba(0, 0, 0, 0.95);
           backdrop-filter: blur(10px);
           padding: 0.5rem 0;
           margin: 0 -20px 2rem;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         }
 
         .nav-container {
@@ -1098,14 +1102,16 @@ export default function Home() {
 
         main {
           width: 100%;
+          padding-top: 20px;
         }
 
         section {
-          margin: 2rem 0;
+          margin: 2rem auto;
           padding: 2rem;
           background: rgba(0, 0, 0, 0.3);
           border-radius: 10px;
           backdrop-filter: blur(5px);
+          max-width: 1200px;
         }
 
         h2 {
@@ -1635,8 +1641,21 @@ export default function Home() {
             padding-top: 2rem;
           }
 
+          /* Mobile navigation adjustments */
+          .main-nav {
+            position: relative;
+            top: auto;
+            margin: 0 -20px 1rem;
+            z-index: 98;
+          }
+
           main {
-            padding-top: 80px;
+            padding-top: 20px;
+          }
+
+          section {
+            scroll-margin-top: 20px;
+            margin: 1rem auto;
           }
 
           .pumper-float img {
@@ -1654,10 +1673,7 @@ export default function Home() {
 
           .nav-container {
             gap: 0.5rem;
-          }
-
-          .main-nav {
-            top: 60px;
+            padding: 0.5rem;
           }
 
           .main-nav a {
@@ -1693,7 +1709,6 @@ export default function Home() {
 
           section {
             padding: 1.5rem;
-            margin: 1rem 0;
           }
         }
 
