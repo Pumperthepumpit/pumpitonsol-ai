@@ -7,8 +7,6 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
   const [generatedMeme, setGeneratedMeme] = useState(null);
-  const [faceDetection, setFaceDetection] = useState(null);
-  const [useGemini, setUseGemini] = useState(true);
   const [tokenPrice, setTokenPrice] = useState(null);
   const [tokenData, setTokenData] = useState(null);
   const [priceChange24h, setPriceChange24h] = useState(0);
@@ -31,38 +29,6 @@ export default function Home() {
       }
     }, 100);
     return () => clearInterval(checkJupiter);
-  }, []);
-  
-  useEffect(() => {
-    const loadFaceDetection = async () => {
-      try {
-        console.log('🤖 Loading AI face detection...');
-        
-        const vision = await import('@mediapipe/tasks-vision');
-        const { FaceDetector, FilesetResolver } = vision;
-        
-        const filesetResolver = await FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-        );
-        
-        const faceDetector = await FaceDetector.createFromOptions(filesetResolver, {
-          baseOptions: {
-            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`,
-            delegate: "GPU"
-          },
-          runningMode: "IMAGE"
-        });
-        
-        setFaceDetection(faceDetector);
-        console.log('✅ AI face detection loaded!');
-        
-      } catch (error) {
-        console.warn('⚠️ AI face detection failed to load, using fallback:', error);
-        setFaceDetection('fallback');
-      }
-    };
-    
-    loadFaceDetection();
   }, []);
 
   useEffect(() => {
@@ -229,138 +195,6 @@ export default function Home() {
     }
   };
 
-  const detectFacesWithGemini = async (imageDataUrl) => {
-    try {
-      console.log('🧠 Using Gemini AI for advanced face detection...');
-      
-      const response = await fetch('/api/analyze-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: imageDataUrl
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Gemini API request failed');
-      }
-
-      const data = await response.json();
-      
-      if (data.faces && data.faces.length > 0) {
-        console.log(`✨ Gemini detected ${data.faces.length} face(s) with precision!`);
-        return data.faces;
-      } else {
-        console.log('⚠️ Gemini found no faces');
-        return null;
-      }
-    } catch (error) {
-      console.error('Gemini detection error:', error);
-      return null;
-    }
-  };
-
-  const detectFaces = async (imageElement) => {
-    if (faceDetection === 'faceapi' && window.faceapi) {
-      try {
-        console.log('🔍 Using advanced Face-api.js detection...');
-        const detections = await faceapi.detectAllFaces(imageElement, 
-          new faceapi.TinyFaceDetectorOptions())
-          .withFaceLandmarks();
-        
-        if (detections.length === 0) {
-          console.log('⚠️ No faces detected, using fallback');
-          return [{
-            boundingBox: {
-              originX: imageElement.width * 0.2,
-              originY: imageElement.height * 0.15,
-              width: imageElement.width * 0.6,
-              height: imageElement.height * 0.7
-            },
-            landmarks: null
-          }];
-        }
-
-        console.log(`✅ Found ${detections.length} face(s) with 68 landmarks!`);
-        
-        return detections.map(detection => {
-          const landmarks = detection.landmarks;
-          const mouth = landmarks.getMouth();
-          const nose = landmarks.getNose();
-          
-          const noseTop = nose[0];
-          const noseBottom = nose[6];
-          const faceAngle = Math.atan2(noseBottom.x - noseTop.x, noseBottom.y - noseTop.y);
-          
-          return {
-            boundingBox: {
-              originX: detection.detection.box.x,
-              originY: detection.detection.box.y,
-              width: detection.detection.box.width,
-              height: detection.detection.box.height
-            },
-            landmarks: landmarks,
-            mouthPoints: mouth,
-            faceAngle: faceAngle,
-            faceDirection: faceAngle > 0.2 ? 'right' : faceAngle < -0.2 ? 'left' : 'center'
-          };
-        });
-      } catch (error) {
-        console.error('Face-api.js error:', error);
-      }
-    }
-    
-    if (faceDetection && faceDetection !== 'fallback' && faceDetection !== 'faceapi') {
-      try {
-        console.log('🔍 Using MediaPipe detection...');
-        const detections = faceDetection.detect(imageElement);
-        
-        if (detections.detections.length === 0) {
-          console.log('⚠️ No faces detected, using fallback positioning');
-          return [{
-            boundingBox: {
-              originX: imageElement.width * 0.2,
-              originY: imageElement.height * 0.15,
-              width: imageElement.width * 0.6,
-              height: imageElement.height * 0.7
-            },
-            keypoints: [
-              { 
-                x: imageElement.width * 0.5, 
-                y: imageElement.height * 0.65,
-                category: 'MOUTH_CENTER'
-              }
-            ]
-          }];
-        }
-
-        console.log(`✅ Found ${detections.detections.length} face(s)!`);
-        return detections.detections;
-        
-      } catch (error) {
-        console.error('❌ Face detection error:', error);
-      }
-    }
-    
-    return [{
-      boundingBox: {
-        originX: imageElement.width * 0.2,
-        originY: imageElement.height * 0.15,
-        width: imageElement.width * 0.6,
-        height: imageElement.height * 0.7
-      },
-      keypoints: [
-        { 
-          x: imageElement.width * 0.5, 
-          y: imageElement.height * 0.65,
-          category: 'MOUTH_CENTER'
-        }
-      ]
-    }];
-  };
-
   const generateMeme = async () => {
     if (!selectedFile) {
       setError('Please select an image first!');
@@ -376,303 +210,107 @@ export default function Home() {
     setError('');
 
     try {
-      console.log('🔥 Starting AI-powered meme generation...');
+      console.log('🚀 Starting full AI meme generation...');
       
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      const img = new Image();
-      
-      img.onload = async () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        
-        ctx.drawImage(img, 0, 0);
-        
-        let faces = null;
-        let usingGemini = false;
-        
-        if (useGemini) {
-          const reader = new FileReader();
-          const imageDataUrl = await new Promise((resolve) => {
-            reader.onload = (e) => resolve(e.target.result);
-            reader.readAsDataURL(selectedFile);
-          });
-          
-          faces = await detectFacesWithGemini(imageDataUrl);
-          if (faces) {
-            usingGemini = true;
-          }
-        }
-        
-        if (!faces) {
-          faces = await detectFaces(img);
-        }
-        
-        console.log(`🤖 Processing ${faces.length} face(s) ${usingGemini ? 'with Gemini AI' : 'with local detection'}...`);
-        
-        if (usingGemini && faces) {
-          faces.forEach((face, index) => {
-            console.log(`🤖 Processing face ${index + 1} with Gemini precision...`);
-            console.log('Gemini face data:', face);
-            
-            if (face.mouth && typeof face.mouth.centerX === 'number' && typeof face.mouth.centerY === 'number') {
-              console.log(`Mouth detected at: (${face.mouth.centerX}, ${face.mouth.centerY})`);
-              drawStandardizedLips(ctx, face.mouth, face.faceAngle || 0);
-            } else {
-              console.warn('Gemini face missing mouth coordinates, using face center estimate');
-              const estimatedMouth = {
-                centerX: face.boundingBox.x + face.boundingBox.width / 2,
-                centerY: face.boundingBox.y + face.boundingBox.height * 0.75,
-                width: face.boundingBox.width * 0.25
-              };
-              drawStandardizedLips(ctx, estimatedMouth, face.faceAngle || 0);
-            }
-            
-            drawStandardizedExclamations(ctx, face.boundingBox, face.faceDirection || 'center');
-          });
-        } else {
-          faces.forEach((face, index) => {
-            console.log(`🎨 Adding $PUMPIT elements to face ${index + 1}...`);
-            
-            const faceRegion = {
-              x: face.boundingBox.originX,
-              y: face.boundingBox.originY,
-              width: face.boundingBox.width,
-              height: face.boundingBox.height
-            };
-            
-            if (face.landmarks && face.mouthPoints) {
-              const mouthPoints = face.mouthPoints;
-              const mouthTop = mouthPoints[14];
-              const mouthBottom = mouthPoints[18];
-              const mouthLeft = mouthPoints[0];
-              const mouthRight = mouthPoints[6];
-              
-              const mouthCenter = {
-                x: (mouthLeft.x + mouthRight.x) / 2,
-                y: (mouthTop.y + mouthBottom.y) / 2
-              };
-              
-              const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
-              
-              const mouthData = {
-                centerX: mouthCenter.x,
-                centerY: mouthCenter.y,
-                width: mouthWidth
-              };
-              
-              drawStandardizedLips(ctx, mouthData, face.faceAngle);
-              drawStandardizedExclamations(ctx, faceRegion, face.faceDirection);
-            } else {
-              let mouthPosition = { x: faceRegion.x + faceRegion.width / 2, y: faceRegion.y + faceRegion.height * 0.75 };
-              
-              if (face.keypoints) {
-                const mouthKeypoint = face.keypoints.find(kp => 
-                  kp.category === 'MOUTH_CENTER' || 
-                  kp.category === 'MOUTH' ||
-                  kp.category === 'mouth'
-                );
-                if (mouthKeypoint) {
-                  mouthPosition = { x: mouthKeypoint.x, y: mouthKeypoint.y };
-                }
-              }
-              
-              const mouthData = {
-                centerX: mouthPosition.x,
-                centerY: mouthPosition.y,
-                width: faceRegion.width * 0.25
-              };
-              
-              drawStandardizedLips(ctx, mouthData, 0);
-              drawStandardizedExclamations(ctx, faceRegion, 'center');
-            }
-          });
-        }
-        
-        canvas.toBlob((blob) => {
-          const memeUrl = URL.createObjectURL(blob);
-          setPreview(memeUrl);
-          setGeneratedMeme(memeUrl);
-          setIsProcessing(false);
-          
-          const newMeme = {
-            url: memeUrl,
-            creator: xHandle,
-            timestamp: Date.now()
-          };
-          
-          setCommunityMemes(prev => {
-            const updated = [newMeme, ...prev].slice(0, 3);
-            return updated;
-          });
-          
-          console.log('🎉 AI-powered meme generated successfully!');
-        });
-      };
-      
-      img.onerror = () => {
-        setError('Failed to load image');
-        setIsProcessing(false);
-      };
-      
+      // Convert image to base64
       const reader = new FileReader();
-      reader.onload = (e) => {
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(selectedFile);
+      const imageDataUrl = await new Promise((resolve, reject) => {
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(selectedFile);
+      });
+
+      console.log('🧠 Sending image to AI for analysis and generation...');
+
+      // Call our new AI generation API
+      const response = await fetch('/api/generate-ai-meme', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: imageDataUrl
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'AI generation failed');
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.memeUrl) {
+        console.log('🎉 AI meme generated successfully!');
+        console.log('Generation time:', data.generationTime);
+        console.log('Analysis:', data.analysis);
+        
+        // Set the generated meme URL
+        setPreview(data.memeUrl);
+        setGeneratedMeme(data.memeUrl);
+        
+        // Add to community memes
+        const newMeme = {
+          url: data.memeUrl,
+          creator: xHandle,
+          timestamp: Date.now(),
+          aiGenerated: true,
+          analysis: data.analysis?.originalDescription || 'AI-generated $PUMPIT meme'
+        };
+        
+        setCommunityMemes(prev => {
+          const updated = [newMeme, ...prev].slice(0, 3);
+          return updated;
+        });
+        
+        setIsProcessing(false);
+        
+      } else {
+        throw new Error('AI generation returned no image');
+      }
       
     } catch (error) {
-      console.error('Meme generation failed:', error);
-      setError(`Failed to generate meme: ${error.message}`);
+      console.error('AI meme generation failed:', error);
+      setError(`AI generation failed: ${error.message}`);
       setIsProcessing(false);
     }
   };
 
-  const downloadMeme = () => {
+  const downloadMeme = async () => {
     if (!generatedMeme) return;
     
-    const a = document.createElement('a');
-    a.href = generatedMeme;
-    a.download = `pumpit-ai-meme-${Date.now()}.png`;
-    a.click();
-  };
-
-  // Standardized lips - always the same style as your reference image
-  const drawStandardizedLips = (ctx, mouthData, faceAngle = 0) => {
-    ctx.save();
-    
-    const mouthCenterX = mouthData.centerX;
-    const mouthCenterY = mouthData.centerY;
-    
-    console.log(`Placing standardized lips at: (${mouthCenterX}, ${mouthCenterY})`);
-    
-    ctx.translate(mouthCenterX, mouthCenterY);
-    ctx.rotate(faceAngle);
-    
-    const detectedMouthWidth = mouthData.width || 50;
-    const lipScale = Math.max(detectedMouthWidth / 60, 0.8);
-    
-    const lipWidth = 80 * lipScale;
-    const lipHeight = 50 * lipScale;
-    
-    // Thick black outline - standardized thickness
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 6;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    
-    // Draw the exact lip shape from your reference image
-    ctx.beginPath();
-    
-    // Upper lip curve
-    ctx.moveTo(-lipWidth/2, 0);
-    ctx.quadraticCurveTo(-lipWidth/3, -lipHeight/2.2, 0, -lipHeight/2.5);
-    ctx.quadraticCurveTo(lipWidth/3, -lipHeight/2.2, lipWidth/2, 0);
-    
-    // Lower lip curve - full and pouty
-    ctx.quadraticCurveTo(lipWidth/3, lipHeight * 0.8, 0, lipHeight * 0.9);
-    ctx.quadraticCurveTo(-lipWidth/3, lipHeight * 0.8, -lipWidth/2, 0);
-    
-    ctx.closePath();
-    
-    // Standardized bright red color
-    ctx.fillStyle = '#FF0000';
-    ctx.fill();
-    ctx.stroke();
-    
-    // Standardized highlights - match your reference image
-    ctx.fillStyle = 'rgba(255, 180, 180, 0.7)';
-    
-    // Top lip highlights (two small ovals)
-    ctx.beginPath();
-    ctx.ellipse(-lipWidth/6, -lipHeight/3, lipWidth/8, lipHeight/10, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    ctx.beginPath();
-    ctx.ellipse(lipWidth/6, -lipHeight/3, lipWidth/8, lipHeight/10, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Bottom lip highlight (one large oval)
-    ctx.beginPath();
-    ctx.ellipse(0, lipHeight/3, lipWidth/4, lipHeight/8, 0, 0, Math.PI);
-    ctx.fill();
-    
-    // Lip separation line
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-lipWidth/3, 0);
-    ctx.quadraticCurveTo(0, lipHeight/6, lipWidth/3, 0);
-    ctx.stroke();
-    
-    ctx.restore();
-  };
-
-  // Standardized exclamation marks - exactly like your reference image
-  const drawStandardizedExclamations = (ctx, faceBox, faceDirection = 'center') => {
-    const { x, y, width, height } = faceBox;
-    
-    // Standardized exclamation size
-    const exclamationHeight = 40;
-    const exclamationWidth = 12;
-    const dotRadius = 6;
-    
-    // Position above head, offset based on face direction
-    let baseX = x + width / 2; // Default center
-    const baseY = y - 60; // Above the head
-    
-    // Adjust horizontal position based on face direction
-    if (faceDirection === 'left') {
-      baseX = x + width * 0.2; // Left side
-    } else if (faceDirection === 'right') {
-      baseX = x + width * 0.8; // Right side
+    try {
+      // If it's a URL (from AI generation), fetch and download
+      if (generatedMeme.startsWith('http')) {
+        const response = await fetch(generatedMeme);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pumpit-ai-meme-${Date.now()}.png`;
+        a.click();
+        
+        URL.revokeObjectURL(url);
+      } else {
+        // Original blob URL handling
+        const a = document.createElement('a');
+        a.href = generatedMeme;
+        a.download = `pumpit-ai-meme-${Date.now()}.png`;
+        a.click();
+      }
+    } catch (error) {
+      console.error('Download failed:', error);
+      setError('Failed to download meme');
     }
-    
-    // Three exclamation marks in a slight arc
-    const positions = [
-      { x: baseX - 25, y: baseY + 10, rotation: -0.1 },
-      { x: baseX, y: baseY, rotation: 0 },
-      { x: baseX + 25, y: baseY + 10, rotation: 0.1 }
-    ];
-    
-    positions.forEach((pos) => {
-      ctx.save();
-      ctx.translate(pos.x, pos.y);
-      ctx.rotate(pos.rotation);
-      
-      // Standardized bright red - no shadows or outlines
-      ctx.fillStyle = '#FF0000';
-      
-      // Main exclamation body (tapered rectangle)
-      ctx.beginPath();
-      ctx.moveTo(0, -exclamationHeight);
-      ctx.lineTo(-exclamationWidth/3, -exclamationHeight/4);
-      ctx.lineTo(-exclamationWidth/2, 0);
-      ctx.lineTo(exclamationWidth/2, 0);
-      ctx.lineTo(exclamationWidth/3, -exclamationHeight/4);
-      ctx.closePath();
-      ctx.fill();
-      
-      // Dot
-      ctx.beginPath();
-      ctx.arc(0, dotRadius * 2, dotRadius, 0, Math.PI * 2);
-      ctx.fill();
-      
-      ctx.restore();
-    });
   };
 
   return (
     <>
       <Head>
         <title>PumpItOnSol - AI Meme Generator</title>
-        <meta name="description" content="Transform your photos into $PUMPIT memes with AI-powered face detection!" />
+        <meta name="description" content="Transform your photos into $PUMPIT memes with AI-powered generation!" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossOrigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossOrigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossOrigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js" crossOrigin="anonymous"></script>
         <script src="https://terminal.jup.ag/main-v2.js" data-preload></script>
       </Head>
 
@@ -892,8 +530,8 @@ export default function Home() {
           <section id="generator" className="reveal">
             <h2>🤖 AI-Powered Meme Generator</h2>
             <p>
-              Upload your image and our AI will automatically detect faces and transform them into $PUMPIT-style memes — 
-              with perfectly positioned red lips, exclamation marks, and more!
+              Upload your image and our advanced AI will analyze it and generate a completely new $PUMPIT-style meme — 
+              with perfectly positioned red lips, exclamation marks, and professional quality results!
             </p>
             
             {showXForm && (
@@ -913,11 +551,8 @@ export default function Home() {
             )}
             
             <div className="ai-status">
-              {faceDetection === null && <p>🔄 Loading AI face detection...</p>}
-              {faceDetection === 'fallback' && <p>⚠️ Using basic positioning (AI unavailable)</p>}
-              {faceDetection === 'faceapi' && useGemini && <p>🧠 Gemini AI + Advanced face detection ready!</p>}
-              {faceDetection === 'faceapi' && !useGemini && <p>🤖 Advanced AI with 68 facial landmarks ready!</p>}
-              {faceDetection && faceDetection !== 'fallback' && faceDetection !== 'faceapi' && <p>🤖 AI face detection ready!</p>}
+              <p>🧠 Advanced AI Generation Ready!</p>
+              <p>✨ Powered by Gemini AI analysis + Stable Diffusion generation</p>
             </div>
             
             <div className="meme-upload">
@@ -944,7 +579,7 @@ export default function Home() {
                   disabled={!selectedFile || isProcessing || !xHandle}
                   className="generate-button"
                 >
-                  {isProcessing ? '🤖 AI Generating Your $PUMPIT Meme...' : '🔥 Generate AI $PUMPIT Meme'}
+                  {isProcessing ? '🤖 AI Generating Your Professional $PUMPIT Meme...' : '🔥 Generate AI $PUMPIT Meme'}
                 </button>
                 
                 {generatedMeme && (
@@ -974,15 +609,15 @@ export default function Home() {
                   }}
                 />
                 {isProcessing ? (
-                  <p><strong>🤖 AI is detecting faces and generating your meme...</strong></p>
+                  <p><strong>🤖 AI is analyzing your image and generating a professional $PUMPIT meme...</strong></p>
                 ) : selectedFile ? (
                   generatedMeme ? (
-                    <p><strong>🎉 Your AI-powered $PUMPIT meme is ready!</strong></p>
+                    <p><strong>🎉 Your AI-generated $PUMPIT meme is ready!</strong></p>
                   ) : (
-                    <p><strong>👆 Click "Generate AI $PUMPIT Meme" for automatic face detection!</strong></p>
+                    <p><strong>👆 Click "Generate AI $PUMPIT Meme" for professional AI generation!</strong></p>
                   )
                 ) : (
-                  <p><strong>Upload an image to get started</strong></p>
+                  <p><strong>Upload an image to get started with AI generation</strong></p>
                 )}
               </div>
             </div>
@@ -992,7 +627,7 @@ export default function Home() {
             <h2>🗺️ Roadmap</h2>
             <ul>
               <li>✅ Phase 1: Launch $PUMPIT on Bonk.fun with meme identity + Pumper reveal</li>
-              <li>🤖 Phase 2: AI-powered meme generator with face detection goes live</li>
+              <li>🤖 Phase 2: Advanced AI meme generator with full image generation goes live</li>
               <li>📋 Phase 3: Collaborate with top meme communities</li>
               <li>📋 Phase 4: Community meme automation & viral campaigns</li>
               <li>📚 Phase 5: Pumper Comic Series - Exclusive stories for $PUMPIT holders! Watch Pumper meet new characters representing other promising tokens. Only holders can unlock these adventures!</li>
@@ -1007,23 +642,24 @@ export default function Home() {
                   <div key={index} className="meme-card">
                     <img src={meme.url} alt={`Community Meme ${index + 1}`} />
                     <p>Created by {meme.creator}</p>
+                    {meme.aiGenerated && <p className="ai-badge">🤖 AI Generated</p>}
                   </div>
                 ))
               ) : (
                 <>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>🎨 Be the first to create a meme!</p>
+                      <p>🎨 Be the first to create an AI meme!</p>
                     </div>
                   </div>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>🚀 Your meme here</p>
+                      <p>🚀 Your AI meme here</p>
                     </div>
                   </div>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>💎 Join the fun!</p>
+                      <p>💎 Join the AI revolution!</p>
                     </div>
                   </div>
                 </>
@@ -1097,7 +733,7 @@ export default function Home() {
         </main>
 
         <footer>
-          <p>© 2025 PumpItOnSol. Powered by AI and the community. 🤖🚀</p>
+          <p>© 2025 PumpItOnSol. Powered by advanced AI and the community. 🤖🚀</p>
         </footer>
       </div>
 
@@ -1435,15 +1071,6 @@ export default function Home() {
           margin-top: 2rem;
         }
 
-        .contract-address {
-          font-family: 'Courier New', monospace;
-          font-size: 0.8rem;
-          color: #FFFF00;
-          margin-bottom: 1rem;
-          word-break: break-all;
-          padding: 0 1rem;
-        }
-
         .buy-button-large {
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
@@ -1466,29 +1093,6 @@ export default function Home() {
           color: #aaa;
           margin-top: 1rem;
           font-size: 0.9rem;
-        }
-
-        .alternative-links {
-          display: flex;
-          gap: 1rem;
-          justify-content: center;
-          margin-top: 1rem;
-        }
-
-        .alt-link {
-          color: #FFFF00;
-          text-decoration: none;
-          padding: 0.5rem 1rem;
-          border: 1px solid #FFFF00;
-          border-radius: 20px;
-          transition: all 0.3s ease;
-          font-size: 0.9rem;
-        }
-
-        .alt-link:hover {
-          background: #FFFF00;
-          color: black;
-          transform: scale(1.05);
         }
 
         .token-link {
@@ -1565,6 +1169,7 @@ export default function Home() {
           border-radius: 10px;
           margin-bottom: 2rem;
           text-align: center;
+          border: 2px solid rgba(255, 255, 0, 0.3);
         }
 
         .meme-upload {
@@ -1698,6 +1303,15 @@ export default function Home() {
           color: #FFFF00;
         }
 
+        .ai-badge {
+          background: rgba(255, 255, 0, 0.2);
+          color: #FFFF00;
+          padding: 0.3rem 0.8rem;
+          border-radius: 20px;
+          font-size: 0.8rem;
+          margin-top: 0.5rem;
+        }
+
         .meme-card.placeholder {
           display: flex;
           align-items: center;
@@ -1818,62 +1432,6 @@ export default function Home() {
           padding: 2rem;
           background: rgba(0, 0, 0, 0.5);
           margin-top: 4rem;
-        }
-
-        .swap-modal {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.9);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 3000;
-          padding: 20px;
-        }
-
-        .swap-modal-content {
-          background: #1a1a1a;
-          border-radius: 20px;
-          padding: 2rem;
-          max-width: 500px;
-          width: 100%;
-          max-height: 90vh;
-          overflow: auto;
-          position: relative;
-          border: 2px solid #FFFF00;
-        }
-
-        .close-button {
-          position: absolute;
-          top: 1rem;
-          right: 1rem;
-          background: none;
-          border: none;
-          color: #FFFF00;
-          font-size: 2rem;
-          cursor: pointer;
-          transition: transform 0.3s ease;
-        }
-
-        .close-button:hover {
-          transform: scale(1.2);
-        }
-
-        .swap-container {
-          margin: 2rem 0;
-          border-radius: 15px;
-          overflow: hidden;
-          border: 1px solid rgba(255, 255, 0, 0.3);
-        }
-
-        .swap-info {
-          text-align: center;
-          color: #aaa;
-          font-size: 0.9rem;
-          margin-top: 1rem;
         }
 
         .reveal {
