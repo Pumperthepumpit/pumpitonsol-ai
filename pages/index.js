@@ -210,7 +210,7 @@ export default function Home() {
     setError('');
 
     try {
-      console.log('🚀 Starting full AI meme generation...');
+      console.log('🚀 Starting PNG overlay meme generation...');
       
       // Convert image to base64
       const reader = new FileReader();
@@ -220,10 +220,10 @@ export default function Home() {
         reader.readAsDataURL(selectedFile);
       });
 
-      console.log('🧠 Sending image to AI for analysis and generation...');
+      console.log('🧠 Getting positioning data from Gemini AI...');
 
-      // Call our new AI generation API
-      const response = await fetch('/api/generate-ai-meme', {
+      // Get positioning data from Gemini
+      const response = await fetch('/api/analyze-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -235,81 +235,180 @@ export default function Home() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'AI generation failed');
+        throw new Error(errorData.error || 'Positioning analysis failed');
       }
 
-      const data = await response.json();
+      const positionData = await response.json();
+      console.log('📍 Positioning data received:', positionData);
+
+      if (!positionData.faces || positionData.faces.length === 0) {
+        throw new Error('No faces detected in image');
+      }
+
+      console.log('🎨 Creating meme with PNG overlays...');
+
+      // Create canvas for meme generation
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
       
-      if (data.success && data.memeUrl) {
-        console.log('🎉 AI meme generated successfully!');
-        console.log('Generation time:', data.generationTime);
-        console.log('Analysis:', data.analysis);
+      // Load the original image
+      const img = new Image();
+      
+      img.onload = async () => {
+        // Set canvas size to match image
+        canvas.width = img.width;
+        canvas.height = img.height;
         
-        // Set the generated meme URL
-        setPreview(data.memeUrl);
-        setGeneratedMeme(data.memeUrl);
+        // Draw original image
+        ctx.drawImage(img, 0, 0);
         
-        // Add to community memes
-        const newMeme = {
-          url: data.memeUrl,
-          creator: xHandle,
-          timestamp: Date.now(),
-          aiGenerated: true,
-          analysis: data.analysis?.originalDescription || 'AI-generated $PUMPIT meme'
-        };
+        // Load PNG assets
+        const lipImage = new Image();
+        const exclamationImage = new Image();
         
-        setCommunityMemes(prev => {
-          const updated = [newMeme, ...prev].slice(0, 3);
-          return updated;
+        // Load lips
+        await new Promise((resolve, reject) => {
+          lipImage.onload = resolve;
+          lipImage.onerror = () => reject(new Error('Failed to load lips.png - make sure it exists in /public/meme-assets/'));
+          lipImage.src = '/meme-assets/lips.png';
         });
         
-        setIsProcessing(false);
+        // Load exclamations
+        await new Promise((resolve, reject) => {
+          exclamationImage.onload = resolve;
+          exclamationImage.onerror = () => reject(new Error('Failed to load exclamation.png - make sure it exists in /public/meme-assets/'));
+          exclamationImage.src = '/meme-assets/exclamation.png';
+        });
         
-      } else {
-        throw new Error('AI generation returned no image');
-      }
+        console.log('✅ PNG assets loaded successfully');
+        
+        // Process each detected face
+        positionData.faces.forEach((face, index) => {
+          console.log(`🎭 Processing face ${index + 1}:`, face);
+          
+          // Calculate actual pixel positions from percentages
+          const mouthPixelX = face.mouthPosition.centerX * canvas.width;
+          const mouthPixelY = face.mouthPosition.centerY * canvas.height;
+          const exclamationPixelX = face.exclamationPosition.centerX * canvas.width;
+          const exclamationPixelY = face.exclamationPosition.centerY * canvas.height;
+          
+          // Scale lips based on face size and mouth width
+          const baseLipWidth = face.mouthPosition.width * canvas.width * 2.5; // Make lips 2.5x mouth width
+          const lipAspectRatio = lipImage.height / lipImage.width;
+          const lipWidth = baseLipWidth;
+          const lipHeight = baseLipWidth * lipAspectRatio;
+          
+          // Position lips centered on mouth
+          const lipX = mouthPixelX - (lipWidth / 2);
+          const lipY = mouthPixelY - (lipHeight / 2);
+          
+          console.log(`👄 Drawing lips at: (${Math.round(lipX)}, ${Math.round(lipY)}) size: ${Math.round(lipWidth)}x${Math.round(lipHeight)}`);
+          
+          // Draw lips with rotation if needed
+          if (face.mouthPosition.angle && Math.abs(face.mouthPosition.angle) > 0.1) {
+            ctx.save();
+            ctx.translate(mouthPixelX, mouthPixelY);
+            ctx.rotate(face.mouthPosition.angle);
+            ctx.drawImage(lipImage, -lipWidth/2, -lipHeight/2, lipWidth, lipHeight);
+            ctx.restore();
+          } else {
+            ctx.drawImage(lipImage, lipX, lipY, lipWidth, lipHeight);
+          }
+          
+          // Calculate exclamation mark size and positions
+          const exclamationScale = face.faceSize * 0.15; // Scale based on face size
+          const exclamationWidth = exclamationImage.width * exclamationScale;
+          const exclamationHeight = exclamationImage.height * exclamationScale;
+          
+          // Position 3 exclamation marks based on face direction
+          let exclamationPositions;
+          if (face.faceDirection === 'left') {
+            exclamationPositions = [
+              { x: exclamationPixelX - 30, y: exclamationPixelY + 10 },
+              { x: exclamationPixelX - 15, y: exclamationPixelY - 5 },
+              { x: exclamationPixelX, y: exclamationPixelY + 15 }
+            ];
+          } else if (face.faceDirection === 'right') {
+            exclamationPositions = [
+              { x: exclamationPixelX, y: exclamationPixelY + 15 },
+              { x: exclamationPixelX + 15, y: exclamationPixelY - 5 },
+              { x: exclamationPixelX + 30, y: exclamationPixelY + 10 }
+            ];
+          } else {
+            // Center
+            exclamationPositions = [
+              { x: exclamationPixelX - 20, y: exclamationPixelY + 5 },
+              { x: exclamationPixelX, y: exclamationPixelY },
+              { x: exclamationPixelX + 20, y: exclamationPixelY + 5 }
+            ];
+          }
+          
+          // Draw exclamation marks
+          exclamationPositions.forEach((pos, i) => {
+            const finalX = pos.x - (exclamationWidth / 2);
+            const finalY = pos.y - (exclamationHeight / 2);
+            
+            console.log(`❗ Drawing exclamation ${i + 1} at: (${Math.round(finalX)}, ${Math.round(finalY)})`);
+            
+            ctx.drawImage(exclamationImage, finalX, finalY, exclamationWidth, exclamationHeight);
+          });
+        });
+        
+        // Convert canvas to blob and create download URL
+        canvas.toBlob((blob) => {
+          const memeUrl = URL.createObjectURL(blob);
+          setPreview(memeUrl);
+          setGeneratedMeme(memeUrl);
+          
+          // Add to community memes
+          const newMeme = {
+            url: memeUrl,
+            creator: xHandle,
+            timestamp: Date.now(),
+            pngOverlay: true,
+            facesDetected: positionData.faces.length
+          };
+          
+          setCommunityMemes(prev => {
+            const updated = [newMeme, ...prev].slice(0, 3);
+            return updated;
+          });
+          
+          setIsProcessing(false);
+          
+          console.log('🎉 PNG overlay meme generated successfully!');
+        }, 'image/png');
+      };
+      
+      img.onerror = () => {
+        setError('Failed to load image');
+        setIsProcessing(false);
+      };
+      
+      // Load the original image
+      img.src = imageDataUrl;
       
     } catch (error) {
-      console.error('AI meme generation failed:', error);
-      setError(`AI generation failed: ${error.message}`);
+      console.error('PNG overlay meme generation failed:', error);
+      setError(`Meme generation failed: ${error.message}`);
       setIsProcessing(false);
     }
   };
 
-  const downloadMeme = async () => {
+  const downloadMeme = () => {
     if (!generatedMeme) return;
     
-    try {
-      // If it's a URL (from AI generation), fetch and download
-      if (generatedMeme.startsWith('http')) {
-        const response = await fetch(generatedMeme);
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `pumpit-ai-meme-${Date.now()}.png`;
-        a.click();
-        
-        URL.revokeObjectURL(url);
-      } else {
-        // Original blob URL handling
-        const a = document.createElement('a');
-        a.href = generatedMeme;
-        a.download = `pumpit-ai-meme-${Date.now()}.png`;
-        a.click();
-      }
-    } catch (error) {
-      console.error('Download failed:', error);
-      setError('Failed to download meme');
-    }
+    const a = document.createElement('a');
+    a.href = generatedMeme;
+    a.download = `pumpit-png-meme-${Date.now()}.png`;
+    a.click();
   };
 
   return (
     <>
       <Head>
         <title>PumpItOnSol - AI Meme Generator</title>
-        <meta name="description" content="Transform your photos into $PUMPIT memes with AI-powered generation!" />
+        <meta name="description" content="Transform your photos into $PUMPIT memes with AI-powered positioning and PNG overlays!" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <script src="https://terminal.jup.ag/main-v2.js" data-preload></script>
       </Head>
@@ -528,10 +627,10 @@ export default function Home() {
           </section>
 
           <section id="generator" className="reveal">
-            <h2>🤖 AI-Powered Meme Generator</h2>
+            <h2>🎨 PNG Overlay Meme Generator</h2>
             <p>
-              Upload your image and our advanced AI will analyze it and generate a completely new $PUMPIT-style meme — 
-              with perfectly positioned red lips, exclamation marks, and professional quality results!
+              Upload your image and our AI will analyze face positions and overlay your exact PNG assets — 
+              perfect positioning with your proven lip and exclamation mark designs!
             </p>
             
             {showXForm && (
@@ -551,8 +650,9 @@ export default function Home() {
             )}
             
             <div className="ai-status">
-              <p>🧠 Advanced AI Generation Ready!</p>
-              <p>✨ Powered by Gemini AI analysis + Stable Diffusion generation</p>
+              <p>🎨 PNG Overlay System Ready!</p>
+              <p>✨ Powered by Gemini AI positioning + Your exact assets</p>
+              <p>💰 Cost: ~$0.001 per meme (virtually free!)</p>
             </div>
             
             <div className="meme-upload">
@@ -579,7 +679,7 @@ export default function Home() {
                   disabled={!selectedFile || isProcessing || !xHandle}
                   className="generate-button"
                 >
-                  {isProcessing ? '🤖 AI Generating Your Professional $PUMPIT Meme...' : '🔥 Generate AI $PUMPIT Meme'}
+                  {isProcessing ? '🎨 AI Positioning Your PNG Assets...' : '🔥 Generate PNG Overlay Meme'}
                 </button>
                 
                 {generatedMeme && (
@@ -609,15 +709,15 @@ export default function Home() {
                   }}
                 />
                 {isProcessing ? (
-                  <p><strong>🤖 AI is analyzing your image and generating a professional $PUMPIT meme...</strong></p>
+                  <p><strong>🎨 AI is analyzing positions and overlaying your PNG assets...</strong></p>
                 ) : selectedFile ? (
                   generatedMeme ? (
-                    <p><strong>🎉 Your AI-generated $PUMPIT meme is ready!</strong></p>
+                    <p><strong>🎉 Your PNG overlay $PUMPIT meme is ready!</strong></p>
                   ) : (
-                    <p><strong>👆 Click "Generate AI $PUMPIT Meme" for professional AI generation!</strong></p>
+                    <p><strong>👆 Click "Generate PNG Overlay Meme" for precise positioning!</strong></p>
                   )
                 ) : (
-                  <p><strong>Upload an image to get started with AI generation</strong></p>
+                  <p><strong>Upload an image to get started with PNG overlays</strong></p>
                 )}
               </div>
             </div>
@@ -627,7 +727,7 @@ export default function Home() {
             <h2>🗺️ Roadmap</h2>
             <ul>
               <li>✅ Phase 1: Launch $PUMPIT on Bonk.fun with meme identity + Pumper reveal</li>
-              <li>🤖 Phase 2: Advanced AI meme generator with full image generation goes live</li>
+              <li>🎨 Phase 2: PNG overlay meme generator with AI positioning goes live</li>
               <li>📋 Phase 3: Collaborate with top meme communities</li>
               <li>📋 Phase 4: Community meme automation & viral campaigns</li>
               <li>📚 Phase 5: Pumper Comic Series - Exclusive stories for $PUMPIT holders! Watch Pumper meet new characters representing other promising tokens. Only holders can unlock these adventures!</li>
@@ -642,24 +742,25 @@ export default function Home() {
                   <div key={index} className="meme-card">
                     <img src={meme.url} alt={`Community Meme ${index + 1}`} />
                     <p>Created by {meme.creator}</p>
-                    {meme.aiGenerated && <p className="ai-badge">🤖 AI Generated</p>}
+                    {meme.pngOverlay && <p className="png-badge">🎨 PNG Overlay</p>}
+                    {meme.facesDetected && <p className="faces-badge">👥 {meme.facesDetected} face(s)</p>}
                   </div>
                 ))
               ) : (
                 <>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>🎨 Be the first to create an AI meme!</p>
+                      <p>🎨 Be the first to create a PNG overlay meme!</p>
                     </div>
                   </div>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>🚀 Your AI meme here</p>
+                      <p>🚀 Your precise meme here</p>
                     </div>
                   </div>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>💎 Join the AI revolution!</p>
+                      <p>💎 Join the PNG revolution!</p>
                     </div>
                   </div>
                 </>
@@ -733,7 +834,7 @@ export default function Home() {
         </main>
 
         <footer>
-          <p>© 2025 PumpItOnSol. Powered by advanced AI and the community. 🤖🚀</p>
+          <p>© 2025 PumpItOnSol. Powered by AI positioning and PNG overlays. 🎨🚀</p>
         </footer>
       </div>
 
@@ -1303,9 +1404,18 @@ export default function Home() {
           color: #FFFF00;
         }
 
-        .ai-badge {
+        .png-badge {
           background: rgba(255, 255, 0, 0.2);
           color: #FFFF00;
+          padding: 0.3rem 0.8rem;
+          border-radius: 20px;
+          font-size: 0.8rem;
+          margin-top: 0.5rem;
+        }
+
+        .faces-badge {
+          background: rgba(0, 255, 255, 0.2);
+          color: #00ffff;
           padding: 0.3rem 0.8rem;
           border-radius: 20px;
           font-size: 0.8rem;
