@@ -22,7 +22,10 @@ export default function Home() {
     vision: false,
     about: false
   });
+<<<<<<< HEAD
   const [jupiterLoaded, setJupiterLoaded] = useState(false);  // FIXED: Added this line
+=======
+>>>>>>> 99d54a621e412c7552fe0a22bcd64c29a5d246a7
 
   // Load Jupiter Terminal script
   useEffect(() => {
@@ -36,7 +39,10 @@ export default function Home() {
     // Cleanup
     return () => clearInterval(checkJupiter);
   }, []);
+<<<<<<< HEAD
   
+=======
+>>>>>>> 99d54a621e412c7552fe0a22bcd64c29a5d246a7
   useEffect(() => {
     const loadFaceDetection = async () => {
       try {
