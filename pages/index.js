@@ -171,27 +171,26 @@ export default function Home() {
     const file = event.target.files[0];
     if (!file) return;
 
-    if (!xHandle) {
-      setShowXForm(true);
-      return;
-    }
-
+    // Store the file immediately
     setSelectedFile(file);
     setError('');
     setGeneratedMeme(null);
     
+    // Create and set preview immediately
     const originalPreview = URL.createObjectURL(file);
     setPreview(originalPreview);
+
+    // Only show X form if no handle exists
+    if (!xHandle) {
+      setShowXForm(true);
+    }
   };
 
   const handleXHandleSubmit = (e) => {
     e.preventDefault();
     if (xHandle && xHandle.trim()) {
       setShowXForm(false);
-      if (selectedFile) {
-        const originalPreview = URL.createObjectURL(selectedFile);
-        setPreview(originalPreview);
-      }
+      // File and preview are already set, no need to recreate
     }
   };
 
@@ -671,6 +670,25 @@ export default function Home() {
               <p>🧠 Powered by Gemini AI positioning</p>
               <p>💰 Cost: ~$0.001 per meme (virtually free!)</p>
             </div>
+            
+            {/* X Handle Input - Always visible if not set */}
+            {!xHandle && (
+              <div className="x-handle-section">
+                <form onSubmit={handleXHandleSubmit} className="x-handle-inline-form">
+                  <label>Enter your X handle to get started:</label>
+                  <div className="x-handle-input-group">
+                    <input
+                      type="text"
+                      placeholder="@yourhandle"
+                      value={xHandle}
+                      onChange={(e) => setXHandle(e.target.value)}
+                      required
+                    />
+                    <button type="submit">Set Handle</button>
+                  </div>
+                </form>
+              </div>
+            )}
             
             <div className="meme-upload">
               <div className="upload-section">
@@ -1283,6 +1301,54 @@ export default function Home() {
           transform: scale(1.05);
         }
 
+        .x-handle-section {
+          background: rgba(255, 255, 0, 0.1);
+          padding: 1.5rem;
+          border-radius: 10px;
+          margin-bottom: 2rem;
+          border: 2px solid rgba(255, 255, 0, 0.3);
+        }
+
+        .x-handle-inline-form label {
+          display: block;
+          margin-bottom: 1rem;
+          color: #FFFF00;
+          font-weight: bold;
+        }
+
+        .x-handle-input-group {
+          display: flex;
+          gap: 1rem;
+          align-items: center;
+        }
+
+        .x-handle-input-group input {
+          flex: 1;
+          padding: 0.8rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 2px solid rgba(255, 255, 0, 0.5);
+          border-radius: 10px;
+          color: white;
+          font-size: 1rem;
+        }
+
+        .x-handle-input-group button {
+          padding: 0.8rem 1.5rem;
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          border-radius: 25px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          white-space: nowrap;
+        }
+
+        .x-handle-input-group button:hover {
+          transform: scale(1.05);
+          box-shadow: 0 3px 10px rgba(255, 255, 0, 0.4);
+        }
+
         .ai-status {
           background: rgba(0, 0, 0, 0.5);
           padding: 1rem;
@@ -1670,6 +1736,18 @@ export default function Home() {
           section {
             padding: 1.5rem;
           }
+
+          .x-handle-input-group {
+            flex-direction: column;
+          }
+
+          .x-handle-input-group input {
+            width: 100%;
+          }
+
+          .x-handle-input-group button {
+            width: 100%;
+          }
         }
 
         @media (max-width: 480px) {
@@ -1705,7 +1783,3 @@ export default function Home() {
             gap: 0.8rem;
           }
         }
-      `}</style>
-    </>
-  );
-}
