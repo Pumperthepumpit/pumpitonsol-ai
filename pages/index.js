@@ -365,59 +365,46 @@ export default function Home() {
     const mouthY = mouthPosition.y;
     
     const faceSize = Math.min(faceRegion.width, faceRegion.height);
-    const lipWidth = faceSize * 0.45;
-    const lipHeight = faceSize * 0.25;
+    const lipWidth = faceSize * 0.5;
+    const lipHeight = faceSize * 0.3;
     
     ctx.save();
     
-    // Black outline
+    // Thick black outline
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = Math.max(5, faceSize * 0.02);
+    ctx.lineWidth = Math.max(6, faceSize * 0.025);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     
-    // Draw full lips shape
+    // Draw exaggerated pouty lips
     ctx.beginPath();
     
-    // Upper lip - cupid's bow shape
+    // Top lip - simple curved shape
     ctx.moveTo(mouthX - lipWidth/2, mouthY);
-    ctx.quadraticCurveTo(mouthX - lipWidth/3, mouthY - lipHeight/3, mouthX - lipWidth/4, mouthY - lipHeight/2.5);
-    ctx.quadraticCurveTo(mouthX - lipWidth/8, mouthY - lipHeight/2, mouthX, mouthY - lipHeight/3);
-    ctx.quadraticCurveTo(mouthX + lipWidth/8, mouthY - lipHeight/2, mouthX + lipWidth/4, mouthY - lipHeight/2.5);
-    ctx.quadraticCurveTo(mouthX + lipWidth/3, mouthY - lipHeight/3, mouthX + lipWidth/2, mouthY);
+    ctx.quadraticCurveTo(mouthX, mouthY - lipHeight/2, mouthX + lipWidth/2, mouthY);
     
-    // Lower lip - fuller shape
-    ctx.quadraticCurveTo(mouthX + lipWidth/2.5, mouthY + lipHeight/1.5, mouthX, mouthY + lipHeight);
-    ctx.quadraticCurveTo(mouthX - lipWidth/2.5, mouthY + lipHeight/1.5, mouthX - lipWidth/2, mouthY);
+    // Bottom lip - very full
+    ctx.quadraticCurveTo(mouthX + lipWidth/3, mouthY + lipHeight, mouthX, mouthY + lipHeight * 1.2);
+    ctx.quadraticCurveTo(mouthX - lipWidth/3, mouthY + lipHeight, mouthX - lipWidth/2, mouthY);
     
     ctx.closePath();
     
-    // Fill with red
-    ctx.fillStyle = '#DC143C';
+    // Fill with bright red
+    ctx.fillStyle = '#FF0000';
     ctx.fill();
     ctx.stroke();
     
-    // Inner line between lips
-    ctx.beginPath();
-    ctx.moveTo(mouthX - lipWidth/2, mouthY);
-    ctx.quadraticCurveTo(mouthX, mouthY + lipHeight/8, mouthX + lipWidth/2, mouthY);
-    ctx.stroke();
+    // Add simple highlights
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     
-    // Add highlights for glossy effect
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    
-    // Upper lip highlights
+    // Top lip highlight
     ctx.beginPath();
-    ctx.ellipse(mouthX - lipWidth/4, mouthY - lipHeight/4, lipWidth/10, lipHeight/5, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(mouthX, mouthY - lipHeight/4, lipWidth/4, lipHeight/6, 0, 0, Math.PI * 2);
     ctx.fill();
     
+    // Bottom lip highlight
     ctx.beginPath();
-    ctx.ellipse(mouthX + lipWidth/4, mouthY - lipHeight/4, lipWidth/10, lipHeight/5, 0.3, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Lower lip highlight
-    ctx.beginPath();
-    ctx.ellipse(mouthX, mouthY + lipHeight/2, lipWidth/5, lipHeight/4, 0, 0, Math.PI);
+    ctx.ellipse(mouthX, mouthY + lipHeight/2, lipWidth/3, lipHeight/5, 0, 0, Math.PI);
     ctx.fill();
     
     ctx.restore();
@@ -427,14 +414,14 @@ export default function Home() {
   const drawSideExclamationMarks = (ctx, faceRegion, rightSide = true) => {
     const { x, y, width, height } = faceRegion;
     
-    const exclamationSize = Math.max(width * 0.12, 20);
-    const sideX = rightSide ? x + width + exclamationSize * 0.5 : x - exclamationSize * 1.5;
+    const exclamationSize = Math.max(width * 0.15, 25);
+    const sideX = rightSide ? x + width + exclamationSize * 0.8 : x - exclamationSize * 1.8;
     const centerY = y + height * 0.4;
     
     const positions = [
-      { x: sideX, y: centerY - exclamationSize * 0.8, rotation: rightSide ? -0.3 : 0.3 },
-      { x: sideX + (rightSide ? exclamationSize * 0.3 : -exclamationSize * 0.3), y: centerY, rotation: 0 },
-      { x: sideX, y: centerY + exclamationSize * 0.8, rotation: rightSide ? 0.3 : -0.3 }
+      { x: sideX - exclamationSize * 0.3, y: centerY - exclamationSize, rotation: rightSide ? -0.4 : 0.4 },
+      { x: sideX, y: centerY, rotation: rightSide ? -0.2 : 0.2 },
+      { x: sideX - exclamationSize * 0.2, y: centerY + exclamationSize, rotation: rightSide ? 0.1 : -0.1 }
     ];
     
     ctx.save();
@@ -444,37 +431,39 @@ export default function Home() {
       ctx.translate(pos.x, pos.y);
       ctx.rotate(pos.rotation);
       
-      // Black outline
+      // Thick black outline
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = Math.max(3, exclamationSize * 0.08);
+      ctx.lineWidth = Math.max(4, exclamationSize * 0.1);
       ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
       
-      // Main body
-      const bodyWidth = exclamationSize * 0.3;
-      const bodyHeight = exclamationSize * 0.6;
+      // Main elongated body
+      const bodyWidth = exclamationSize * 0.35;
+      const bodyHeight = exclamationSize * 0.8;
       
+      // Body
       ctx.beginPath();
-      ctx.moveTo(0, -bodyHeight/2);
-      ctx.lineTo(-bodyWidth/3, bodyHeight/2);
-      ctx.lineTo(bodyWidth/3, bodyHeight/2);
+      ctx.moveTo(0, -bodyHeight);
+      ctx.lineTo(-bodyWidth/2, 0);
+      ctx.lineTo(bodyWidth/2, 0);
       ctx.closePath();
       
       ctx.fillStyle = '#FF0000';
       ctx.fill();
       ctx.stroke();
       
-      // Dot
-      const dotRadius = exclamationSize * 0.15;
+      // Dot - closer to body
+      const dotRadius = exclamationSize * 0.18;
       ctx.beginPath();
-      ctx.arc(0, bodyHeight/2 + dotRadius * 2, dotRadius, 0, Math.PI * 2);
+      ctx.arc(0, dotRadius * 1.5, dotRadius, 0, Math.PI * 2);
       ctx.fillStyle = '#FF0000';
       ctx.fill();
       ctx.stroke();
       
-      // Highlight
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      // Simple highlight on body
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
       ctx.beginPath();
-      ctx.ellipse(-bodyWidth/6, -bodyHeight/4, bodyWidth/4, bodyHeight/4, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, -bodyHeight/2, bodyWidth/4, bodyHeight/4, 0, 0, Math.PI * 2);
       ctx.fill();
       
       ctx.restore();
@@ -942,7 +931,11 @@ export default function Home() {
           width: 100%;
         }
 
-        /* Desktop social buttons */
+        /* Main content container */
+        main {
+          width: 100%;
+          padding-top: 60px; /* Space for mobile buttons */
+        }
         .desktop-social-buttons {
           position: fixed;
           top: 10px;
@@ -962,6 +955,10 @@ export default function Home() {
           right: 10px;
           gap: 0.5rem;
           z-index: 1000;
+          background: rgba(0, 0, 0, 0.8);
+          padding: 0.5rem;
+          border-radius: 30px;
+          backdrop-filter: blur(10px);
         }
 
         /* Mobile social icons in header */
@@ -1037,15 +1034,16 @@ export default function Home() {
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          opacity: 0.3;
+          opacity: 0.25;
           animation: float 6s ease-in-out infinite;
           pointer-events: none;
-          filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+          filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+          z-index: 0;
         }
 
         .pumper-float img {
-          width: 300px;
-          height: 300px;
+          width: 350px;
+          height: 350px;
         }
 
         @keyframes float {
@@ -1633,7 +1631,12 @@ export default function Home() {
           }
 
           header {
-            margin-top: 70px;
+            margin-top: 80px;
+            padding-top: 2rem;
+          }
+
+          main {
+            padding-top: 80px;
           }
 
           .pumper-float img {
@@ -1651,6 +1654,10 @@ export default function Home() {
 
           .nav-container {
             gap: 0.5rem;
+          }
+
+          .main-nav {
+            top: 60px;
           }
 
           .main-nav a {
