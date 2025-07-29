@@ -8,6 +8,7 @@ export default function Home() {
   const [error, setError] = useState('');
   const [generatedMeme, setGeneratedMeme] = useState(null);
   const [faceDetection, setFaceDetection] = useState(null);
+  const [useGemini, setUseGemini] = useState(true); // Try Gemini first
   const [tokenPrice, setTokenPrice] = useState(null);
   const [tokenData, setTokenData] = useState(null);
   const [priceChange24h, setPriceChange24h] = useState(0);
@@ -237,6 +238,39 @@ export default function Home() {
     }
   };
 
+  const detectFacesWithGemini = async (imageDataUrl) => {
+    try {
+      console.log('🧠 Using Gemini AI for advanced face detection...');
+      
+      const response = await fetch('/api/analyze-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: imageDataUrl
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Gemini API request failed');
+      }
+
+      const data = await response.json();
+      
+      if (data.faces && data.faces.length > 0) {
+        console.log(`✨ Gemini detected ${data.faces.length} face(s) with precision!`);
+        return data.faces;
+      } else {
+        console.log('⚠️ Gemini found no faces');
+        return null;
+      }
+    } catch (error) {
+      console.error('Gemini detection error:', error);
+      return null;
+    }
+  };
+
   const detectFaces = async (imageElement) => {
     // Try Face-api.js first for 68 landmark points
     if (faceDetection === 'faceapi' && window.faceapi) {
@@ -369,55 +403,85 @@ export default function Home() {
         
         ctx.drawImage(img, 0, 0);
         
-        const faces = await detectFaces(img);
-        console.log(`🤖 Processing ${faces.length} detected face(s)...`);
+        let faces = null;
+        let usingGemini = false;
+        
+        // Try Gemini first if enabled
+        if (useGemini) {
+          const reader = new FileReader();
+          const imageDataUrl = await new Promise((resolve) => {
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(selectedFile);
+          });
+          
+          faces = await detectFacesWithGemini(imageDataUrl);
+          if (faces) {
+            usingGemini = true;
+          }
+        }
+        
+        // Fallback to Face-api.js or MediaPipe
+        if (!faces) {
+          faces = await detectFaces(img);
+        }
+        
+        console.log(`🤖 Processing ${faces.length} face(s) ${usingGemini ? 'with Gemini AI' : 'with local detection'}...`);
         
         faces.forEach((face, index) => {
           console.log(`🎨 Adding $PUMPIT elements to face ${index + 1}...`);
           
-          const faceRegion = {
-            x: face.boundingBox.originX,
-            y: face.boundingBox.originY,
-            width: face.boundingBox.width,
-            height: face.boundingBox.height
-          };
-          
-          // Use advanced landmarks if available
-          if (face.landmarks && face.mouthPoints) {
-            // Calculate exact mouth position from 68 landmarks
-            const mouthPoints = face.mouthPoints;
-            const mouthTop = mouthPoints[14]; // Upper lip top
-            const mouthBottom = mouthPoints[18]; // Lower lip bottom
-            const mouthLeft = mouthPoints[0]; // Left corner
-            const mouthRight = mouthPoints[6]; // Right corner
-            
+          if (usingGemini) {
+            // Use Gemini's precise coordinates
             const mouthCenter = {
-              x: (mouthLeft.x + mouthRight.x) / 2,
-              y: (mouthTop.y + mouthBottom.y) / 2
+              x: face.mouth.centerX,
+              y: face.mouth.centerY
             };
             
-            const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
-            const mouthHeight = Math.abs(mouthBottom.y - mouthTop.y);
-            
-            drawAdvancedLips(ctx, mouthCenter, mouthWidth, mouthHeight, face.faceAngle);
-            drawDirectionalExclamations(ctx, faceRegion, face.faceDirection);
+            drawAdvancedLips(ctx, mouthCenter, face.mouth.width, face.mouth.height, face.faceAngle || 0);
+            drawDirectionalExclamations(ctx, face.boundingBox, face.faceDirection || 'center');
           } else {
-            // Fallback to simple detection
-            let mouthPosition = { x: faceRegion.x + faceRegion.width / 2, y: faceRegion.y + faceRegion.height * 0.75 };
+            // Use existing detection logic
+            const faceRegion = {
+              x: face.boundingBox.originX,
+              y: face.boundingBox.originY,
+              width: face.boundingBox.width,
+              height: face.boundingBox.height
+            };
             
-            if (face.keypoints) {
-              const mouthKeypoint = face.keypoints.find(kp => 
-                kp.category === 'MOUTH_CENTER' || 
-                kp.category === 'MOUTH' ||
-                kp.category === 'mouth'
-              );
-              if (mouthKeypoint) {
-                mouthPosition = { x: mouthKeypoint.x, y: mouthKeypoint.y };
+            if (face.landmarks && face.mouthPoints) {
+              const mouthPoints = face.mouthPoints;
+              const mouthTop = mouthPoints[14];
+              const mouthBottom = mouthPoints[18];
+              const mouthLeft = mouthPoints[0];
+              const mouthRight = mouthPoints[6];
+              
+              const mouthCenter = {
+                x: (mouthLeft.x + mouthRight.x) / 2,
+                y: (mouthTop.y + mouthBottom.y) / 2
+              };
+              
+              const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
+              const mouthHeight = Math.abs(mouthBottom.y - mouthTop.y);
+              
+              drawAdvancedLips(ctx, mouthCenter, mouthWidth, mouthHeight, face.faceAngle);
+              drawDirectionalExclamations(ctx, faceRegion, face.faceDirection);
+            } else {
+              let mouthPosition = { x: faceRegion.x + faceRegion.width / 2, y: faceRegion.y + faceRegion.height * 0.75 };
+              
+              if (face.keypoints) {
+                const mouthKeypoint = face.keypoints.find(kp => 
+                  kp.category === 'MOUTH_CENTER' || 
+                  kp.category === 'MOUTH' ||
+                  kp.category === 'mouth'
+                );
+                if (mouthKeypoint) {
+                  mouthPosition = { x: mouthKeypoint.x, y: mouthKeypoint.y };
+                }
               }
+              
+              drawPumperStyleLips(ctx, faceRegion, mouthPosition);
+              drawSideExclamationMarks(ctx, faceRegion, index % 2 === 0);
             }
-            
-            drawPumperStyleLips(ctx, faceRegion, mouthPosition);
-            drawSideExclamationMarks(ctx, faceRegion, index % 2 === 0);
           }
         });
         
@@ -949,7 +1013,8 @@ export default function Home() {
             <div className="ai-status">
               {faceDetection === null && <p>🔄 Loading AI face detection...</p>}
               {faceDetection === 'fallback' && <p>⚠️ Using basic positioning (AI unavailable)</p>}
-              {faceDetection === 'faceapi' && <p>🤖 Advanced AI with 68 facial landmarks ready!</p>}
+              {faceDetection === 'faceapi' && useGemini && <p>🧠 Gemini AI + Advanced face detection ready!</p>}
+              {faceDetection === 'faceapi' && !useGemini && <p>🤖 Advanced AI with 68 facial landmarks ready!</p>}
               {faceDetection && faceDetection !== 'fallback' && faceDetection !== 'faceapi' && <p>🤖 AI face detection ready!</p>}
             </div>
             
