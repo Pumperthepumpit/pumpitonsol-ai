@@ -8,8 +8,10 @@ export default async function handler(req, res) {
   try {
     // Initialize Gemini
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
-
+    
+    // Updated model name - gemini-pro-vision is deprecated
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
     const { image } = req.body;
     
     if (!image) {
@@ -18,6 +20,10 @@ export default async function handler(req, res) {
 
     // Remove data:image/jpeg;base64, prefix if present
     const base64Image = image.replace(/^data:image\/\w+;base64,/, '');
+    
+    // Determine the image format
+    const imageFormat = image.match(/^data:image\/(\w+);base64,/)?.[1] || 'jpeg';
+    const mimeType = `image/${imageFormat}`;
 
     // Prepare the prompt for Gemini
     const prompt = `Analyze this image and detect faces. For each face found, return the exact coordinates in this JSON format:
@@ -55,7 +61,7 @@ export default async function handler(req, res) {
       prompt,
       {
         inlineData: {
-          mimeType: 'image/jpeg',
+          mimeType: mimeType,
           data: base64Image
         }
       }
