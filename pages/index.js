@@ -1303,6 +1303,15 @@ export default function Home() {
           margin-top: 2rem;
         }
 
+        .contract-address {
+          font-family: 'Courier New', monospace;
+          font-size: 0.8rem;
+          color: #FFFF00;
+          margin-bottom: 1rem;
+          word-break: break-all;
+          padding: 0 1rem;
+        }
+
         .buy-button-large {
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
