@@ -262,123 +262,150 @@ export default function Home() {
         // Draw original image
         ctx.drawImage(img, 0, 0);
         
-        // Load PNG assets
+        // Load PNG assets from public root
         const lipImage = new Image();
         const exclamationImage = new Image();
         
-        // Load lips
-        await new Promise((resolve, reject) => {
-          lipImage.onload = resolve;
-          lipImage.onerror = () => reject(new Error('Failed to load lips.png - make sure it exists in /public/meme-assets/'));
-        lipImage.src = '/lips.png';
-
-        });
-        
-        // Load exclamations
-        await new Promise((resolve, reject) => {
-          exclamationImage.onload = resolve;
-          exclamationImage.onerror = () => reject(new Error('Failed to load exclamation.png - make sure it exists in /public/meme-assets/'));
-          exclamationImage.src = '/exclamation.png';
-        });
-        
-        console.log('✅ PNG assets loaded successfully');
-        
-        // Process each detected face
-        positionData.faces.forEach((face, index) => {
-          console.log(`🎭 Processing face ${index + 1}:`, face);
-          
-          // Calculate actual pixel positions from percentages
-          const mouthPixelX = face.mouthPosition.centerX * canvas.width;
-          const mouthPixelY = face.mouthPosition.centerY * canvas.height;
-          const exclamationPixelX = face.exclamationPosition.centerX * canvas.width;
-          const exclamationPixelY = face.exclamationPosition.centerY * canvas.height;
-          
-          // Scale lips based on face size and mouth width
-          const baseLipWidth = face.mouthPosition.width * canvas.width * 2.5; // Make lips 2.5x mouth width
-          const lipAspectRatio = lipImage.height / lipImage.width;
-          const lipWidth = baseLipWidth;
-          const lipHeight = baseLipWidth * lipAspectRatio;
-          
-          // Position lips centered on mouth
-          const lipX = mouthPixelX - (lipWidth / 2);
-          const lipY = mouthPixelY - (lipHeight / 2);
-          
-          console.log(`👄 Drawing lips at: (${Math.round(lipX)}, ${Math.round(lipY)}) size: ${Math.round(lipWidth)}x${Math.round(lipHeight)}`);
-          
-          // Draw lips with rotation if needed
-          if (face.mouthPosition.angle && Math.abs(face.mouthPosition.angle) > 0.1) {
-            ctx.save();
-            ctx.translate(mouthPixelX, mouthPixelY);
-            ctx.rotate(face.mouthPosition.angle);
-            ctx.drawImage(lipImage, -lipWidth/2, -lipHeight/2, lipWidth, lipHeight);
-            ctx.restore();
-          } else {
-            ctx.drawImage(lipImage, lipX, lipY, lipWidth, lipHeight);
-          }
-          
-          // Calculate exclamation mark size and positions
-          const exclamationScale = face.faceSize * 0.15; // Scale based on face size
-          const exclamationWidth = exclamationImage.width * exclamationScale;
-          const exclamationHeight = exclamationImage.height * exclamationScale;
-          
-          // Position 3 exclamation marks based on face direction
-          let exclamationPositions;
-          if (face.faceDirection === 'left') {
-            exclamationPositions = [
-              { x: exclamationPixelX - 30, y: exclamationPixelY + 10 },
-              { x: exclamationPixelX - 15, y: exclamationPixelY - 5 },
-              { x: exclamationPixelX, y: exclamationPixelY + 15 }
-            ];
-          } else if (face.faceDirection === 'right') {
-            exclamationPositions = [
-              { x: exclamationPixelX, y: exclamationPixelY + 15 },
-              { x: exclamationPixelX + 15, y: exclamationPixelY - 5 },
-              { x: exclamationPixelX + 30, y: exclamationPixelY + 10 }
-            ];
-          } else {
-            // Center
-            exclamationPositions = [
-              { x: exclamationPixelX - 20, y: exclamationPixelY + 5 },
-              { x: exclamationPixelX, y: exclamationPixelY },
-              { x: exclamationPixelX + 20, y: exclamationPixelY + 5 }
-            ];
-          }
-          
-          // Draw exclamation marks
-          exclamationPositions.forEach((pos, i) => {
-            const finalX = pos.x - (exclamationWidth / 2);
-            const finalY = pos.y - (exclamationHeight / 2);
-            
-            console.log(`❗ Drawing exclamation ${i + 1} at: (${Math.round(finalX)}, ${Math.round(finalY)})`);
-            
-            ctx.drawImage(exclamationImage, finalX, finalY, exclamationWidth, exclamationHeight);
-          });
-        });
-        
-        // Convert canvas to blob and create download URL
-        canvas.toBlob((blob) => {
-          const memeUrl = URL.createObjectURL(blob);
-          setPreview(memeUrl);
-          setGeneratedMeme(memeUrl);
-          
-          // Add to community memes
-          const newMeme = {
-            url: memeUrl,
-            creator: xHandle,
-            timestamp: Date.now(),
-            pngOverlay: true,
-            facesDetected: positionData.faces.length
-          };
-          
-          setCommunityMemes(prev => {
-            const updated = [newMeme, ...prev].slice(0, 3);
-            return updated;
+        try {
+          // Load lips from public root
+          console.log('📎 Loading lips.png from public root...');
+          await new Promise((resolve, reject) => {
+            lipImage.onload = () => {
+              console.log('✅ Lips PNG loaded successfully!');
+              resolve();
+            };
+            lipImage.onerror = () => {
+              console.error('❌ Failed to load lips.png from /lips.png');
+              reject(new Error('Failed to load lips.png - make sure it exists in /public/'));
+            };
+            lipImage.src = '/lips.png';
           });
           
+          // Load exclamations from public root
+          console.log('📎 Loading exclamation.png from public root...');
+          await new Promise((resolve, reject) => {
+            exclamationImage.onload = () => {
+              console.log('✅ Exclamation PNG loaded successfully!');
+              resolve();
+            };
+            exclamationImage.onerror = () => {
+              console.error('❌ Failed to load exclamation.png from /exclamation.png');
+              reject(new Error('Failed to load exclamation.png - make sure it exists in /public/'));
+            };
+            exclamationImage.src = '/exclamation.png';
+          });
+          
+          console.log('🎉 All PNG assets loaded successfully!');
+          
+          // Process each detected face
+          positionData.faces.forEach((face, index) => {
+            console.log(`🎭 Processing face ${index + 1}:`, face);
+            
+            // Calculate actual pixel positions from percentages
+            const mouthPixelX = face.mouthPosition.centerX * canvas.width;
+            const mouthPixelY = face.mouthPosition.centerY * canvas.height;
+            const exclamationPixelX = face.exclamationPosition.centerX * canvas.width;
+            const exclamationPixelY = face.exclamationPosition.centerY * canvas.height;
+            
+            // Scale lips based on face size and mouth width
+            const baseLipWidth = Math.max(face.mouthPosition.width * canvas.width * 2.5, 50); // Minimum 50px width
+            const lipAspectRatio = lipImage.height / lipImage.width;
+            const lipWidth = baseLipWidth;
+            const lipHeight = baseLipWidth * lipAspectRatio;
+            
+            // Position lips centered on mouth
+            const lipX = mouthPixelX - (lipWidth / 2);
+            const lipY = mouthPixelY - (lipHeight / 2);
+            
+            console.log(`👄 Drawing lips at: (${Math.round(lipX)}, ${Math.round(lipY)}) size: ${Math.round(lipWidth)}x${Math.round(lipHeight)}`);
+            
+            // Draw lips with rotation if needed
+            if (face.mouthPosition.angle && Math.abs(face.mouthPosition.angle) > 0.1) {
+              ctx.save();
+              ctx.translate(mouthPixelX, mouthPixelY);
+              ctx.rotate(face.mouthPosition.angle);
+              ctx.drawImage(lipImage, -lipWidth/2, -lipHeight/2, lipWidth, lipHeight);
+              ctx.restore();
+            } else {
+              ctx.drawImage(lipImage, lipX, lipY, lipWidth, lipHeight);
+            }
+            
+            // Calculate exclamation mark size and positions
+            const faceScale = Math.max(face.faceSize || 0.2, 0.1); // Default to 0.2 if missing
+            const exclamationScale = faceScale * 0.8; // Scale based on face size
+            const exclamationWidth = exclamationImage.width * exclamationScale;
+            const exclamationHeight = exclamationImage.height * exclamationScale;
+            
+            // Ensure minimum size
+            const minExclamationWidth = Math.max(exclamationWidth, 20);
+            const minExclamationHeight = Math.max(exclamationHeight, 30);
+            
+            // Position 3 exclamation marks based on face direction
+            let exclamationPositions;
+            const spacing = 25; // Fixed spacing between exclamations
+            
+            if (face.faceDirection === 'left') {
+              exclamationPositions = [
+                { x: exclamationPixelX - spacing, y: exclamationPixelY + 10 },
+                { x: exclamationPixelX - spacing/2, y: exclamationPixelY - 5 },
+                { x: exclamationPixelX, y: exclamationPixelY + 15 }
+              ];
+            } else if (face.faceDirection === 'right') {
+              exclamationPositions = [
+                { x: exclamationPixelX, y: exclamationPixelY + 15 },
+                { x: exclamationPixelX + spacing/2, y: exclamationPixelY - 5 },
+                { x: exclamationPixelX + spacing, y: exclamationPixelY + 10 }
+              ];
+            } else {
+              // Center
+              exclamationPositions = [
+                { x: exclamationPixelX - spacing, y: exclamationPixelY + 5 },
+                { x: exclamationPixelX, y: exclamationPixelY },
+                { x: exclamationPixelX + spacing, y: exclamationPixelY + 5 }
+              ];
+            }
+            
+            // Draw exclamation marks
+            exclamationPositions.forEach((pos, i) => {
+              const finalX = pos.x - (minExclamationWidth / 2);
+              const finalY = pos.y - (minExclamationHeight / 2);
+              
+              console.log(`❗ Drawing exclamation ${i + 1} at: (${Math.round(finalX)}, ${Math.round(finalY)}) size: ${Math.round(minExclamationWidth)}x${Math.round(minExclamationHeight)}`);
+              
+              ctx.drawImage(exclamationImage, finalX, finalY, minExclamationWidth, minExclamationHeight);
+            });
+          });
+          
+          // Convert canvas to blob and create download URL
+          canvas.toBlob((blob) => {
+            const memeUrl = URL.createObjectURL(blob);
+            setPreview(memeUrl);
+            setGeneratedMeme(memeUrl);
+            
+            // Add to community memes
+            const newMeme = {
+              url: memeUrl,
+              creator: xHandle,
+              timestamp: Date.now(),
+              pngOverlay: true,
+              facesDetected: positionData.faces.length
+            };
+            
+            setCommunityMemes(prev => {
+              const updated = [newMeme, ...prev].slice(0, 3);
+              return updated;
+            });
+            
+            setIsProcessing(false);
+            
+            console.log('🎉 PNG overlay meme generated successfully!');
+          }, 'image/png');
+          
+        } catch (pngError) {
+          console.error('PNG loading failed:', pngError);
+          setError(`Failed to load PNG assets: ${pngError.message}`);
           setIsProcessing(false);
-          
-          console.log('🎉 PNG overlay meme generated successfully!');
-        }, 'image/png');
+        }
       };
       
       img.onerror = () => {
@@ -408,8 +435,8 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>PumpItOnSol - AI Meme Generator</title>
-        <meta name="description" content="Transform your photos into $PUMPIT memes with AI-powered positioning and PNG overlays!" />
+        <title>PumpItOnSol - PNG Overlay Meme Generator</title>
+        <meta name="description" content="Transform your photos into $PUMPIT memes with AI-powered positioning and your custom PNG overlays!" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <script src="https://terminal.jup.ag/main-v2.js" data-preload></script>
       </Head>
@@ -628,9 +655,9 @@ export default function Home() {
           </section>
 
           <section id="generator" className="reveal">
-            <h2>🎨 PNG Overlay Meme Generator</h2>
+            <h2>🎨 Custom PNG Overlay Meme Generator</h2>
             <p>
-              Upload your image and our AI will analyze face positions and overlay your exact PNG assets — 
+              Upload your image and our AI will analyze face positions and overlay your exact custom PNG assets — 
               perfect positioning with your proven lip and exclamation mark designs!
             </p>
             
@@ -651,8 +678,9 @@ export default function Home() {
             )}
             
             <div className="ai-status">
-              <p>🎨 PNG Overlay System Ready!</p>
-              <p>✨ Powered by Gemini AI positioning + Your exact assets</p>
+              <p>🎨 Custom PNG Overlay System Ready!</p>
+              <p>✨ Using your exact lips.png and exclamation.png assets</p>
+              <p>🧠 Powered by Gemini AI positioning</p>
               <p>💰 Cost: ~$0.001 per meme (virtually free!)</p>
             </div>
             
@@ -680,7 +708,7 @@ export default function Home() {
                   disabled={!selectedFile || isProcessing || !xHandle}
                   className="generate-button"
                 >
-                  {isProcessing ? '🎨 AI Positioning Your PNG Assets...' : '🔥 Generate PNG Overlay Meme'}
+                  {isProcessing ? '🎨 AI Positioning Your Custom PNG Assets...' : '🔥 Generate Custom PNG Meme'}
                 </button>
                 
                 {generatedMeme && (
@@ -697,6 +725,8 @@ export default function Home() {
               {error && (
                 <div className="error-message">
                   ⚠️ {error}
+                  <br />
+                  <small>Make sure lips.png and exclamation.png are in your /public/ folder</small>
                 </div>
               )}
               
@@ -710,15 +740,15 @@ export default function Home() {
                   }}
                 />
                 {isProcessing ? (
-                  <p><strong>🎨 AI is analyzing positions and overlaying your PNG assets...</strong></p>
+                  <p><strong>🎨 AI is analyzing positions and overlaying your custom PNG assets...</strong></p>
                 ) : selectedFile ? (
                   generatedMeme ? (
-                    <p><strong>🎉 Your PNG overlay $PUMPIT meme is ready!</strong></p>
+                    <p><strong>🎉 Your custom PNG overlay $PUMPIT meme is ready!</strong></p>
                   ) : (
-                    <p><strong>👆 Click "Generate PNG Overlay Meme" for precise positioning!</strong></p>
+                    <p><strong>👆 Click "Generate Custom PNG Meme" for precise positioning!</strong></p>
                   )
                 ) : (
-                  <p><strong>Upload an image to get started with PNG overlays</strong></p>
+                  <p><strong>Upload an image to get started with custom PNG overlays</strong></p>
                 )}
               </div>
             </div>
@@ -728,7 +758,7 @@ export default function Home() {
             <h2>🗺️ Roadmap</h2>
             <ul>
               <li>✅ Phase 1: Launch $PUMPIT on Bonk.fun with meme identity + Pumper reveal</li>
-              <li>🎨 Phase 2: PNG overlay meme generator with AI positioning goes live</li>
+              <li>🎨 Phase 2: Custom PNG overlay meme generator with AI positioning goes live</li>
               <li>📋 Phase 3: Collaborate with top meme communities</li>
               <li>📋 Phase 4: Community meme automation & viral campaigns</li>
               <li>📚 Phase 5: Pumper Comic Series - Exclusive stories for $PUMPIT holders! Watch Pumper meet new characters representing other promising tokens. Only holders can unlock these adventures!</li>
@@ -743,7 +773,7 @@ export default function Home() {
                   <div key={index} className="meme-card">
                     <img src={meme.url} alt={`Community Meme ${index + 1}`} />
                     <p>Created by {meme.creator}</p>
-                    {meme.pngOverlay && <p className="png-badge">🎨 PNG Overlay</p>}
+                    {meme.pngOverlay && <p className="png-badge">🎨 Custom PNG</p>}
                     {meme.facesDetected && <p className="faces-badge">👥 {meme.facesDetected} face(s)</p>}
                   </div>
                 ))
@@ -751,7 +781,7 @@ export default function Home() {
                 <>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>🎨 Be the first to create a PNG overlay meme!</p>
+                      <p>🎨 Be the first to create a custom PNG meme!</p>
                     </div>
                   </div>
                   <div className="meme-card placeholder">
@@ -761,7 +791,7 @@ export default function Home() {
                   </div>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>💎 Join the PNG revolution!</p>
+                      <p>💎 Join the custom PNG revolution!</p>
                     </div>
                   </div>
                 </>
@@ -835,7 +865,7 @@ export default function Home() {
         </main>
 
         <footer>
-          <p>© 2025 PumpItOnSol. Powered by AI positioning and PNG overlays. 🎨🚀</p>
+          <p>© 2025 PumpItOnSol. Powered by AI positioning and custom PNG overlays. 🎨🚀</p>
         </footer>
       </div>
 
@@ -1348,6 +1378,13 @@ export default function Home() {
           border-radius: 10px;
           margin-top: 1rem;
           border: 1px solid rgba(255, 0, 0, 0.5);
+        }
+
+        .error-message small {
+          display: block;
+          margin-top: 0.5rem;
+          color: #ffaaaa;
+          font-size: 0.8rem;
         }
 
         .meme-preview-placeholder {
