@@ -1,587 +1,4 @@
-<footer>
-        <p>© 2025 PumpItOnSol. Powered by AI and the community. 🤖🚀</p>
-      </footer>
-
-      <style jsx global>{`
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-
-        body {
-          font-family: 'Arial', sans-serif;
-          background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
-          color: #ffffff;
-          min-height: 100vh;
-        }
-
-        /* Social buttons at top */
-        .social-buttons {
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          display: flex;
-          gap: 1rem;
-          z-index: 1000;
-        }
-
-        .social-button {
-          padding: 0.5rem 1rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          border-radius: 25px;
-          color: white;
-          text-decoration: none;
-          transition: all 0.3s ease;
-          backdrop-filter: blur(10px);
-        }
-
-        .social-button:hover {
-          background: rgba(255, 255, 255, 0.2);
-          transform: translateY(-2px);
-          box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
-        }
-
-        /* Buy button styling */
-        .social-button.buy-button {
-          background: linear-gradient(135deg, #ff0000, #ff4444);
-          color: white;
-          font-weight: bold;
-        }
-
-        .social-button.buy-button:hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 5px 20px rgba(255, 0, 0, 0.5);
-        }
-
-        header {
-          text-align: center;
-          padding: 4rem 2rem;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .pumper-float {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          opacity: 0.1;
-          animation: float 6s ease-in-out infinite;
-          pointer-events: none;
-        }
-
-        .pumper-float img {
-          width: 300px;
-          height: 300px;
-        }
-
-        @keyframes float {
-          0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
-          50% { transform: translate(-50%, -50%) translateY(-20px); }
-        }
-
-        h1 {
-          font-size: 4rem;
-          background: linear-gradient(135deg, #ff0000, #ff6666);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          margin-bottom: 1rem;
-          position: relative;
-          z-index: 1;
-        }
-
-        nav {
-          display: flex;
-          justify-content: center;
-          gap: 2rem;
-          padding: 1rem;
-          background: rgba(0, 0, 0, 0.5);
-          backdrop-filter: blur(10px);
-          position: sticky;
-          top: 0;
-          z-index: 100;
-        }
-
-        nav a {
-          color: #ffffff;
-          text-decoration: none;
-          padding: 0.5rem 1rem;
-          transition: all 0.3s ease;
-          border-radius: 5px;
-        }
-
-        nav a:hover {
-          background: rgba(255, 0, 0, 0.3);
-          transform: translateY(-2px);
-        }
-
-        main {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 2rem;
-        }
-
-        section {
-          margin: 4rem 0;
-          padding: 2rem;
-          background: rgba(0, 0, 0, 0.3);
-          border-radius: 10px;
-          backdrop-filter: blur(5px);
-        }
-
-        h2 {
-          font-size: 2.5rem;
-          margin-bottom: 1.5rem;
-          color: #ff6666;
-        }
-
-        .token-stats {
-          background: rgba(255, 0, 0, 0.1);
-          padding: 1.5rem;
-          border-radius: 10px;
-          margin-top: 2rem;
-          border: 2px solid rgba(255, 0, 0, 0.3);
-        }
-
-        .token-stats h3 {
-          color: #ff9999;
-          margin-bottom: 1rem;
-        }
-
-        .token-stats p {
-          margin: 0.5rem 0;
-          font-family: 'Courier New', monospace;
-        }
-
-        /* Token Information Section */
-        .token-info-section {
-          background: linear-gradient(135deg, rgba(255, 0, 0, 0.05), rgba(255, 100, 100, 0.05));
-          border-radius: 20px;
-          padding: 3rem;
-          margin: 2rem 0;
-        }
-
-        .token-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1.5rem;
-          margin: 2rem 0;
-        }
-
-        .token-card {
-          background: rgba(0, 0, 0, 0.3);
-          border: 2px solid rgba(255, 0, 0, 0.3);
-          border-radius: 15px;
-          padding: 1.5rem;
-          text-align: center;
-          transition: all 0.3s ease;
-        }
-
-        .token-card:hover {
-          transform: translateY(-5px);
-          border-color: #ff0000;
-          box-shadow: 0 10px 30px rgba(255, 0, 0, 0.3);
-        }
-
-        .token-card h4 {
-          color: #ff6666;
-          margin-bottom: 0.5rem;
-          font-size: 0.9rem;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-
-        .token-card .price {
-          font-size: 1.8rem;
-          font-weight: bold;
-          color: #ffffff;
-          margin: 0.5rem 0;
-        }
-
-        .token-card .value {
-          font-size: 1.4rem;
-          font-weight: bold;
-          color: #ffffff;
-        }
-
-        .price-change {
-          font-size: 0.9rem;
-          font-weight: 600;
-        }
-
-        .price-change.positive {
-          color: #00ff00;
-        }
-
-        .price-change.negative {
-          color: #ff3333;
-        }
-
-        .loading {
-          color: #999;
-          font-style: italic;
-        }
-
-        /* Buy Section */
-        .buy-section {
-          text-align: center;
-          margin-top: 2rem;
-        }
-
-        .buy-button-large {
-          background: linear-gradient(135deg, #ff0000, #ff4444);
-          color: white;
-          border: none;
-          padding: 1.2rem 3rem;
-          font-size: 1.3rem;
-          font-weight: bold;
-          border-radius: 50px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 5px 20px rgba(255, 0, 0, 0.4);
-        }
-
-        .buy-button-large:hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(255, 0, 0, 0.6);
-        }
-
-        .buy-info {
-          color: #aaa;
-          margin-top: 1rem;
-          font-size: 0.9rem;
-        }
-
-        /* Token Link */
-        .token-link {
-          display: inline-block;
-          margin-top: 0.5rem;
-          color: #ff6666;
-          text-decoration: none;
-          font-weight: 600;
-          transition: color 0.3s ease;
-        }
-
-        .token-link:hover {
-          color: #ff0000;
-          text-decoration: underline;
-        }
-
-        /* Meme generator styles */
-        .ai-status {
-          background: rgba(0, 0, 0, 0.5);
-          padding: 1rem;
-          border-radius: 10px;
-          margin-bottom: 2rem;
-          text-align: center;
-        }
-
-        .meme-upload {
-          background: rgba(0, 0, 0, 0.4);
-          padding: 2rem;
-          border-radius: 15px;
-          margin-top: 2rem;
-        }
-
-        .upload-section {
-          margin-bottom: 2rem;
-        }
-
-        .upload-section label {
-          display: block;
-          margin-bottom: 1rem;
-          font-size: 1.2rem;
-          color: #ff9999;
-        }
-
-        input[type="file"] {
-          display: block;
-          width: 100%;
-          padding: 1rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px dashed rgba(255, 0, 0, 0.5);
-          border-radius: 10px;
-          color: white;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        input[type="file"]:hover {
-          background: rgba(255, 255, 255, 0.15);
-          border-color: #ff0000;
-        }
-
-        .file-selected {
-          margin-top: 1rem;
-          color: #00ff00;
-        }
-
-        .generate-section {
-          text-align: center;
-        }
-
-        .generate-button {
-          padding: 1rem 2rem;
-          font-size: 1.1rem;
-          background: linear-gradient(135deg, #ff0000, #ff6666);
-          color: white;
-          border: none;
-          border-radius: 50px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          margin: 0.5rem;
-        }
-
-        .generate-button:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 5px 20px rgba(255, 0, 0, 0.5);
-        }
-
-        .generate-button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .error-message {
-          background: rgba(255, 0, 0, 0.2);
-          color: #ff6666;
-          padding: 1rem;
-          border-radius: 10px;
-          margin-top: 1rem;
-          border: 1px solid rgba(255, 0, 0, 0.5);
-        }
-
-        .meme-preview-placeholder {
-          margin-top: 2rem;
-          text-align: center;
-          padding: 2rem;
-          background: rgba(0, 0, 0, 0.5);
-          border-radius: 15px;
-          min-height: 400px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .meme-preview-placeholder img {
-          max-width: 100%;
-          max-height: 500px;
-          border-radius: 10px;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        }
-
-        /* Community memes */
-        .community-memes {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 2rem;
-          margin-top: 2rem;
-        }
-
-        .meme-card {
-          background: rgba(0, 0, 0, 0.5);
-          border-radius: 15px;
-          overflow: hidden;
-          transition: transform 0.3s ease;
-        }
-
-        .meme-card:hover {
-          transform: translateY(-5px);
-        }
-
-        .meme-card img {
-          width: 100%;
-          height: 250px;
-          object-fit: cover;
-        }
-
-        .meme-card p {
-          padding: 1rem;
-          text-align: center;
-          color: #ff9999;
-        }
-
-        /* Social Feed Section */
-        .social-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-          gap: 2rem;
-          margin-top: 2rem;
-        }
-
-        .social-card {
-          background: rgba(0, 0, 0, 0.3);
-          border-radius: 15px;
-          padding: 2rem;
-          border: 2px solid rgba(255, 0, 0, 0.2);
-        }
-
-        .social-card h3 {
-          color: #ff6666;
-          margin-bottom: 1.5rem;
-          text-align: center;
-        }
-
-        .twitter-embed {
-          border-radius: 10px;
-          overflow: hidden;
-        }
-
-        .community-links {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .community-button {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 1rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 2px solid rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
-          text-decoration: none;
-          color: white;
-          transition: all 0.3s ease;
-        }
-
-        .community-button:hover {
-          transform: translateX(5px);
-          background: rgba(255, 255, 255, 0.1);
-          border-color: #ff0000;
-        }
-
-        .community-button .icon {
-          font-size: 2rem;
-          min-width: 50px;
-          text-align: center;
-        }
-
-        .community-button strong {
-          display: block;
-          margin-bottom: 0.2rem;
-        }
-
-        .community-button p {
-          margin: 0;
-          font-size: 0.9rem;
-          color: #aaa;
-        }
-
-        .community-button.telegram:hover {
-          border-color: #0088cc;
-        }
-
-        .community-button.tiktok:hover {
-          border-color: #ff0050;
-        }
-
-        .community-button.twitter:hover {
-          border-color: #1da1f2;
-        }
-
-        /* Roadmap */
-        #roadmap ul {
-          list-style: none;
-          padding-left: 0;
-        }
-
-        #roadmap li {
-          padding: 1rem;
-          margin: 0.5rem 0;
-          background: rgba(0, 0, 0, 0.5);
-          border-left: 4px solid #ff0000;
-          border-radius: 5px;
-          transition: all 0.3s ease;
-        }
-
-        #roadmap li:hover {
-          transform: translateX(10px);
-          background: rgba(255, 0, 0, 0.1);
-        }
-
-        footer {
-          text-align: center;
-          padding: 2rem;
-          background: rgba(0, 0, 0, 0.5);
-          margin-top: 4rem;
-        }
-
-        /* Animations */
-        .reveal {
-          opacity: 0;
-          transform: translateY(30px);
-          animation: fadeInUp 0.6s ease forwards;
-        }
-
-        @keyframes fadeInUp {
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-          h1 {
-            font-size: 3rem;
-          }
-
-          h2 {
-            font-size: 2rem;
-          }
-
-          .social-buttons {
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            top: 10px;
-            right: 10px;
-          }
-
-          .social-button {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.9rem;
-          }
-
-          nav {
-            flex-wrap: wrap;
-            gap: 1rem;
-          }
-
-          .token-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-          }
-          
-          .social-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .buy-button-large {
-            padding: 1rem 2rem;
-            font-size: 1.1rem;
-          }
-          
-          .token-info-section {
-            padding: 2rem 1rem;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .token-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .social-button {
-            flex: 1 1 calc(50% - 0.5rem);
-            min-width: 120px;
-          }
-        }
-      `}</style>import Head from 'next/head';
+import Head from 'next/head';
 import { useState, useEffect } from 'react';
 
 export default function Home() {
@@ -1221,6 +638,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+
         <section id="social" className="reveal">
           <h2>🌐 Join the $PUMPIT Community</h2>
           <div className="social-grid">
@@ -1289,6 +707,587 @@ export default function Home() {
       <footer>
         <p>© 2025 PumpItOnSol. Powered by AI and the community. 🤖🚀</p>
       </footer>
+
+      <style jsx global>{`
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        body {
+          font-family: 'Arial', sans-serif;
+          background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+          color: #ffffff;
+          min-height: 100vh;
+        }
+
+        /* Social buttons at top */
+        .social-buttons {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          display: flex;
+          gap: 1rem;
+          z-index: 1000;
+        }
+
+        .social-button {
+          padding: 0.5rem 1rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          border-radius: 25px;
+          color: white;
+          text-decoration: none;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(10px);
+        }
+
+        .social-button:hover {
+          background: rgba(255, 255, 255, 0.2);
+          transform: translateY(-2px);
+          box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+        }
+
+        /* Buy button styling */
+        .social-button.buy-button {
+          background: linear-gradient(135deg, #ff0000, #ff4444);
+          color: white;
+          font-weight: bold;
+        }
+
+        .social-button.buy-button:hover {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 5px 20px rgba(255, 0, 0, 0.5);
+        }
+
+        header {
+          text-align: center;
+          padding: 4rem 2rem;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .pumper-float {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          opacity: 0.1;
+          animation: float 6s ease-in-out infinite;
+          pointer-events: none;
+        }
+
+        .pumper-float img {
+          width: 300px;
+          height: 300px;
+        }
+
+        @keyframes float {
+          0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+          50% { transform: translate(-50%, -50%) translateY(-20px); }
+        }
+
+        h1 {
+          font-size: 4rem;
+          background: linear-gradient(135deg, #ff0000, #ff6666);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          margin-bottom: 1rem;
+          position: relative;
+          z-index: 1;
+        }
+
+        nav {
+          display: flex;
+          justify-content: center;
+          gap: 2rem;
+          padding: 1rem;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(10px);
+          position: sticky;
+          top: 0;
+          z-index: 100;
+        }
+
+        nav a {
+          color: #ffffff;
+          text-decoration: none;
+          padding: 0.5rem 1rem;
+          transition: all 0.3s ease;
+          border-radius: 5px;
+        }
+
+        nav a:hover {
+          background: rgba(255, 0, 0, 0.3);
+          transform: translateY(-2px);
+        }
+
+        main {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 2rem;
+        }
+
+        section {
+          margin: 4rem 0;
+          padding: 2rem;
+          background: rgba(0, 0, 0, 0.3);
+          border-radius: 10px;
+          backdrop-filter: blur(5px);
+        }
+
+        h2 {
+          font-size: 2.5rem;
+          margin-bottom: 1.5rem;
+          color: #ff6666;
+        }
+
+        .token-stats {
+          background: rgba(255, 0, 0, 0.1);
+          padding: 1.5rem;
+          border-radius: 10px;
+          margin-top: 2rem;
+          border: 2px solid rgba(255, 0, 0, 0.3);
+        }
+
+        .token-stats h3 {
+          color: #ff9999;
+          margin-bottom: 1rem;
+        }
+
+        .token-stats p {
+          margin: 0.5rem 0;
+          font-family: 'Courier New', monospace;
+        }
+
+        /* Token Information Section */
+        .token-info-section {
+          background: linear-gradient(135deg, rgba(255, 0, 0, 0.05), rgba(255, 100, 100, 0.05));
+          border-radius: 20px;
+          padding: 3rem;
+          margin: 2rem 0;
+        }
+
+        .token-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1.5rem;
+          margin: 2rem 0;
+        }
+
+        .token-card {
+          background: rgba(0, 0, 0, 0.3);
+          border: 2px solid rgba(255, 0, 0, 0.3);
+          border-radius: 15px;
+          padding: 1.5rem;
+          text-align: center;
+          transition: all 0.3s ease;
+        }
+
+        .token-card:hover {
+          transform: translateY(-5px);
+          border-color: #ff0000;
+          box-shadow: 0 10px 30px rgba(255, 0, 0, 0.3);
+        }
+
+        .token-card h4 {
+          color: #ff6666;
+          margin-bottom: 0.5rem;
+          font-size: 0.9rem;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .token-card .price {
+          font-size: 1.8rem;
+          font-weight: bold;
+          color: #ffffff;
+          margin: 0.5rem 0;
+        }
+
+        .token-card .value {
+          font-size: 1.4rem;
+          font-weight: bold;
+          color: #ffffff;
+        }
+
+        .price-change {
+          font-size: 0.9rem;
+          font-weight: 600;
+        }
+
+        .price-change.positive {
+          color: #00ff00;
+        }
+
+        .price-change.negative {
+          color: #ff3333;
+        }
+
+        .loading {
+          color: #999;
+          font-style: italic;
+        }
+
+        /* Buy Section */
+        .buy-section {
+          text-align: center;
+          margin-top: 2rem;
+        }
+
+        .buy-button-large {
+          background: linear-gradient(135deg, #ff0000, #ff4444);
+          color: white;
+          border: none;
+          padding: 1.2rem 3rem;
+          font-size: 1.3rem;
+          font-weight: bold;
+          border-radius: 50px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 5px 20px rgba(255, 0, 0, 0.4);
+        }
+
+        .buy-button-large:hover {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(255, 0, 0, 0.6);
+        }
+
+        .buy-info {
+          color: #aaa;
+          margin-top: 1rem;
+          font-size: 0.9rem;
+        }
+
+        /* Token Link */
+        .token-link {
+          display: inline-block;
+          margin-top: 0.5rem;
+          color: #ff6666;
+          text-decoration: none;
+          font-weight: 600;
+          transition: color 0.3s ease;
+        }
+
+        .token-link:hover {
+          color: #ff0000;
+          text-decoration: underline;
+        }
+
+        /* Meme generator styles */
+        .ai-status {
+          background: rgba(0, 0, 0, 0.5);
+          padding: 1rem;
+          border-radius: 10px;
+          margin-bottom: 2rem;
+          text-align: center;
+        }
+
+        .meme-upload {
+          background: rgba(0, 0, 0, 0.4);
+          padding: 2rem;
+          border-radius: 15px;
+          margin-top: 2rem;
+        }
+
+        .upload-section {
+          margin-bottom: 2rem;
+        }
+
+        .upload-section label {
+          display: block;
+          margin-bottom: 1rem;
+          font-size: 1.2rem;
+          color: #ff9999;
+        }
+
+        input[type="file"] {
+          display: block;
+          width: 100%;
+          padding: 1rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 2px dashed rgba(255, 0, 0, 0.5);
+          border-radius: 10px;
+          color: white;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        input[type="file"]:hover {
+          background: rgba(255, 255, 255, 0.15);
+          border-color: #ff0000;
+        }
+
+        .file-selected {
+          margin-top: 1rem;
+          color: #00ff00;
+        }
+
+        .generate-section {
+          text-align: center;
+        }
+
+        .generate-button {
+          padding: 1rem 2rem;
+          font-size: 1.1rem;
+          background: linear-gradient(135deg, #ff0000, #ff6666);
+          color: white;
+          border: none;
+          border-radius: 50px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          margin: 0.5rem;
+        }
+
+        .generate-button:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 5px 20px rgba(255, 0, 0, 0.5);
+        }
+
+        .generate-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .error-message {
+          background: rgba(255, 0, 0, 0.2);
+          color: #ff6666;
+          padding: 1rem;
+          border-radius: 10px;
+          margin-top: 1rem;
+          border: 1px solid rgba(255, 0, 0, 0.5);
+        }
+
+        .meme-preview-placeholder {
+          margin-top: 2rem;
+          text-align: center;
+          padding: 2rem;
+          background: rgba(0, 0, 0, 0.5);
+          border-radius: 15px;
+          min-height: 400px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .meme-preview-placeholder img {
+          max-width: 100%;
+          max-height: 500px;
+          border-radius: 10px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Community memes */
+        .community-memes {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 2rem;
+          margin-top: 2rem;
+        }
+
+        .meme-card {
+          background: rgba(0, 0, 0, 0.5);
+          border-radius: 15px;
+          overflow: hidden;
+          transition: transform 0.3s ease;
+        }
+
+        .meme-card:hover {
+          transform: translateY(-5px);
+        }
+
+        .meme-card img {
+          width: 100%;
+          height: 250px;
+          object-fit: cover;
+        }
+
+        .meme-card p {
+          padding: 1rem;
+          text-align: center;
+          color: #ff9999;
+        }
+
+        /* Social Feed Section */
+        .social-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+          gap: 2rem;
+          margin-top: 2rem;
+        }
+
+        .social-card {
+          background: rgba(0, 0, 0, 0.3);
+          border-radius: 15px;
+          padding: 2rem;
+          border: 2px solid rgba(255, 0, 0, 0.2);
+        }
+
+        .social-card h3 {
+          color: #ff6666;
+          margin-bottom: 1.5rem;
+          text-align: center;
+        }
+
+        .twitter-embed {
+          border-radius: 10px;
+          overflow: hidden;
+        }
+
+        .community-links {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .community-button {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 2px solid rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          text-decoration: none;
+          color: white;
+          transition: all 0.3s ease;
+        }
+
+        .community-button:hover {
+          transform: translateX(5px);
+          background: rgba(255, 255, 255, 0.1);
+          border-color: #ff0000;
+        }
+
+        .community-button .icon {
+          font-size: 2rem;
+          min-width: 50px;
+          text-align: center;
+        }
+
+        .community-button strong {
+          display: block;
+          margin-bottom: 0.2rem;
+        }
+
+        .community-button p {
+          margin: 0;
+          font-size: 0.9rem;
+          color: #aaa;
+        }
+
+        .community-button.telegram:hover {
+          border-color: #0088cc;
+        }
+
+        .community-button.tiktok:hover {
+          border-color: #ff0050;
+        }
+
+        .community-button.twitter:hover {
+          border-color: #1da1f2;
+        }
+
+        /* Roadmap */
+        #roadmap ul {
+          list-style: none;
+          padding-left: 0;
+        }
+
+        #roadmap li {
+          padding: 1rem;
+          margin: 0.5rem 0;
+          background: rgba(0, 0, 0, 0.5);
+          border-left: 4px solid #ff0000;
+          border-radius: 5px;
+          transition: all 0.3s ease;
+        }
+
+        #roadmap li:hover {
+          transform: translateX(10px);
+          background: rgba(255, 0, 0, 0.1);
+        }
+
+        footer {
+          text-align: center;
+          padding: 2rem;
+          background: rgba(0, 0, 0, 0.5);
+          margin-top: 4rem;
+        }
+
+        /* Animations */
+        .reveal {
+          opacity: 0;
+          transform: translateY(30px);
+          animation: fadeInUp 0.6s ease forwards;
+        }
+
+        @keyframes fadeInUp {
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+          h1 {
+            font-size: 3rem;
+          }
+
+          h2 {
+            font-size: 2rem;
+          }
+
+          .social-buttons {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            top: 10px;
+            right: 10px;
+          }
+
+          .social-button {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.9rem;
+          }
+
+          nav {
+            flex-wrap: wrap;
+            gap: 1rem;
+          }
+
+          .token-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+          }
+          
+          .social-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .buy-button-large {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+          }
+          
+          .token-info-section {
+            padding: 2rem 1rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .token-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .social-button {
+            flex: 1 1 calc(50% - 0.5rem);
+            min-width: 120px;
+          }
+        }
+      `}</style>
     </>
   );
 }
