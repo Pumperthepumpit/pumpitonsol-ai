@@ -238,68 +238,107 @@ export default function Home() {
   };
 
   const detectFaces = async (imageElement) => {
-    if (!faceDetection || faceDetection === 'fallback') {
-      return [{
-        boundingBox: {
-          originX: imageElement.width * 0.2,
-          originY: imageElement.height * 0.15,
-          width: imageElement.width * 0.6,
-          height: imageElement.height * 0.7
-        },
-        keypoints: [
-          { 
-            x: imageElement.width * 0.5, 
-            y: imageElement.height * 0.65,
-            category: 'MOUTH_CENTER'
-          }
-        ]
-      }];
-    }
+    // Try Face-api.js first for 68 landmark points
+    if (faceDetection === 'faceapi' && window.faceapi) {
+      try {
+        console.log('🔍 Using advanced Face-api.js detection...');
+        const detections = await faceapi.detectAllFaces(imageElement, 
+          new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks();
+        
+        if (detections.length === 0) {
+          console.log('⚠️ No faces detected, using fallback');
+          return [{
+            boundingBox: {
+              originX: imageElement.width * 0.2,
+              originY: imageElement.height * 0.15,
+              width: imageElement.width * 0.6,
+              height: imageElement.height * 0.7
+            },
+            landmarks: null
+          }];
+        }
 
-    try {
-      console.log('🔍 Detecting faces with AI...');
-      const detections = faceDetection.detect(imageElement);
-      
-      if (detections.detections.length === 0) {
-        console.log('⚠️ No faces detected, using fallback positioning');
-        return [{
-          boundingBox: {
-            originX: imageElement.width * 0.2,
-            originY: imageElement.height * 0.15,
-            width: imageElement.width * 0.6,
-            height: imageElement.height * 0.7
-          },
-          keypoints: [
-            { 
-              x: imageElement.width * 0.5, 
-              y: imageElement.height * 0.65,
-              category: 'MOUTH_CENTER'
-            }
-          ]
-        }];
+        console.log(`✅ Found ${detections.length} face(s) with 68 landmarks!`);
+        
+        // Convert Face-api.js format to our format
+        return detections.map(detection => {
+          const landmarks = detection.landmarks;
+          const mouth = landmarks.getMouth();
+          const nose = landmarks.getNose();
+          
+          // Calculate face angle from nose tip to nose base
+          const noseTop = nose[0];
+          const noseBottom = nose[6];
+          const faceAngle = Math.atan2(noseBottom.x - noseTop.x, noseBottom.y - noseTop.y);
+          
+          return {
+            boundingBox: {
+              originX: detection.detection.box.x,
+              originY: detection.detection.box.y,
+              width: detection.detection.box.width,
+              height: detection.detection.box.height
+            },
+            landmarks: landmarks,
+            mouthPoints: mouth,
+            faceAngle: faceAngle,
+            faceDirection: faceAngle > 0.2 ? 'right' : faceAngle < -0.2 ? 'left' : 'center'
+          };
+        });
+      } catch (error) {
+        console.error('Face-api.js error:', error);
       }
-
-      console.log(`✅ Found ${detections.detections.length} face(s)!`);
-      return detections.detections;
-      
-    } catch (error) {
-      console.error('❌ Face detection error:', error);
-      return [{
-        boundingBox: {
-          originX: imageElement.width * 0.2,
-          originY: imageElement.height * 0.15,
-          width: imageElement.width * 0.6,
-          height: imageElement.height * 0.7
-        },
-        keypoints: [
-          { 
-            x: imageElement.width * 0.5, 
-            y: imageElement.height * 0.65,
-            category: 'MOUTH_CENTER'
-          }
-        ]
-      }];
     }
+    
+    // MediaPipe fallback
+    if (faceDetection && faceDetection !== 'fallback' && faceDetection !== 'faceapi') {
+      try {
+        console.log('🔍 Using MediaPipe detection...');
+        const detections = faceDetection.detect(imageElement);
+        
+        if (detections.detections.length === 0) {
+          console.log('⚠️ No faces detected, using fallback positioning');
+          return [{
+            boundingBox: {
+              originX: imageElement.width * 0.2,
+              originY: imageElement.height * 0.15,
+              width: imageElement.width * 0.6,
+              height: imageElement.height * 0.7
+            },
+            keypoints: [
+              { 
+                x: imageElement.width * 0.5, 
+                y: imageElement.height * 0.65,
+                category: 'MOUTH_CENTER'
+              }
+            ]
+          }];
+        }
+
+        console.log(`✅ Found ${detections.detections.length} face(s)!`);
+        return detections.detections;
+        
+      } catch (error) {
+        console.error('❌ Face detection error:', error);
+      }
+    }
+    
+    // Ultimate fallback
+    return [{
+      boundingBox: {
+        originX: imageElement.width * 0.2,
+        originY: imageElement.height * 0.15,
+        width: imageElement.width * 0.6,
+        height: imageElement.height * 0.7
+      },
+      keypoints: [
+        { 
+          x: imageElement.width * 0.5, 
+          y: imageElement.height * 0.65,
+          category: 'MOUTH_CENTER'
+        }
+      ]
+    }];
   };
 
   const generateMeme = async () => {
@@ -343,22 +382,43 @@ export default function Home() {
             height: face.boundingBox.height
           };
           
-          let mouthPosition = { x: faceRegion.x + faceRegion.width / 2, y: faceRegion.y + faceRegion.height * 0.75 };
-          
-          if (face.keypoints) {
-            const mouthKeypoint = face.keypoints.find(kp => 
-              kp.category === 'MOUTH_CENTER' || 
-              kp.category === 'MOUTH' ||
-              kp.category === 'mouth'
-            );
-            if (mouthKeypoint) {
-              mouthPosition = { x: mouthKeypoint.x, y: mouthKeypoint.y };
-              console.log('👄 Found mouth keypoint!');
+          // Use advanced landmarks if available
+          if (face.landmarks && face.mouthPoints) {
+            // Calculate exact mouth position from 68 landmarks
+            const mouthPoints = face.mouthPoints;
+            const mouthTop = mouthPoints[14]; // Upper lip top
+            const mouthBottom = mouthPoints[18]; // Lower lip bottom
+            const mouthLeft = mouthPoints[0]; // Left corner
+            const mouthRight = mouthPoints[6]; // Right corner
+            
+            const mouthCenter = {
+              x: (mouthLeft.x + mouthRight.x) / 2,
+              y: (mouthTop.y + mouthBottom.y) / 2
+            };
+            
+            const mouthWidth = Math.abs(mouthRight.x - mouthLeft.x);
+            const mouthHeight = Math.abs(mouthBottom.y - mouthTop.y);
+            
+            drawAdvancedLips(ctx, mouthCenter, mouthWidth, mouthHeight, face.faceAngle);
+            drawDirectionalExclamations(ctx, faceRegion, face.faceDirection);
+          } else {
+            // Fallback to simple detection
+            let mouthPosition = { x: faceRegion.x + faceRegion.width / 2, y: faceRegion.y + faceRegion.height * 0.75 };
+            
+            if (face.keypoints) {
+              const mouthKeypoint = face.keypoints.find(kp => 
+                kp.category === 'MOUTH_CENTER' || 
+                kp.category === 'MOUTH' ||
+                kp.category === 'mouth'
+              );
+              if (mouthKeypoint) {
+                mouthPosition = { x: mouthKeypoint.x, y: mouthKeypoint.y };
+              }
             }
+            
+            drawPumperStyleLips(ctx, faceRegion, mouthPosition);
+            drawSideExclamationMarks(ctx, faceRegion, index % 2 === 0);
           }
-          
-          drawPumperStyleLips(ctx, faceRegion, mouthPosition);
-          drawSideExclamationMarks(ctx, faceRegion, index % 2 === 0);
         });
         
         canvas.toBlob((blob) => {
@@ -410,7 +470,121 @@ export default function Home() {
     a.click();
   };
 
-  // Pumper-style lip drawing
+  // Advanced lip drawing with exact positioning
+  const drawAdvancedLips = (ctx, mouthCenter, mouthWidth, mouthHeight, faceAngle) => {
+    ctx.save();
+    
+    // Translate and rotate based on face angle
+    ctx.translate(mouthCenter.x, mouthCenter.y);
+    ctx.rotate(faceAngle);
+    
+    // Scale lips to be oversized but proportional
+    const lipWidth = mouthWidth * 1.8;
+    const lipHeight = Math.max(mouthHeight * 3, lipWidth * 0.5);
+    
+    // Thick black outline
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = Math.max(6, lipWidth * 0.05);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    // Draw exaggerated cartoon lips
+    ctx.beginPath();
+    
+    // Upper lip
+    ctx.moveTo(-lipWidth/2, 0);
+    ctx.quadraticCurveTo(-lipWidth/3, -lipHeight/2, 0, -lipHeight/2.5);
+    ctx.quadraticCurveTo(lipWidth/3, -lipHeight/2, lipWidth/2, 0);
+    
+    // Lower lip
+    ctx.quadraticCurveTo(lipWidth/3, lipHeight * 0.8, 0, lipHeight * 0.9);
+    ctx.quadraticCurveTo(-lipWidth/3, lipHeight * 0.8, -lipWidth/2, 0);
+    
+    ctx.closePath();
+    
+    // Fill with bright red
+    ctx.fillStyle = '#FF0000';
+    ctx.fill();
+    ctx.stroke();
+    
+    // Add highlights
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.beginPath();
+    ctx.ellipse(0, -lipHeight/3, lipWidth/4, lipHeight/6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.beginPath();
+    ctx.ellipse(0, lipHeight/3, lipWidth/3, lipHeight/5, 0, 0, Math.PI);
+    ctx.fill();
+    
+    ctx.restore();
+  };
+
+  // Directional exclamation marks based on face direction
+  const drawDirectionalExclamations = (ctx, faceRegion, direction) => {
+    const { x, y, width, height } = faceRegion;
+    
+    const exclamationSize = Math.max(width * 0.15, 25);
+    let baseX, offsetDirection;
+    
+    // Position based on face direction
+    if (direction === 'left') {
+      baseX = x - exclamationSize * 0.5;
+      offsetDirection = -1;
+    } else if (direction === 'right') {
+      baseX = x + width + exclamationSize * 0.5;
+      offsetDirection = 1;
+    } else {
+      baseX = x + width / 2;
+      offsetDirection = 0;
+    }
+    
+    const baseY = y - exclamationSize * 0.5;
+    
+    const positions = [
+      { x: baseX + offsetDirection * exclamationSize * 0.5, y: baseY - exclamationSize * 0.3, rotation: offsetDirection * 0.2 },
+      { x: baseX, y: baseY - exclamationSize * 0.8, rotation: 0 },
+      { x: baseX + offsetDirection * exclamationSize * 0.3, y: baseY - exclamationSize * 1.3, rotation: -offsetDirection * 0.1 }
+    ];
+    
+    ctx.save();
+    
+    positions.forEach((pos) => {
+      ctx.save();
+      ctx.translate(pos.x, pos.y);
+      ctx.rotate(pos.rotation);
+      
+      // Bold red exclamation marks
+      ctx.fillStyle = '#FF0000';
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = Math.max(4, exclamationSize * 0.08);
+      
+      // Main body
+      const bodyWidth = exclamationSize * 0.35;
+      const bodyHeight = exclamationSize * 0.8;
+      
+      ctx.beginPath();
+      ctx.moveTo(0, -bodyHeight);
+      ctx.lineTo(-bodyWidth/2, 0);
+      ctx.lineTo(bodyWidth/2, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      
+      // Dot
+      const dotRadius = exclamationSize * 0.18;
+      ctx.beginPath();
+      ctx.arc(0, dotRadius * 1.5, dotRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      
+      ctx.restore();
+    });
+    
+    ctx.restore();
+  };
+
+  // Original lip drawing function remains as fallback
   const drawPumperStyleLips = (ctx, faceRegion, mouthPosition) => {
     const mouthX = mouthPosition.x;
     const mouthY = mouthPosition.y;
@@ -775,7 +949,8 @@ export default function Home() {
             <div className="ai-status">
               {faceDetection === null && <p>🔄 Loading AI face detection...</p>}
               {faceDetection === 'fallback' && <p>⚠️ Using basic positioning (AI unavailable)</p>}
-              {faceDetection && faceDetection !== 'fallback' && <p>🤖 AI face detection ready!</p>}
+              {faceDetection === 'faceapi' && <p>🤖 Advanced AI with 68 facial landmarks ready!</p>}
+              {faceDetection && faceDetection !== 'fallback' && faceDetection !== 'faceapi' && <p>🤖 AI face detection ready!</p>}
             </div>
             
             <div className="meme-upload">
