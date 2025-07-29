@@ -268,31 +268,31 @@ export default function Home() {
         
         try {
           // Load lips from public root
-          console.log('📎 Loading lips.png from public root...');
+          console.log('📎 Loading lips.png from meme-assets folder...');
           await new Promise((resolve, reject) => {
             lipImage.onload = () => {
               console.log('✅ Lips PNG loaded successfully!');
               resolve();
             };
             lipImage.onerror = () => {
-              console.error('❌ Failed to load lips.png from /lips.png');
-              reject(new Error('Failed to load lips.png - make sure it exists in /public/'));
+              console.error('❌ Failed to load lips.png from /meme-assets/lips.png');
+              reject(new Error('Failed to load lips.png - make sure it exists in /public/meme-assets/'));
             };
-            lipImage.src = '/lips.png';
+            lipImage.src = '/meme-assets/lips.png';
           });
           
           // Load exclamations from public root
-          console.log('📎 Loading exclamation.png from public root...');
+          console.log('📎 Loading exclamation.png from meme-assets folder...');
           await new Promise((resolve, reject) => {
             exclamationImage.onload = () => {
               console.log('✅ Exclamation PNG loaded successfully!');
               resolve();
             };
             exclamationImage.onerror = () => {
-              console.error('❌ Failed to load exclamation.png from /exclamation.png');
-              reject(new Error('Failed to load exclamation.png - make sure it exists in /public/'));
+              console.error('❌ Failed to load exclamation.png from /meme-assets/exclamation.png');
+              reject(new Error('Failed to load exclamation.png - make sure it exists in /public/meme-assets/'));
             };
-            exclamationImage.src = '/exclamation.png';
+            exclamationImage.src = '/meme-assets/exclamation.png';
           });
           
           console.log('🎉 All PNG assets loaded successfully!');
@@ -340,40 +340,28 @@ export default function Home() {
             const minExclamationWidth = Math.max(exclamationWidth, 20);
             const minExclamationHeight = Math.max(exclamationHeight, 30);
             
-            // Position 3 exclamation marks based on face direction
-            let exclamationPositions;
-            const spacing = 25; // Fixed spacing between exclamations
+            // Position single exclamation image based on face direction
+            let exclamationX, exclamationY;
             
             if (face.faceDirection === 'left') {
-              exclamationPositions = [
-                { x: exclamationPixelX - spacing, y: exclamationPixelY + 10 },
-                { x: exclamationPixelX - spacing/2, y: exclamationPixelY - 5 },
-                { x: exclamationPixelX, y: exclamationPixelY + 15 }
-              ];
+              exclamationX = exclamationPixelX - 30; // Shift left
+              exclamationY = exclamationPixelY;
             } else if (face.faceDirection === 'right') {
-              exclamationPositions = [
-                { x: exclamationPixelX, y: exclamationPixelY + 15 },
-                { x: exclamationPixelX + spacing/2, y: exclamationPixelY - 5 },
-                { x: exclamationPixelX + spacing, y: exclamationPixelY + 10 }
-              ];
+              exclamationX = exclamationPixelX + 30; // Shift right
+              exclamationY = exclamationPixelY;
             } else {
               // Center
-              exclamationPositions = [
-                { x: exclamationPixelX - spacing, y: exclamationPixelY + 5 },
-                { x: exclamationPixelX, y: exclamationPixelY },
-                { x: exclamationPixelX + spacing, y: exclamationPixelY + 5 }
-              ];
+              exclamationX = exclamationPixelX;
+              exclamationY = exclamationPixelY;
             }
             
-            // Draw exclamation marks
-            exclamationPositions.forEach((pos, i) => {
-              const finalX = pos.x - (minExclamationWidth / 2);
-              const finalY = pos.y - (minExclamationHeight / 2);
-              
-              console.log(`❗ Drawing exclamation ${i + 1} at: (${Math.round(finalX)}, ${Math.round(finalY)}) size: ${Math.round(minExclamationWidth)}x${Math.round(minExclamationHeight)}`);
-              
-              ctx.drawImage(exclamationImage, finalX, finalY, minExclamationWidth, minExclamationHeight);
-            });
+            // Draw single exclamation image (which already contains 3 marks)
+            const finalX = exclamationX - (minExclamationWidth / 2);
+            const finalY = exclamationY - (minExclamationHeight / 2);
+            
+            console.log(`❗ Drawing exclamation image at: (${Math.round(finalX)}, ${Math.round(finalY)}) size: ${Math.round(minExclamationWidth)}x${Math.round(minExclamationHeight)}`);
+            
+            ctx.drawImage(exclamationImage, finalX, finalY, minExclamationWidth, minExclamationHeight);
           });
           
           // Convert canvas to blob and create download URL
@@ -726,7 +714,7 @@ export default function Home() {
                 <div className="error-message">
                   ⚠️ {error}
                   <br />
-                  <small>Make sure lips.png and exclamation.png are in your /public/ folder</small>
+                  <small>Make sure lips.png and exclamation.png are in your /public/meme-assets/ folder</small>
                 </div>
               )}
               
