@@ -306,7 +306,7 @@ export default function Home() {
             const exclamationPixelX = face.exclamationPosition.centerX * canvas.width;
             const exclamationPixelY = face.exclamationPosition.centerY * canvas.height;
             
-          // Scale lips based on face size and mouth width (improved scaling)
+            // Scale lips based on face size and mouth width (improved scaling)
             const baseLipWidth = Math.max((face.mouthPosition.width || 0.08) * canvas.width, 50); // Minimum 50px width
             const lipAspectRatio = lipImage.height / lipImage.width;
             const lipWidth = baseLipWidth;
@@ -337,12 +337,6 @@ export default function Home() {
             
             // Draw single exclamation image
             ctx.drawImage(exclamationImage, exclamationX, exclamationY, exclamationWidth, exclamationHeight);
-            const finalX = exclamationX - (minExclamationWidth / 2);
-            const finalY = exclamationY - (minExclamationHeight / 2);
-            
-            console.log(`❗ Drawing exclamation image at: (${Math.round(finalX)}, ${Math.round(finalY)}) size: ${Math.round(minExclamationWidth)}x${Math.round(minExclamationHeight)}`);
-            
-            ctx.drawImage(exclamationImage, finalX, finalY, minExclamationWidth, minExclamationHeight);
           });
           
           // Convert canvas to blob and create download URL
@@ -1690,26 +1684,6 @@ export default function Home() {
           }
 
           .token-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .community-memes {
-            grid-template-columns: 1fr;
-          }
-
-          .pumper-float img {
-            width: 200px;
-            height: 200px;
-          }
-
-          h1 {
-            font-size: 2rem;
-          }
-
-          .mobile-social-icons {
-            font-size: 1.2rem;
-            gap: 0.8rem;
-  .token-grid {
             grid-template-columns: repeat(2, 1fr);
             gap: 0.8rem;
           }
