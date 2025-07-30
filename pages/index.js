@@ -3031,5 +3031,3 @@ export default function Home() {
     </>
   );
 }
-		  
-		  
