@@ -335,7 +335,8 @@ export default function Home() {
             console.log(`❗ Drawing exclamation CENTERED at: (${Math.round(exclamationX)}, ${Math.round(exclamationY)}) size: ${Math.round(exclamationWidth)}x${Math.round(exclamationHeight)}`);
             console.log(`   Exclamation position: X=${face.exclamationPosition.centerX}, Y=${face.exclamationPosition.centerY}`);
             
-            // Draw single exclamation image (which already contains 3 marks)
+            // Draw single exclamation image
+            ctx.drawImage(exclamationImage, exclamationX, exclamationY, exclamationWidth, exclamationHeight);
             const finalX = exclamationX - (minExclamationWidth / 2);
             const finalY = exclamationY - (minExclamationHeight / 2);
             
