@@ -2222,4 +2222,4 @@ export default function Home() {
           padding: 0.8rem;
           background: rgba(255, 255, 255, 0.1);
           border: 2px solid rgba(255, 255, 0, 0.5);
-          border-radius: 10px;
+          border-radius: 10px; 
