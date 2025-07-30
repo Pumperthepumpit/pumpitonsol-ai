@@ -2221,10 +2221,9 @@ export default function Home() {
             gap: 0.8rem;
           }
         }
-      `}</style>
-    </>
-  );
-}-size: 1rem;
+      
+          font-size: 1rem;
+        }
           backdrop-filter: blur(5px);
           max-width: 1200px;
         }
