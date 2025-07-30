@@ -306,8 +306,8 @@ export default function Home() {
             const exclamationPixelX = face.exclamationPosition.centerX * canvas.width;
             const exclamationPixelY = face.exclamationPosition.centerY * canvas.height;
             
-            // Scale lips based on face size and mouth width
-            const baseLipWidth = Math.max(face.mouthPosition.width * canvas.width * 2.5, 50); // Minimum 50px width
+          // Scale lips based on face size and mouth width (improved scaling)
+            const baseLipWidth = Math.max((face.mouthPosition.width || 0.08) * canvas.width, 50); // Minimum 50px width
             const lipAspectRatio = lipImage.height / lipImage.width;
             const lipWidth = baseLipWidth;
             const lipHeight = baseLipWidth * lipAspectRatio;
@@ -316,43 +316,24 @@ export default function Home() {
             const lipX = mouthPixelX - (lipWidth / 2);
             const lipY = mouthPixelY - (lipHeight / 2);
             
-            console.log(`👄 Drawing lips at: (${Math.round(lipX)}, ${Math.round(lipY)}) size: ${Math.round(lipWidth)}x${Math.round(lipHeight)}`);
+            console.log(`👄 Drawing lips CENTERED at: (${Math.round(lipX)}, ${Math.round(lipY)}) size: ${Math.round(lipWidth)}x${Math.round(lipHeight)}`);
+            console.log(`   Mouth detected at: X=${face.mouthPosition.centerX}, Y=${face.mouthPosition.centerY}`);
             
-            // Draw lips with rotation if needed
-            if (face.mouthPosition.angle && Math.abs(face.mouthPosition.angle) > 0.1) {
-              ctx.save();
-              ctx.translate(mouthPixelX, mouthPixelY);
-              ctx.rotate(face.mouthPosition.angle);
-              ctx.drawImage(lipImage, -lipWidth/2, -lipHeight/2, lipWidth, lipHeight);
-              ctx.restore();
-            } else {
-              ctx.drawImage(lipImage, lipX, lipY, lipWidth, lipHeight);
-            }
+            // Draw lips (simplified - no rotation for now)
+            ctx.drawImage(lipImage, lipX, lipY, lipWidth, lipHeight);
             
-            // Calculate exclamation mark size and positions
-            const faceScale = Math.max(face.faceSize || 0.2, 0.1); // Default to 0.2 if missing
-            const exclamationScale = faceScale * 0.8; // Scale based on face size
-            const exclamationWidth = exclamationImage.width * exclamationScale;
-            const exclamationHeight = exclamationImage.height * exclamationScale;
+            // Calculate exclamation size - better scaling like Gemini's example
+            const exclamationScale = (face.faceSize || 0.25) * 0.3; // 30% of face size
+            const exclamationWidth = canvas.width * exclamationScale;
+            const exclamationAspectRatio = exclamationImage.height / exclamationImage.width;
+            const exclamationHeight = exclamationWidth * exclamationAspectRatio;
             
-            // Ensure minimum size
-            const minExclamationWidth = Math.max(exclamationWidth, 20);
-            const minExclamationHeight = Math.max(exclamationHeight, 30);
+            // Center exclamation on detected position
+            const exclamationX = exclamationPixelX - (exclamationWidth / 2);
+            const exclamationY = exclamationPixelY - (exclamationHeight / 2);
             
-            // Position single exclamation image based on face direction
-            let exclamationX, exclamationY;
-            
-            if (face.faceDirection === 'left') {
-              exclamationX = exclamationPixelX - 30; // Shift left
-              exclamationY = exclamationPixelY;
-            } else if (face.faceDirection === 'right') {
-              exclamationX = exclamationPixelX + 30; // Shift right
-              exclamationY = exclamationPixelY;
-            } else {
-              // Center
-              exclamationX = exclamationPixelX;
-              exclamationY = exclamationPixelY;
-            }
+            console.log(`❗ Drawing exclamation CENTERED at: (${Math.round(exclamationX)}, ${Math.round(exclamationY)}) size: ${Math.round(exclamationWidth)}x${Math.round(exclamationHeight)}`);
+            console.log(`   Exclamation position: X=${face.exclamationPosition.centerX}, Y=${face.exclamationPosition.centerY}`);
             
             // Draw single exclamation image (which already contains 3 marks)
             const finalX = exclamationX - (minExclamationWidth / 2);
