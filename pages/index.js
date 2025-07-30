@@ -20,6 +20,12 @@ export default function Home() {
     about: false
   });
   const [jupiterLoaded, setJupiterLoaded] = useState(false);
+  
+  // New states for multi-tier detection
+  const [detectionMode, setDetectionMode] = useState('auto');
+  const [clickPosition, setClickPosition] = useState(null);
+  const [showModeSelector, setShowModeSelector] = useState(false);
+  const [detectionStatus, setDetectionStatus] = useState('');
 
   useEffect(() => {
     const checkJupiter = setInterval(() => {
@@ -171,16 +177,14 @@ export default function Home() {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Store the file immediately
     setSelectedFile(file);
     setError('');
     setGeneratedMeme(null);
+    setDetectionStatus('');
     
-    // Create and set preview immediately
     const originalPreview = URL.createObjectURL(file);
     setPreview(originalPreview);
 
-    // Only show X form if no handle exists
     if (!xHandle) {
       setShowXForm(true);
     }
@@ -190,7 +194,6 @@ export default function Home() {
     e.preventDefault();
     if (xHandle && xHandle.trim()) {
       setShowXForm(false);
-      // File and preview are already set, no need to recreate
     }
   };
 
@@ -207,10 +210,10 @@ export default function Home() {
 
     setIsProcessing(true);
     setError('');
+    setShowModeSelector(false);
+    setDetectionStatus('🚀 Starting multi-tier face detection...');
 
     try {
-      console.log('🚀 Starting PNG overlay meme generation...');
-      
       // Convert image to base64
       const reader = new FileReader();
       const imageDataUrl = await new Promise((resolve, reject) => {
@@ -219,9 +222,384 @@ export default function Home() {
         reader.readAsDataURL(selectedFile);
       });
 
-      console.log('🧠 Getting positioning data from Gemini AI...');
+      // Create image element
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = imageDataUrl;
+      });
 
-      // Get positioning data from Gemini
+      // Create canvas
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      // Load PNG assets
+      const [lipImage, exclamationImage] = await Promise.all([
+        loadImage('/meme-assets/lips.png'),
+        loadImage('/meme-assets/exclamation.png')
+      ]);
+
+      console.log('✅ PNG assets loaded successfully!');
+
+      let positioningData = null;
+
+      // Handle different detection modes
+      if (detectionMode === 'manual' && clickPosition) {
+        console.log('📍 Using manual positioning...');
+        setDetectionStatus('📍 Using manual positioning...');
+        positioningData = {
+          method: 'manual',
+          faces: [{
+            mouthPosition: {
+              centerX: clickPosition.x / 100,
+              centerY: clickPosition.y / 100
+            },
+            exclamationPosition: {
+              centerX: clickPosition.x / 100,
+              centerY: Math.max(0.1, (clickPosition.y / 100) - 0.4)
+            },
+            faceSize: 0.3
+          }]
+        };
+      } else {
+        // Try MediaPipe first (for human faces)
+        console.log('🔍 Tier 1: Attempting MediaPipe detection for human faces...');
+        setDetectionStatus('🧑 Checking for human faces with MediaPipe...');
+        positioningData = await tryMediaPipeDetection(canvas);
+
+        // If MediaPipe fails, try Replicate for anime/cartoons
+        if (!positioningData || positioningData.faces.length === 0) {
+          console.log('🎌 Tier 2: Trying Replicate anime/cartoon detection...');
+          setDetectionStatus('🦸 Checking for anime/cartoon characters...');
+          positioningData = await tryReplicateAnimeDetection(imageDataUrl);
+        }
+
+        // If anime detection fails, try Replicate for animals
+        if (!positioningData || positioningData.faces.length === 0) {
+          console.log('🐾 Tier 3: Trying Replicate animal detection...');
+          setDetectionStatus('🐕 Checking for animal faces...');
+          positioningData = await tryReplicateAnimalDetection(imageDataUrl);
+        }
+
+        // If all Replicate models fail, try Gemini as fallback
+        if (!positioningData || positioningData.faces.length === 0) {
+          console.log('🤖 Tier 4: Trying Gemini AI as fallback...');
+          setDetectionStatus('🤖 Using Gemini AI for general detection...');
+          positioningData = await tryGeminiDetection(imageDataUrl);
+        }
+
+        // If everything fails, prompt for manual mode
+        if (!positioningData || positioningData.faces.length === 0) {
+          setError('No faces detected! Try manual positioning mode.');
+          setShowModeSelector(true);
+          setIsProcessing(false);
+          setDetectionStatus('');
+          return;
+        }
+      }
+
+      console.log(`✅ Using ${positioningData.method} detection method`);
+      console.log(`📊 Detected ${positioningData.faces.length} face(s)`);
+      setDetectionStatus(`✅ Detected ${positioningData.faces.length} face(s) using ${positioningData.method}`);
+
+      // Clear and redraw original image
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+
+      // Process each detected/positioned face
+      positioningData.faces.forEach((face, index) => {
+        console.log(`\n🎭 Processing face ${index + 1}:`);
+        
+        let mouthCenterX, mouthCenterY, targetLipWidth, targetLipHeight;
+        let exclamationX, exclamationY, exclamationWidth, exclamationHeight;
+        let faceAngle = 0;
+
+        if (positioningData.method === 'mediapipe' && face.landmarks) {
+          // High precision MediaPipe positioning
+          const { mouthBounds, faceMetrics } = face;
+          
+          mouthCenterX = mouthBounds.centerX;
+          mouthCenterY = mouthBounds.centerY;
+          
+          // BIGGER lips for meme effect
+          const lipScale = 3.0; // Even bigger!
+          const lipAspectRatio = lipImage.width / lipImage.height;
+          targetLipWidth = Math.max(
+            mouthBounds.width * lipScale,
+            canvas.width * 0.15
+          );
+          targetLipHeight = targetLipWidth / lipAspectRatio;
+          
+          faceAngle = faceMetrics.angle;
+          
+          exclamationX = faceMetrics.foreheadCenter.x;
+          exclamationY = faceMetrics.foreheadCenter.y - 80;
+          exclamationWidth = faceMetrics.faceWidth * 0.7;
+          exclamationHeight = exclamationWidth / (exclamationImage.width / exclamationImage.height);
+          
+        } else {
+          // Replicate, Gemini, or manual positioning
+          mouthCenterX = face.mouthPosition.centerX * canvas.width;
+          mouthCenterY = face.mouthPosition.centerY * canvas.height;
+          
+          // Different scaling based on detection method
+          let lipScale = 2.5;
+          if (positioningData.method === 'replicate-anime') {
+            lipScale = 3.0; // Bigger for anime style
+          } else if (positioningData.method === 'replicate-animal') {
+            lipScale = 2.8; // Adjusted for animals
+          }
+          
+          const estimatedMouthWidth = canvas.width * (face.faceSize || 0.25) * 0.3;
+          const lipAspectRatio = lipImage.width / lipImage.height;
+          targetLipWidth = Math.max(
+            estimatedMouthWidth * lipScale,
+            canvas.width * 0.12
+          );
+          targetLipHeight = targetLipWidth / lipAspectRatio;
+          
+          exclamationX = face.exclamationPosition.centerX * canvas.width;
+          exclamationY = face.exclamationPosition.centerY * canvas.height;
+          const exclamationScale = (face.faceSize || 0.25) * 2.5;
+          exclamationWidth = canvas.width * exclamationScale;
+          exclamationHeight = exclamationWidth / (exclamationImage.width / exclamationImage.height);
+        }
+
+        console.log(`👄 Lip size: ${Math.round(targetLipWidth)}x${Math.round(targetLipHeight)}`);
+        console.log(`📍 Mouth center: (${Math.round(mouthCenterX)}, ${Math.round(mouthCenterY)})`);
+
+        // Draw lips with rotation if detected
+        ctx.save();
+        ctx.translate(mouthCenterX, mouthCenterY);
+        if (faceAngle) ctx.rotate(faceAngle);
+        ctx.drawImage(
+          lipImage,
+          -targetLipWidth / 2,
+          -targetLipHeight / 2,
+          targetLipWidth,
+          targetLipHeight
+        );
+        ctx.restore();
+
+        // Draw exclamation
+        ctx.drawImage(
+          exclamationImage,
+          exclamationX - exclamationWidth / 2,
+          exclamationY - exclamationHeight / 2,
+          exclamationWidth,
+          exclamationHeight
+        );
+
+        console.log(`✅ Overlays applied using ${positioningData.method}`);
+      });
+
+      // Convert to blob and display
+      canvas.toBlob((blob) => {
+        const memeUrl = URL.createObjectURL(blob);
+        setPreview(memeUrl);
+        setGeneratedMeme(memeUrl);
+        
+        setCommunityMemes(prev => [{
+          url: memeUrl,
+          creator: xHandle,
+          timestamp: Date.now(),
+          pngOverlay: true,
+          facesDetected: positioningData.faces.length,
+          detectionMethod: positioningData.method
+        }, ...prev].slice(0, 3));
+        
+        setIsProcessing(false);
+        setClickPosition(null);
+        setDetectionStatus('');
+        
+        console.log(`🎉 Meme generated successfully using ${positioningData.method}!`);
+      }, 'image/png');
+      
+    } catch (error) {
+      console.error('❌ Meme generation failed:', error);
+      setError(`Meme generation failed: ${error.message}`);
+      setIsProcessing(false);
+      setDetectionStatus('');
+    }
+  };
+
+  // MediaPipe detection function
+  async function tryMediaPipeDetection(canvas) {
+    try {
+      if (!window.FaceMesh) {
+        console.log('MediaPipe not loaded, skipping...');
+        return null;
+      }
+
+      const faceMesh = new window.FaceMesh({
+        locateFile: (file) => {
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`;
+        }
+      });
+      
+      faceMesh.setOptions({
+        maxNumFaces: 5,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      });
+
+      let results = null;
+      
+      return new Promise((resolve) => {
+        faceMesh.onResults((mpResults) => {
+          results = mpResults;
+          
+          if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
+            resolve(null);
+            return;
+          }
+
+          const faces = results.multiFaceLandmarks.map((landmarks) => {
+            // Mouth landmarks
+            const mouthIndices = [13, 14, 269, 270, 267, 271, 272, 15, 16, 17, 18, 87, 86, 85, 84, 61, 291];
+            
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+            
+            mouthIndices.forEach(index => {
+              const point = landmarks[index];
+              const x = point.x * canvas.width;
+              const y = point.y * canvas.height;
+              minX = Math.min(minX, x);
+              maxX = Math.max(maxX, x);
+              minY = Math.min(minY, y);
+              maxY = Math.max(maxY, y);
+            });
+            
+            // Eye positions for angle
+            const leftEye = landmarks[33];
+            const rightEye = landmarks[263];
+            const angle = Math.atan2(
+              (rightEye.y - leftEye.y) * canvas.height,
+              (rightEye.x - leftEye.x) * canvas.width
+            );
+            
+            // Face width
+            const leftCheek = landmarks[234];
+            const rightCheek = landmarks[454];
+            const faceWidth = Math.abs(rightCheek.x - leftCheek.x) * canvas.width;
+            
+            // Forehead position
+            const forehead = landmarks[10];
+            
+            return {
+              landmarks: landmarks,
+              mouthBounds: {
+                centerX: (minX + maxX) / 2,
+                centerY: (minY + maxY) / 2,
+                width: maxX - minX,
+                height: maxY - minY
+              },
+              faceMetrics: {
+                angle: angle,
+                faceWidth: faceWidth,
+                foreheadCenter: {
+                  x: forehead.x * canvas.width,
+                  y: forehead.y * canvas.height
+                }
+              }
+            };
+          });
+
+          resolve({
+            method: 'mediapipe',
+            faces: faces
+          });
+        });
+
+        // Send image to MediaPipe
+        faceMesh.send({ image: canvas });
+        
+        // Timeout if no results
+        setTimeout(() => {
+          if (!results) resolve(null);
+        }, 1000);
+      });
+    } catch (error) {
+      console.error('MediaPipe error:', error);
+      return null;
+    }
+  }
+
+  // Replicate anime detection
+  async function tryReplicateAnimeDetection(imageDataUrl) {
+    try {
+      const response = await fetch('/api/detect-anime-face', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: imageDataUrl
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Anime detection failed');
+      }
+
+      const result = await response.json();
+      
+      if (result.faces && result.faces.length > 0) {
+        return {
+          method: 'replicate-anime',
+          faces: result.faces
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Replicate anime error:', error);
+      return null;
+    }
+  }
+
+  // Replicate animal detection
+  async function tryReplicateAnimalDetection(imageDataUrl) {
+    try {
+      const response = await fetch('/api/detect-animal-face', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: imageDataUrl
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Animal detection failed');
+      }
+
+      const result = await response.json();
+      
+      if (result.faces && result.faces.length > 0) {
+        return {
+          method: 'replicate-animal',
+          faces: result.faces
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Replicate animal error:', error);
+      return null;
+    }
+  }
+
+  // Gemini detection function (existing)
+  async function tryGeminiDetection(imageDataUrl) {
+    try {
       const response = await fetch('/api/analyze-image', {
         method: 'POST',
         headers: {
@@ -233,191 +611,45 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Positioning analysis failed');
+        throw new Error('Gemini API failed');
       }
 
       const positionData = await response.json();
-      console.log('📍 Full positioning data received:', JSON.stringify(positionData, null, 2));
-
-      if (!positionData.faces || positionData.faces.length === 0) {
-        throw new Error('No faces detected in image');
+      
+      if (positionData.faces && positionData.faces.length > 0) {
+        return {
+          method: 'gemini',
+          faces: positionData.faces
+        };
       }
-
-      console.log('🎨 Creating meme with PNG overlays...');
-
-      // Create canvas for meme generation
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
       
-      // Load the original image
-      const img = new Image();
-      
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = imageDataUrl;
-      });
-
-      // Set canvas size to match image
-      canvas.width = img.width;
-      canvas.height = img.height;
-      
-      console.log(`📐 Canvas size: ${canvas.width}x${canvas.height}`);
-      
-      // Draw original image
-      ctx.drawImage(img, 0, 0);
-      
-      // Load PNG assets
-      const lipImage = new Image();
-      const exclamationImage = new Image();
-      
-      // Load lips PNG
-      await new Promise((resolve, reject) => {
-        lipImage.onload = () => {
-          console.log('✅ Lips PNG loaded successfully!');
-          console.log(`   Original lips dimensions: ${lipImage.width}x${lipImage.height}`);
-          resolve();
-        };
-        lipImage.onerror = () => {
-          reject(new Error('Failed to load lips.png'));
-        };
-        lipImage.src = '/meme-assets/lips.png';
-      });
-      
-      // Load exclamation PNG
-      await new Promise((resolve, reject) => {
-        exclamationImage.onload = () => {
-          console.log('✅ Exclamation PNG loaded successfully!');
-          console.log(`   Original exclamation dimensions: ${exclamationImage.width}x${exclamationImage.height}`);
-          resolve();
-        };
-        exclamationImage.onerror = () => {
-          reject(new Error('Failed to load exclamation.png'));
-        };
-        exclamationImage.src = '/meme-assets/exclamation.png';
-      });
-      
-      console.log('🎉 All PNG assets loaded successfully!');
-      
-      // Process each detected face
-      positionData.faces.forEach((face, index) => {
-        console.log(`\n🎭 Processing face ${index + 1}:`);
-        console.log(`   Face data:`, JSON.stringify(face, null, 2));
-        
-        // Calculate actual pixel positions from percentages
-        const mouthPixelX = face.mouthPosition.centerX * canvas.width;
-        const mouthPixelY = face.mouthPosition.centerY * canvas.height;
-        const exclamationPixelX = face.exclamationPosition.centerX * canvas.width;
-        const exclamationPixelY = face.exclamationPosition.centerY * canvas.height;
-        
-        // === IMPROVED LIP SIZING ===
-        // Calculate base scale from canvas size
-        const canvasMinDimension = Math.min(canvas.width, canvas.height);
-        const baseScale = canvasMinDimension / 800; // Normalize to 800px base
-        
-        // Get face size scale
-        const faceScale = face.faceSize || 0.25;
-        
-        // Calculate lip dimensions
-        // Lips should be proportional to face size
-        const lipWidthPercent = Math.max(0.15, faceScale * 0.6); // 60% of face size, minimum 15% of canvas
-        const targetLipWidth = canvas.width * lipWidthPercent;
-        
-        // Maintain aspect ratio of the lip image
-        const lipAspectRatio = lipImage.width / lipImage.height;
-        const finalLipWidth = targetLipWidth;
-        const finalLipHeight = targetLipWidth / lipAspectRatio;
-        
-        // Position lips centered on mouth
-        const lipX = mouthPixelX - (finalLipWidth / 2);
-        const lipY = mouthPixelY - (finalLipHeight / 2);
-        
-        console.log(`👄 Lip calculations:`);
-        console.log(`   Canvas size: ${canvas.width}x${canvas.height}`);
-        console.log(`   Face scale: ${faceScale}`);
-        console.log(`   Lip width percent: ${lipWidthPercent}`);
-        console.log(`   Final lip size: ${Math.round(finalLipWidth)}x${Math.round(finalLipHeight)}`);
-        console.log(`   Lip position: (${Math.round(lipX)}, ${Math.round(lipY)})`);
-        console.log(`   Mouth coordinates: (${face.mouthPosition.centerX}, ${face.mouthPosition.centerY})`);
-        
-        // Save context for potential transformations
-        ctx.save();
-        
-        // Handle face direction for mirroring
-        if (face.faceDirection === 'left') {
-          // Face looking left - flip the lips horizontally
-          ctx.translate(mouthPixelX, mouthPixelY);
-          ctx.scale(-1, 1); // Flip horizontally
-          ctx.drawImage(lipImage, -finalLipWidth/2, -finalLipHeight/2, finalLipWidth, finalLipHeight);
-          console.log('   ← Lips mirrored for left-facing face');
-        } else if (face.faceDirection === 'right') {
-          // Face looking right - normal orientation
-          ctx.drawImage(lipImage, lipX, lipY, finalLipWidth, finalLipHeight);
-          console.log('   → Lips normal for right-facing face');
-        } else {
-          // Center facing - normal orientation
-          ctx.drawImage(lipImage, lipX, lipY, finalLipWidth, finalLipHeight);
-          console.log('   ↑ Lips normal for center-facing face');
-        }
-        
-        ctx.restore();
-        
-        // === IMPROVED EXCLAMATION SIZING ===
-        // Exclamations should also be proportional to face
-        const exclamationWidthPercent = Math.max(0.18, faceScale * 0.7); // 70% of face size, minimum 18%
-        const targetExclamationWidth = canvas.width * exclamationWidthPercent;
-        
-        // Maintain aspect ratio
-        const exclamationAspectRatio = exclamationImage.width / exclamationImage.height;
-        const finalExclamationWidth = targetExclamationWidth;
-        const finalExclamationHeight = targetExclamationWidth / exclamationAspectRatio;
-        
-        // Center exclamation on detected position
-        const exclamationX = exclamationPixelX - (finalExclamationWidth / 2);
-        const exclamationY = exclamationPixelY - (finalExclamationHeight / 2);
-        
-        console.log(`\n❗ Exclamation calculations:`);
-        console.log(`   Exclamation width percent: ${exclamationWidthPercent}`);
-        console.log(`   Final exclamation size: ${Math.round(finalExclamationWidth)}x${Math.round(finalExclamationHeight)}`);
-        console.log(`   Exclamation position: (${Math.round(exclamationX)}, ${Math.round(exclamationY)})`);
-        console.log(`   Exclamation coordinates: (${face.exclamationPosition.centerX}, ${face.exclamationPosition.centerY})`);
-        
-        // Draw exclamation
-        ctx.drawImage(exclamationImage, exclamationX, exclamationY, finalExclamationWidth, finalExclamationHeight);
-      });
-      
-      // Convert canvas to blob and create download URL
-      canvas.toBlob((blob) => {
-        const memeUrl = URL.createObjectURL(blob);
-        setPreview(memeUrl);
-        setGeneratedMeme(memeUrl);
-        
-        // Add to community memes
-        const newMeme = {
-          url: memeUrl,
-          creator: xHandle,
-          timestamp: Date.now(),
-          pngOverlay: true,
-          facesDetected: positionData.faces.length
-        };
-        
-        setCommunityMemes(prev => {
-          const updated = [newMeme, ...prev].slice(0, 3);
-          return updated;
-        });
-        
-        setIsProcessing(false);
-        
-        console.log('\n🎉 PNG overlay meme generated successfully!');
-        console.log(`📊 Summary: ${positionData.faces.length} face(s) processed`);
-      }, 'image/png');
-      
+      return null;
     } catch (error) {
-      console.error('❌ PNG overlay meme generation failed:', error);
-      setError(`Meme generation failed: ${error.message}`);
-      setIsProcessing(false);
+      console.error('Gemini error:', error);
+      return null;
     }
+  }
+
+  // Helper function to load images
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`Failed to load ${src}`));
+      img.src = src;
+    });
+  }
+
+  // Manual click handler
+  const handleCanvasClick = (e) => {
+    if (detectionMode !== 'manual') return;
+    
+    const rect = e.target.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    
+    setClickPosition({ x, y });
+    console.log(`📍 Manual position set: ${x.toFixed(1)}%, ${y.toFixed(1)}%`);
   };
 
   const downloadMeme = () => {
@@ -425,17 +657,19 @@ export default function Home() {
     
     const a = document.createElement('a');
     a.href = generatedMeme;
-    a.download = `pumpit-png-meme-${Date.now()}.png`;
+    a.download = `pumpit-meme-${Date.now()}.png`;
     a.click();
   };
 
   return (
     <>
       <Head>
-        <title>PumpItOnSol - PNG Overlay Meme Generator</title>
-        <meta name="description" content="Transform your photos into $PUMPIT memes with AI-powered positioning and your custom PNG overlays!" />
+        <title>PumpItOnSol - AI-Powered Meme Generator</title>
+        <meta name="description" content="Transform any photo into $PUMPIT memes - works with humans, cartoons, anime, and animals!" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <script src="https://terminal.jup.ag/main-v2.js" data-preload></script>
+        <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
       </Head>
 
       <div className="desktop-social-buttons">
@@ -652,10 +886,9 @@ export default function Home() {
           </section>
 
           <section id="generator" className="reveal">
-            <h2>🎨 Custom PNG Overlay Meme Generator</h2>
+            <h2>🎨 AI-Powered Meme Generator</h2>
             <p>
-              Upload your image and our AI will analyze face positions and overlay your exact custom PNG assets — 
-              perfect positioning with your proven lip and exclamation mark designs!
+              Transform any image into a $PUMPIT meme! Our advanced AI works with humans, anime, cartoons, and even your pets!
             </p>
             
             {showXForm && (
@@ -675,13 +908,38 @@ export default function Home() {
             )}
             
             <div className="ai-status">
-              <p>🎨 Custom PNG Overlay System Ready!</p>
-              <p>✨ Using your exact lips.png and exclamation.png assets</p>
-              <p>🧠 Powered by Gemini AI positioning</p>
-              <p>💰 Cost: ~$0.001 per meme (virtually free!)</p>
+              <p>🎯 4-Tier AI Detection System</p>
+              <p>🧑 <strong>Tier 1:</strong> MediaPipe for humans (468 face points!)</p>
+              <p>🦸 <strong>Tier 2:</strong> Replicate AI for anime/cartoons</p>
+              <p>🐕 <strong>Tier 3:</strong> Replicate AI for animals</p>
+              <p>🤖 <strong>Tier 4:</strong> Gemini AI universal fallback</p>
+              <p>🎯 <strong>Manual:</strong> Click to position anywhere!</p>
             </div>
             
-            {/* X Handle Input - Always visible if not set */}
+            {showModeSelector && (
+              <div className="mode-selector">
+                <h3>No faces detected! Choose how to proceed:</h3>
+                <button 
+                  onClick={() => {
+                    setDetectionMode('manual');
+                    setShowModeSelector(false);
+                  }}
+                  className="mode-button"
+                >
+                  🎯 Manual Position Mode
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowModeSelector(false);
+                    setError('');
+                  }}
+                  className="mode-button"
+                >
+                  🔄 Try Different Image
+                </button>
+              </div>
+            )}
+            
             {!xHandle && (
               <div className="x-handle-section">
                 <form onSubmit={handleXHandleSubmit} className="x-handle-inline-form">
@@ -724,7 +982,22 @@ export default function Home() {
                   disabled={!selectedFile || isProcessing || !xHandle}
                   className="generate-button"
                 >
-                  {isProcessing ? '🎨 AI Positioning Your Custom PNG Assets...' : '🔥 Generate Custom PNG Meme'}
+                  {isProcessing ? '🎨 AI Processing...' : '🔥 Generate $PUMPIT Meme'}
+                </button>
+                
+                <button 
+                  onClick={() => {
+                    setDetectionMode(detectionMode === 'manual' ? 'auto' : 'manual');
+                    setClickPosition(null);
+                  }}
+                  className="generate-button"
+                  style={{
+                    background: detectionMode === 'manual' 
+                      ? 'linear-gradient(135deg, #00FF00, #00AA00)' 
+                      : 'linear-gradient(135deg, #00FFFF, #0099CC)'
+                  }}
+                >
+                  {detectionMode === 'manual' ? '✅ Manual Mode ON' : '🎯 Switch to Manual Mode'}
                 </button>
                 
                 {generatedMeme && (
@@ -738,15 +1011,37 @@ export default function Home() {
                 )}
               </div>
               
+              {detectionStatus && (
+                <div className="detection-status">
+                  <p>{detectionStatus}</p>
+                </div>
+              )}
+              
+              {detectionMode === 'manual' && (
+                <div className="manual-instructions">
+                  <p>📍 Click on the image where you want the lips to appear!</p>
+                  {clickPosition && (
+                    <p className="position-confirmed">✅ Position set at {clickPosition.x.toFixed(0)}%, {clickPosition.y.toFixed(0)}%</p>
+                  )}
+                </div>
+              )}
+              
               {error && (
                 <div className="error-message">
                   ⚠️ {error}
                   <br />
-                  <small>Make sure lips.png and exclamation.png are in your /public/meme-assets/ folder</small>
+                  <small>Try manual mode or a different image</small>
                 </div>
               )}
               
-              <div className="meme-preview-placeholder">
+              <div 
+                className="meme-preview-placeholder"
+                onClick={detectionMode === 'manual' ? handleCanvasClick : undefined}
+                style={{
+                  cursor: detectionMode === 'manual' ? 'crosshair' : 'default',
+                  position: 'relative'
+                }}
+              >
                 <img 
                   src={preview} 
                   alt="Meme Preview" 
@@ -755,16 +1050,47 @@ export default function Home() {
                     transition: 'opacity 0.3s ease'
                   }}
                 />
+                
+                {detectionMode === 'manual' && clickPosition && (
+                  <div 
+                    className="position-marker"
+                    style={{
+                      position: 'absolute',
+                      left: `${clickPosition.x}%`,
+                      top: `${clickPosition.y}%`,
+                      transform: 'translate(-50%, -50%)',
+                      width: '40px',
+                      height: '40px',
+                      border: '3px solid #00FF00',
+                      borderRadius: '50%',
+                      boxShadow: '0 0 20px rgba(0, 255, 0, 0.5)',
+                      pointerEvents: 'none',
+                      zIndex: 10
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '10px',
+                      height: '10px',
+                      background: '#00FF00',
+                      borderRadius: '50%'
+                    }} />
+                  </div>
+                )}
+                
                 {isProcessing ? (
-                  <p><strong>🎨 AI is analyzing positions and overlaying your custom PNG assets...</strong></p>
+                  <p><strong>🎨 AI is analyzing your image...</strong></p>
                 ) : selectedFile ? (
                   generatedMeme ? (
-                    <p><strong>🎉 Your custom PNG overlay $PUMPIT meme is ready!</strong></p>
+                    <p><strong>🎉 Your $PUMPIT meme is ready!</strong></p>
                   ) : (
-                    <p><strong>👆 Click "Generate Custom PNG Meme" for precise positioning!</strong></p>
+                    <p><strong>👆 Click "Generate" or use Manual Mode!</strong></p>
                   )
                 ) : (
-                  <p><strong>Upload an image to get started with custom PNG overlays</strong></p>
+                  <p><strong>Upload any image - human, cartoon, or animal!</strong></p>
                 )}
               </div>
             </div>
@@ -774,10 +1100,10 @@ export default function Home() {
             <h2>🗺️ Roadmap</h2>
             <ul>
               <li>✅ Phase 1: Launch $PUMPIT on Bonk.fun with meme identity + Pumper reveal</li>
-              <li>🎨 Phase 2: Custom PNG overlay meme generator with AI positioning goes live</li>
+              <li>✅ Phase 2: 4-Tier AI meme generator with universal image support</li>
               <li>📋 Phase 3: Collaborate with top meme communities</li>
               <li>📋 Phase 4: Community meme automation & viral campaigns</li>
-              <li>📚 Phase 5: Pumper Comic Series - Exclusive stories for $PUMPIT holders! Watch Pumper meet new characters representing other promising tokens. Only holders can unlock these adventures!</li>
+              <li>📚 Phase 5: Pumper Comic Series - Exclusive stories for $PUMPIT holders!</li>
             </ul>
           </section>
 
@@ -791,23 +1117,32 @@ export default function Home() {
                     <p>Created by {meme.creator}</p>
                     {meme.pngOverlay && <p className="png-badge">🎨 Custom PNG</p>}
                     {meme.facesDetected && <p className="faces-badge">👥 {meme.facesDetected} face(s)</p>}
+                    {meme.detectionMethod && (
+                      <p className="method-badge">
+                        {meme.detectionMethod === 'mediapipe' && '🧑 Human'}
+                        {meme.detectionMethod === 'replicate-anime' && '🦸 Anime'}
+                        {meme.detectionMethod === 'replicate-animal' && '🐕 Animal'}
+                        {meme.detectionMethod === 'gemini' && '🤖 AI'}
+                        {meme.detectionMethod === 'manual' && '🎯 Manual'}
+                      </p>
+                    )}
                   </div>
                 ))
               ) : (
                 <>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>🎨 Be the first to create a custom PNG meme!</p>
+                      <p>🎨 Be the first to create a meme!</p>
                     </div>
                   </div>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>🚀 Your precise meme here</p>
+                      <p>🚀 Your meme here</p>
                     </div>
                   </div>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>💎 Join the custom PNG revolution!</p>
+                      <p>💎 Join the revolution!</p>
                     </div>
                   </div>
                 </>
@@ -881,7 +1216,7 @@ export default function Home() {
         </main>
 
         <footer>
-          <p>© 2025 PumpItOnSol. Powered by AI positioning and custom PNG overlays. 🎨🚀</p>
+          <p>© 2025 PumpItOnSol. Powered by 4-tier AI detection system. 🎨🚀</p>
         </footer>
       </div>
 
@@ -914,6 +1249,7 @@ export default function Home() {
           width: 100%;
           padding-top: 60px;
         }
+        
         .desktop-social-buttons {
           position: fixed;
           top: 10px;
@@ -1081,263 +1417,6 @@ export default function Home() {
           padding: 2rem;
           background: rgba(0, 0, 0, 0.3);
           border-radius: 10px;
-          backdrop-filter: blur(5px);
-          max-width: 1200px;
-        }
-
-        h2 {
-          font-size: 2.2rem;
-          margin-bottom: 1.5rem;
-          color: #FFFF00;
-        }
-
-        .expandable-content {
-          position: relative;
-          overflow: hidden;
-          transition: all 0.3s ease;
-        }
-
-        .preview-text {
-          margin-bottom: 1rem;
-        }
-
-        .full-content {
-          animation: fadeIn 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .read-more-btn {
-          background: none;
-          border: 2px solid #FFFF00;
-          color: #FFFF00;
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-weight: bold;
-          margin-top: 0.5rem;
-        }
-
-        .read-more-btn:hover {
-          background: #FFFF00;
-          color: black;
-          transform: scale(1.05);
-        }
-
-        .token-stats {
-          background: rgba(255, 255, 0, 0.1);
-          padding: 1.5rem;
-          border-radius: 10px;
-          margin-top: 2rem;
-          border: 2px solid rgba(255, 255, 0, 0.3);
-        }
-
-        .token-stats h3 {
-          color: #FFFF00;
-          margin-bottom: 1rem;
-        }
-
-        .token-stats p {
-          margin: 0.5rem 0;
-          font-family: 'Courier New', monospace;
-          word-break: break-all;
-        }
-
-        .token-info-section {
-          background: linear-gradient(135deg, rgba(255, 255, 0, 0.05), rgba(255, 215, 0, 0.05));
-          border-radius: 20px;
-          padding: 2rem;
-        }
-
-        .token-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1rem;
-          margin: 2rem 0;
-        }
-
-        .token-card {
-          background: rgba(0, 0, 0, 0.3);
-          border: 2px solid rgba(255, 255, 0, 0.3);
-          border-radius: 15px;
-          padding: 1.5rem;
-          text-align: center;
-          transition: all 0.3s ease;
-        }
-
-        .token-card:hover {
-          transform: translateY(-5px);
-          border-color: #FFFF00;
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.3);
-        }
-
-        .token-card h4 {
-          color: #FFFF00;
-          margin-bottom: 0.5rem;
-          font-size: 0.9rem;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-
-        .token-card .price {
-          font-size: 1.6rem;
-          font-weight: bold;
-          color: #ffffff;
-          margin: 0.5rem 0;
-        }
-
-        .token-card .value {
-          font-size: 1.2rem;
-          font-weight: bold;
-          color: #ffffff;
-        }
-
-        .price-change {
-          font-size: 0.9rem;
-          font-weight: 600;
-        }
-
-        .price-change.positive {
-          color: #00ff00;
-        }
-
-        .price-change.negative {
-          color: #ff3333;
-        }
-
-        .loading {
-          color: #999;
-          font-style: italic;
-        }
-
-        .buy-section {
-          text-align: center;
-          margin-top: 2rem;
-        }
-
-        .buy-button-large {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          padding: 1rem 2.5rem;
-          font-size: 1.2rem;
-          font-weight: bold;
-          border-radius: 50px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
-        }
-
-        .buy-button-large:hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.6);
-        }
-
-        .buy-info {
-          color: #aaa;
-          margin-top: 1rem;
-          font-size: 0.9rem;
-        }
-
-        .token-link {
-          display: inline-block;
-          margin-top: 0.5rem;
-          color: #FFFF00;
-          text-decoration: none;
-          font-weight: 600;
-          transition: color 0.3s ease;
-        }
-
-        .token-link:hover {
-          color: #FFD700;
-          text-decoration: underline;
-        }
-
-        .x-form-modal {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.8);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 2000;
-        }
-
-        .x-form {
-          background: #2d2d2d;
-          padding: 2rem;
-          border-radius: 15px;
-          border: 2px solid #FFFF00;
-          text-align: center;
-          max-width: 400px;
-          width: 90%;
-        }
-
-        .x-form h3 {
-          color: #FFFF00;
-          margin-bottom: 1rem;
-        }
-
-        .x-form input {
-          width: 100%;
-          padding: 0.8rem;
-          margin-bottom: 1rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px solid rgba(255, 255, 0, 0.5);
-          border-radius: 10px;
-          color: white;
-          font-size: 1rem;
-        }
-
-        .x-form button {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          padding: 0.8rem 2rem;
-          border-radius: 25px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .x-form button:hover {
-          transform: scale(1.05);
-        }
-
-        .x-handle-section {
-          background: rgba(255, 255, 0, 0.1);
-          padding: 1.5rem;
-          border-radius: 10px;
-          margin-bottom: 2rem;
-          border: 2px solid rgba(255, 255, 0, 0.3);
-        }
-
-        .x-handle-inline-form label {
-          display: block;
-          margin-bottom: 1rem;
-          color: #FFFF00;
-          font-weight: bold;
-        }
-
-        .x-handle-input-group {
-          display: flex;
-          gap: 1rem;
-          align-items: center;
-        }
-
-        .x-handle-input-group input {
-          flex: 1;
-          padding: 0.8rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px solid rgba(255, 255, 0, 0.5);
-          border-radius: 10px;
           color: white;
           font-size: 1rem;
         }
@@ -1361,11 +1440,87 @@ export default function Home() {
 
         .ai-status {
           background: rgba(0, 0, 0, 0.5);
-          padding: 1rem;
+          padding: 1.5rem;
           border-radius: 10px;
           margin-bottom: 2rem;
           text-align: center;
           border: 2px solid rgba(255, 255, 0, 0.3);
+        }
+
+        .ai-status p {
+          margin: 0.5rem 0;
+          font-size: 0.95rem;
+        }
+
+        .ai-status strong {
+          color: #FFFF00;
+        }
+
+        .mode-selector {
+          background: rgba(255, 255, 0, 0.1);
+          border: 2px solid #FFFF00;
+          border-radius: 15px;
+          padding: 2rem;
+          margin: 2rem 0;
+          text-align: center;
+        }
+        
+        .mode-selector h3 {
+          color: #FFFF00;
+          margin-bottom: 1.5rem;
+        }
+        
+        .mode-button {
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          padding: 1rem 2rem;
+          margin: 0.5rem;
+          border-radius: 30px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        
+        .mode-button:hover {
+          transform: scale(1.05);
+          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.5);
+        }
+        
+        .manual-instructions {
+          background: rgba(0, 255, 0, 0.1);
+          border: 2px solid rgba(0, 255, 0, 0.3);
+          border-radius: 10px;
+          padding: 1rem;
+          margin: 1rem 0;
+          text-align: center;
+        }
+        
+        .manual-instructions p {
+          color: #00FF00;
+          font-weight: bold;
+          margin: 0.5rem 0;
+        }
+        
+        .position-confirmed {
+          color: #00FF00;
+          font-size: 1.1rem;
+        }
+
+        .detection-status {
+          background: rgba(0, 255, 255, 0.1);
+          border: 2px solid rgba(0, 255, 255, 0.3);
+          border-radius: 10px;
+          padding: 1rem;
+          margin: 1rem 0;
+          text-align: center;
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        .detection-status p {
+          color: #00FFFF;
+          font-weight: bold;
+          margin: 0;
         }
 
         .meme-upload {
@@ -1463,6 +1618,7 @@ export default function Home() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
+          position: relative;
         }
 
         .meme-preview-placeholder img {
@@ -1472,6 +1628,16 @@ export default function Home() {
           height: auto;
           border-radius: 10px;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .position-marker {
+          animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+          0% { transform: translate(-50%, -50%) scale(1); }
+          50% { transform: translate(-50%, -50%) scale(1.1); }
+          100% { transform: translate(-50%, -50%) scale(1); }
         }
 
         .community-memes {
@@ -1504,24 +1670,27 @@ export default function Home() {
           padding: 1rem;
           text-align: center;
           color: #FFFF00;
+          margin: 0;
         }
 
-        .png-badge {
+        .png-badge, .faces-badge, .method-badge {
           background: rgba(255, 255, 0, 0.2);
           color: #FFFF00;
           padding: 0.3rem 0.8rem;
           border-radius: 20px;
           font-size: 0.8rem;
-          margin-top: 0.5rem;
+          margin: 0.2rem;
+          display: inline-block;
         }
 
         .faces-badge {
           background: rgba(0, 255, 255, 0.2);
           color: #00ffff;
-          padding: 0.3rem 0.8rem;
-          border-radius: 20px;
-          font-size: 0.8rem;
-          margin-top: 0.5rem;
+        }
+
+        .method-badge {
+          background: rgba(255, 0, 255, 0.2);
+          color: #ff00ff;
         }
 
         .meme-card.placeholder {
@@ -1797,3 +1966,260 @@ export default function Home() {
     </>
   );
 }
+          backdrop-filter: blur(5px);
+          max-width: 1200px;
+        }
+
+        h2 {
+          font-size: 2.2rem;
+          margin-bottom: 1.5rem;
+          color: #FFFF00;
+        }
+
+        .expandable-content {
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+
+        .preview-text {
+          margin-bottom: 1rem;
+        }
+
+        .full-content {
+          animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .read-more-btn {
+          background: none;
+          border: 2px solid #FFFF00;
+          color: #FFFF00;
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-weight: bold;
+          margin-top: 0.5rem;
+        }
+
+        .read-more-btn:hover {
+          background: #FFFF00;
+          color: black;
+          transform: scale(1.05);
+        }
+
+        .token-stats {
+          background: rgba(255, 255, 0, 0.1);
+          padding: 1.5rem;
+          border-radius: 10px;
+          margin-top: 2rem;
+          border: 2px solid rgba(255, 255, 0, 0.3);
+        }
+
+        .token-stats h3 {
+          color: #FFFF00;
+          margin-bottom: 1rem;
+        }
+
+        .token-stats p {
+          margin: 0.5rem 0;
+          font-family: 'Courier New', monospace;
+          word-break: break-all;
+        }
+
+        .token-info-section {
+          background: linear-gradient(135deg, rgba(255, 255, 0, 0.05), rgba(255, 215, 0, 0.05));
+          border-radius: 20px;
+          padding: 2rem;
+        }
+
+        .token-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+          margin: 2rem 0;
+        }
+
+        .token-card {
+          background: rgba(0, 0, 0, 0.3);
+          border: 2px solid rgba(255, 255, 0, 0.3);
+          border-radius: 15px;
+          padding: 1.5rem;
+          text-align: center;
+          transition: all 0.3s ease;
+        }
+
+        .token-card:hover {
+          transform: translateY(-5px);
+          border-color: #FFFF00;
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.3);
+        }
+
+        .token-card h4 {
+          color: #FFFF00;
+          margin-bottom: 0.5rem;
+          font-size: 0.9rem;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .token-card .price {
+          font-size: 1.6rem;
+          font-weight: bold;
+          color: #ffffff;
+          margin: 0.5rem 0;
+        }
+
+        .token-card .value {
+          font-size: 1.2rem;
+          font-weight: bold;
+          color: #ffffff;
+        }
+
+        .price-change {
+          font-size: 0.9rem;
+          font-weight: 600;
+        }
+
+        .price-change.positive {
+          color: #00ff00;
+        }
+
+        .price-change.negative {
+          color: #ff3333;
+        }
+
+        .loading {
+          color: #999;
+          font-style: italic;
+        }
+
+        .buy-section {
+          text-align: center;
+          margin-top: 2rem;
+        }
+
+        .buy-button-large {
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          padding: 1rem 2.5rem;
+          font-size: 1.2rem;
+          font-weight: bold;
+          border-radius: 50px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
+        }
+
+        .buy-button-large:hover {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.6);
+        }
+
+        .buy-info {
+          color: #aaa;
+          margin-top: 1rem;
+          font-size: 0.9rem;
+        }
+
+        .token-link {
+          display: inline-block;
+          margin-top: 0.5rem;
+          color: #FFFF00;
+          text-decoration: none;
+          font-weight: 600;
+          transition: color 0.3s ease;
+        }
+
+        .token-link:hover {
+          color: #FFD700;
+          text-decoration: underline;
+        }
+
+        .x-form-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2000;
+        }
+
+        .x-form {
+          background: #2d2d2d;
+          padding: 2rem;
+          border-radius: 15px;
+          border: 2px solid #FFFF00;
+          text-align: center;
+          max-width: 400px;
+          width: 90%;
+        }
+
+        .x-form h3 {
+          color: #FFFF00;
+          margin-bottom: 1rem;
+        }
+
+        .x-form input {
+          width: 100%;
+          padding: 0.8rem;
+          margin-bottom: 1rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 2px solid rgba(255, 255, 0, 0.5);
+          border-radius: 10px;
+          color: white;
+          font-size: 1rem;
+        }
+
+        .x-form button {
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          padding: 0.8rem 2rem;
+          border-radius: 25px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .x-form button:hover {
+          transform: scale(1.05);
+        }
+
+        .x-handle-section {
+          background: rgba(255, 255, 0, 0.1);
+          padding: 1.5rem;
+          border-radius: 10px;
+          margin-bottom: 2rem;
+          border: 2px solid rgba(255, 255, 0, 0.3);
+        }
+
+        .x-handle-inline-form label {
+          display: block;
+          margin-bottom: 1rem;
+          color: #FFFF00;
+          font-weight: bold;
+        }
+
+        .x-handle-input-group {
+          display: flex;
+          gap: 1rem;
+          align-items: center;
+        }
+
+        .x-handle-input-group input {
+          flex: 1;
+          padding: 0.8rem;
+          background: rgba(255, 255, 255, 0.1);
+          border: 2px solid rgba(255, 255, 0, 0.5);
+          border-radius: 10px;
