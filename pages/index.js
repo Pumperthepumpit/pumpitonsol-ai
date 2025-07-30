@@ -26,6 +26,11 @@ export default function Home() {
   const [clickPosition, setClickPosition] = useState(null);
   const [showModeSelector, setShowModeSelector] = useState(false);
   const [detectionStatus, setDetectionStatus] = useState('');
+  
+  // New states for two-click manual positioning
+  const [manualStep, setManualStep] = useState('lips'); // 'lips' or 'exclamation'
+  const [lipPosition, setLipPosition] = useState(null);
+  const [exclamationPosition, setExclamationPosition] = useState(null);
 
   useEffect(() => {
     const checkJupiter = setInterval(() => {
@@ -248,23 +253,27 @@ export default function Home() {
       let positioningData = null;
 
       // Handle different detection modes
-      if (detectionMode === 'manual' && clickPosition) {
+      if (detectionMode === 'manual' && lipPosition && exclamationPosition) {
         console.log('📍 Using manual positioning...');
         setDetectionStatus('📍 Using manual positioning...');
         positioningData = {
           method: 'manual',
           faces: [{
             mouthPosition: {
-              centerX: clickPosition.x / 100,
-              centerY: clickPosition.y / 100
+              centerX: lipPosition.x / 100,
+              centerY: lipPosition.y / 100
             },
             exclamationPosition: {
-              centerX: clickPosition.x / 100,
-              centerY: Math.max(0.1, (clickPosition.y / 100) - 0.4)
+              centerX: exclamationPosition.x / 100,
+              centerY: exclamationPosition.y / 100
             },
             faceSize: 0.3
           }]
         };
+      } else if (detectionMode === 'manual') {
+        setError('Please click to place both lips and exclamation marks!');
+        setIsProcessing(false);
+        return;
       } else {
         // Try MediaPipe first (for human faces)
         console.log('🔍 Tier 1: Attempting MediaPipe detection for human faces...');
@@ -413,7 +422,9 @@ export default function Home() {
         }, ...prev].slice(0, 3));
         
         setIsProcessing(false);
-        setClickPosition(null);
+        setLipPosition(null);
+        setExclamationPosition(null);
+        setManualStep('lips');
         setDetectionStatus('');
         
         console.log(`🎉 Meme generated successfully using ${positioningData.method}!`);
@@ -640,16 +651,40 @@ export default function Home() {
     });
   }
 
-  // Manual click handler
+  // Updated manual click handler with better mobile support
   const handleCanvasClick = (e) => {
     if (detectionMode !== 'manual') return;
     
-    const rect = e.target.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    let clientX, clientY;
     
-    setClickPosition({ x, y });
-    console.log(`📍 Manual position set: ${x.toFixed(1)}%, ${y.toFixed(1)}%`);
+    // Handle both mouse and touch events
+    if (e.type === 'touchstart' || e.type === 'touchend') {
+      e.preventDefault(); // Prevent zoom on double tap
+      const touch = e.changedTouches[0];
+      clientX = touch.clientX;
+      clientY = touch.clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    
+    const rect = e.target.getBoundingClientRect();
+    
+    // Account for scroll position
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    
+    const x = ((clientX - rect.left - scrollLeft) / rect.width) * 100;
+    const y = ((clientY - rect.top - scrollTop) / rect.height) * 100;
+    
+    if (manualStep === 'lips') {
+      setLipPosition({ x, y });
+      setManualStep('exclamation');
+      console.log(`👄 Lips position set: ${x.toFixed(1)}%, ${y.toFixed(1)}%`);
+    } else if (manualStep === 'exclamation') {
+      setExclamationPosition({ x, y });
+      console.log(`❗ Exclamation position set: ${x.toFixed(1)}%, ${y.toFixed(1)}%`);
+    }
   };
 
   const downloadMeme = () => {
@@ -837,8 +872,7 @@ export default function Home() {
               </p>
             </div>
           </section>
-
-          <section id="about" className="reveal">
+		  <section id="about" className="reveal">
             <h2>About Us</h2>
             <div className={`expandable-content ${expandedSections.about ? 'expanded' : ''}`}>
               <p className="preview-text">
@@ -988,7 +1022,9 @@ export default function Home() {
                 <button 
                   onClick={() => {
                     setDetectionMode(detectionMode === 'manual' ? 'auto' : 'manual');
-                    setClickPosition(null);
+                    setLipPosition(null);
+                    setExclamationPosition(null);
+                    setManualStep('lips');
                   }}
                   className="generate-button"
                   style={{
@@ -999,6 +1035,23 @@ export default function Home() {
                 >
                   {detectionMode === 'manual' ? '✅ Manual Mode ON' : '🎯 Switch to Manual Mode'}
                 </button>
+                
+                {detectionMode === 'manual' && (lipPosition || exclamationPosition) && (
+                  <button 
+                    onClick={() => {
+                      setLipPosition(null);
+                      setExclamationPosition(null);
+                      setManualStep('lips');
+                    }}
+                    className="generate-button"
+                    style={{
+                      marginLeft: '1rem',
+                      background: 'linear-gradient(135deg, #FF6B6B, #CC5555)'
+                    }}
+                  >
+                    🔄 Reset Positions
+                  </button>
+                )}
                 
                 {generatedMeme && (
                   <button 
@@ -1019,9 +1072,20 @@ export default function Home() {
               
               {detectionMode === 'manual' && (
                 <div className="manual-instructions">
-                  <p>📍 Click on the image where you want the lips to appear!</p>
-                  {clickPosition && (
-                    <p className="position-confirmed">✅ Position set at {clickPosition.x.toFixed(0)}%, {clickPosition.y.toFixed(0)}%</p>
+                  {manualStep === 'lips' && !lipPosition && (
+                    <p>👄 Click on the image where you want the LIPS to appear!</p>
+                  )}
+                  {manualStep === 'exclamation' && lipPosition && !exclamationPosition && (
+                    <p>❗ Now click where you want the EXCLAMATION MARKS!</p>
+                  )}
+                  {lipPosition && (
+                    <p className="position-confirmed">✅ Lips at {lipPosition.x.toFixed(0)}%, {lipPosition.y.toFixed(0)}%</p>
+                  )}
+                  {exclamationPosition && (
+                    <p className="position-confirmed">✅ Exclamation at {exclamationPosition.x.toFixed(0)}%, {exclamationPosition.y.toFixed(0)}%</p>
+                  )}
+                  {lipPosition && exclamationPosition && (
+                    <p className="position-confirmed">🎉 Both positions set! Click Generate to create your meme!</p>
                   )}
                 </div>
               )}
@@ -1036,10 +1100,12 @@ export default function Home() {
               
               <div 
                 className="meme-preview-placeholder"
-                onClick={detectionMode === 'manual' ? handleCanvasClick : undefined}
+                onClick={handleCanvasClick}
+                onTouchStart={handleCanvasClick}
                 style={{
                   cursor: detectionMode === 'manual' ? 'crosshair' : 'default',
-                  position: 'relative'
+                  position: 'relative',
+                  touchAction: detectionMode === 'manual' ? 'none' : 'auto'
                 }}
               >
                 <img 
@@ -1051,19 +1117,19 @@ export default function Home() {
                   }}
                 />
                 
-                {detectionMode === 'manual' && clickPosition && (
+                {detectionMode === 'manual' && lipPosition && (
                   <div 
-                    className="position-marker"
+                    className="position-marker lips-marker"
                     style={{
                       position: 'absolute',
-                      left: `${clickPosition.x}%`,
-                      top: `${clickPosition.y}%`,
+                      left: `${lipPosition.x}%`,
+                      top: `${lipPosition.y}%`,
                       transform: 'translate(-50%, -50%)',
                       width: '40px',
                       height: '40px',
-                      border: '3px solid #00FF00',
+                      border: '3px solid #FF69B4',
                       borderRadius: '50%',
-                      boxShadow: '0 0 20px rgba(0, 255, 0, 0.5)',
+                      boxShadow: '0 0 20px rgba(255, 105, 180, 0.5)',
                       pointerEvents: 'none',
                       zIndex: 10
                     }}
@@ -1073,11 +1139,35 @@ export default function Home() {
                       top: '50%',
                       left: '50%',
                       transform: 'translate(-50%, -50%)',
-                      width: '10px',
-                      height: '10px',
-                      background: '#00FF00',
-                      borderRadius: '50%'
-                    }} />
+                      fontSize: '16px'
+                    }}>👄</div>
+                  </div>
+                )}
+                
+                {detectionMode === 'manual' && exclamationPosition && (
+                  <div 
+                    className="position-marker exclamation-marker"
+                    style={{
+                      position: 'absolute',
+                      left: `${exclamationPosition.x}%`,
+                      top: `${exclamationPosition.y}%`,
+                      transform: 'translate(-50%, -50%)',
+                      width: '40px',
+                      height: '40px',
+                      border: '3px solid #FFD700',
+                      borderRadius: '50%',
+                      boxShadow: '0 0 20px rgba(255, 215, 0, 0.5)',
+                      pointerEvents: 'none',
+                      zIndex: 10
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      fontSize: '16px'
+                    }}>❗</div>
                   </div>
                 )}
                 
@@ -2186,810 +2276,19 @@ export default function Home() {
           .x-handle-input-group button {
             width: 100%;
           }
-        }
 
-        @media (max-width: 480px) {
-          .mobile-top-buttons {
-            right: 5px;
-            top: 5px;
+          .position-marker {
+            width: 60px !important;
+            height: 60px !important;
+            border-width: 4px !important;
           }
 
-          .social-button {
-            padding: 0.3rem 0.6rem;
-            font-size: 0.8rem;
+          .position-marker div {
+            font-size: 20px !important;
           }
 
-          .token-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .community-memes {
-            grid-template-columns: 1fr;
-          }
-
-          .pumper-float img {
-            width: 200px;
-            height: 200px;
-          }
-
-          h1 {
-            font-size: 2rem;
-          }
-
-          .mobile-social-icons {
-            font-size: 1.2rem;
-            gap: 0.8rem;
-          }
-        }
-      
-          font-size: 1rem;
-        }
-          backdrop-filter: blur(5px);
-          max-width: 1200px;
-        }
-
-        h2 {
-          font-size: 2.2rem;
-          margin-bottom: 1.5rem;
-          color: #FFFF00;
-        }
-
-        .expandable-content {
-          position: relative;
-          overflow: hidden;
-          transition: all 0.3s ease;
-        }
-
-        .preview-text {
-          margin-bottom: 1rem;
-        }
-
-        .full-content {
-          animation: fadeIn 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .read-more-btn {
-          background: none;
-          border: 2px solid #FFFF00;
-          color: #FFFF00;
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-weight: bold;
-          margin-top: 0.5rem;
-        }
-
-        .read-more-btn:hover {
-          background: #FFFF00;
-          color: black;
-          transform: scale(1.05);
-        }
-
-        .token-stats {
-          background: rgba(255, 255, 0, 0.1);
-          padding: 1.5rem;
-          border-radius: 10px;
-          margin-top: 2rem;
-          border: 2px solid rgba(255, 255, 0, 0.3);
-        }
-
-        .token-stats h3 {
-          color: #FFFF00;
-          margin-bottom: 1rem;
-        }
-
-        .token-stats p {
-          margin: 0.5rem 0;
-          font-family: 'Courier New', monospace;
-          word-break: break-all;
-        }
-
-        .token-info-section {
-          background: linear-gradient(135deg, rgba(255, 255, 0, 0.05), rgba(255, 215, 0, 0.05));
-          border-radius: 20px;
-          padding: 2rem;
-        }
-
-        .token-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1rem;
-          margin: 2rem 0;
-        }
-
-        .token-card {
-          background: rgba(0, 0, 0, 0.3);
-          border: 2px solid rgba(255, 255, 0, 0.3);
-          border-radius: 15px;
-          padding: 1.5rem;
-          text-align: center;
-          transition: all 0.3s ease;
-        }
-
-        .token-card:hover {
-          transform: translateY(-5px);
-          border-color: #FFFF00;
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.3);
-        }
-
-        .token-card h4 {
-          color: #FFFF00;
-          margin-bottom: 0.5rem;
-          font-size: 0.9rem;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-
-        .token-card .price {
-          font-size: 1.6rem;
-          font-weight: bold;
-          color: #ffffff;
-          margin: 0.5rem 0;
-        }
-
-        .token-card .value {
-          font-size: 1.2rem;
-          font-weight: bold;
-          color: #ffffff;
-        }
-
-        .price-change {
-          font-size: 0.9rem;
-          font-weight: 600;
-        }
-
-        .price-change.positive {
-          color: #00ff00;
-        }
-
-        .price-change.negative {
-          color: #ff3333;
-        }
-
-        .loading {
-          color: #999;
-          font-style: italic;
-        }
-
-        .buy-section {
-          text-align: center;
-          margin-top: 2rem;
-        }
-
-        .buy-button-large {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          padding: 1rem 2.5rem;
-          font-size: 1.2rem;
-          font-weight: bold;
-          border-radius: 50px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
-        }
-
-        .buy-button-large:hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.6);
-        }
-
-        .buy-info {
-          color: #aaa;
-          margin-top: 1rem;
-          font-size: 0.9rem;
-        }
-
-        .token-link {
-          display: inline-block;
-          margin-top: 0.5rem;
-          color: #FFFF00;
-          text-decoration: none;
-          font-weight: 600;
-          transition: color 0.3s ease;
-        }
-
-        .token-link:hover {
-          color: #FFD700;
-          text-decoration: underline;
-        }
-
-        .x-form-modal {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.8);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 2000;
-        }
-
-        .x-form {
-          background: #2d2d2d;
-          padding: 2rem;
-          border-radius: 15px;
-          border: 2px solid #FFFF00;
-          text-align: center;
-          max-width: 400px;
-          width: 90%;
-        }
-
-        .x-form h3 {
-          color: #FFFF00;
-          margin-bottom: 1rem;
-        }
-
-        .x-form input {
-          width: 100%;
-          padding: 0.8rem;
-          margin-bottom: 1rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px solid rgba(255, 255, 0, 0.5);
-          border-radius: 10px;
-          color: white;
-          font-size: 1rem;
-        }
-
-        .x-form button {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          padding: 0.8rem 2rem;
-          border-radius: 25px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .x-form button:hover {
-          transform: scale(1.05);
-        }
-
-        .x-handle-section {
-          background: rgba(255, 255, 0, 0.1);
-          padding: 1.5rem;
-          border-radius: 10px;
-          margin-bottom: 2rem;
-          border: 2px solid rgba(255, 255, 0, 0.3);
-        }
-
-        .x-handle-inline-form label {
-          display: block;
-          margin-bottom: 1rem;
-          color: #FFFF00;
-          font-weight: bold;
-        }
-
-        .x-handle-input-group {
-          display: flex;
-          gap: 1rem;
-          align-items: center;
-        }
-
-        .x-handle-input-group input {
-          flex: 1;
-          padding: 0.8rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px solid rgba(255, 255, 0, 0.5);
-          border-radius: 10px;
-          color: white;
-          font-size: 1rem;
-		  }
-		  
-		  .x-handle-input-group button {
-          padding: 0.8rem 1.5rem;
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          border-radius: 25px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          white-space: nowrap;
-        }
-
-        .x-handle-input-group button:hover {
-          transform: scale(1.05);
-          box-shadow: 0 3px 10px rgba(255, 255, 0, 0.4);
-        }
-
-        .ai-status {
-          background: rgba(0, 0, 0, 0.5);
-          padding: 1.5rem;
-          border-radius: 10px;
-          margin-bottom: 2rem;
-          text-align: center;
-          border: 2px solid rgba(255, 255, 0, 0.3);
-        }
-
-        .ai-status p {
-          margin: 0.5rem 0;
-          font-size: 0.95rem;
-        }
-
-        .ai-status strong {
-          color: #FFFF00;
-        }
-
-        .mode-selector {
-          background: rgba(255, 255, 0, 0.1);
-          border: 2px solid #FFFF00;
-          border-radius: 15px;
-          padding: 2rem;
-          margin: 2rem 0;
-          text-align: center;
-        }
-        
-        .mode-selector h3 {
-          color: #FFFF00;
-          margin-bottom: 1.5rem;
-        }
-        
-        .mode-button {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          padding: 1rem 2rem;
-          margin: 0.5rem;
-          border-radius: 30px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-        
-        .mode-button:hover {
-          transform: scale(1.05);
-          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.5);
-        }
-        
-        .manual-instructions {
-          background: rgba(0, 255, 0, 0.1);
-          border: 2px solid rgba(0, 255, 0, 0.3);
-          border-radius: 10px;
-          padding: 1rem;
-          margin: 1rem 0;
-          text-align: center;
-        }
-        
-        .manual-instructions p {
-          color: #00FF00;
-          font-weight: bold;
-          margin: 0.5rem 0;
-        }
-        
-        .position-confirmed {
-          color: #00FF00;
-          font-size: 1.1rem;
-        }
-
-        .detection-status {
-          background: rgba(0, 255, 255, 0.1);
-          border: 2px solid rgba(0, 255, 255, 0.3);
-          border-radius: 10px;
-          padding: 1rem;
-          margin: 1rem 0;
-          text-align: center;
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        .detection-status p {
-          color: #00FFFF;
-          font-weight: bold;
-          margin: 0;
-        }
-
-        .meme-upload {
-          background: rgba(0, 0, 0, 0.4);
-          padding: 2rem;
-          border-radius: 15px;
-          margin-top: 2rem;
-        }
-
-        .upload-section {
-          margin-bottom: 2rem;
-        }
-
-        .upload-section label {
-          display: block;
-          margin-bottom: 1rem;
-          font-size: 1.2rem;
-          color: #FFFF00;
-        }
-
-        input[type="file"] {
-          display: block;
-          width: 100%;
-          padding: 1rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px dashed rgba(255, 255, 0, 0.5);
-          border-radius: 10px;
-          color: white;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        input[type="file"]:hover {
-          background: rgba(255, 255, 255, 0.15);
-          border-color: #FFFF00;
-        }
-
-        .file-selected {
-          margin-top: 1rem;
-          color: #00ff00;
-        }
-
-        .generate-section {
-          text-align: center;
-        }
-
-        .generate-button {
-          padding: 1rem 2rem;
-          font-size: 1.1rem;
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          border-radius: 50px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          margin: 0.5rem;
-          font-weight: bold;
-        }
-
-        .generate-button:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.5);
-        }
-
-        .generate-button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .error-message {
-          background: rgba(255, 0, 0, 0.2);
-          color: #ff6666;
-          padding: 1rem;
-          border-radius: 10px;
-          margin-top: 1rem;
-          border: 1px solid rgba(255, 0, 0, 0.5);
-        }
-
-        .error-message small {
-          display: block;
-          margin-top: 0.5rem;
-          color: #ffaaaa;
-          font-size: 0.8rem;
-        }
-
-        .meme-preview-placeholder {
-          margin: 2rem auto;
-          text-align: center;
-          padding: 2rem;
-          background: rgba(0, 0, 0, 0.5);
-          border-radius: 15px;
-          min-height: 400px;
-          max-width: 600px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-        }
-
-        .meme-preview-placeholder img {
-          max-width: 100%;
-          max-height: 400px;
-          width: auto;
-          height: auto;
-          border-radius: 10px;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        }
-        
-        .position-marker {
-          animation: pulse 2s ease-in-out infinite;
-        }
-        
-        @keyframes pulse {
-          0% { transform: translate(-50%, -50%) scale(1); }
-          50% { transform: translate(-50%, -50%) scale(1.1); }
-          100% { transform: translate(-50%, -50%) scale(1); }
-        }
-
-        .community-memes {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 1.5rem;
-          margin-top: 2rem;
-        }
-
-        .meme-card {
-          background: rgba(0, 0, 0, 0.5);
-          border-radius: 15px;
-          overflow: hidden;
-          transition: transform 0.3s ease;
-          border: 2px solid rgba(255, 255, 0, 0.2);
-        }
-
-        .meme-card:hover {
-          transform: translateY(-5px);
-          border-color: #FFFF00;
-        }
-
-        .meme-card img {
-          width: 100%;
-          height: 250px;
-          object-fit: cover;
-        }
-
-        .meme-card p {
-          padding: 1rem;
-          text-align: center;
-          color: #FFFF00;
-          margin: 0;
-        }
-
-        .png-badge, .faces-badge, .method-badge {
-          background: rgba(255, 255, 0, 0.2);
-          color: #FFFF00;
-          padding: 0.3rem 0.8rem;
-          border-radius: 20px;
-          font-size: 0.8rem;
-          margin: 0.2rem;
-          display: inline-block;
-        }
-
-        .faces-badge {
-          background: rgba(0, 255, 255, 0.2);
-          color: #00ffff;
-        }
-
-        .method-badge {
-          background: rgba(255, 0, 255, 0.2);
-          color: #ff00ff;
-        }
-
-        .meme-card.placeholder {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 300px;
-        }
-
-        .placeholder-content {
-          padding: 2rem;
-          text-align: center;
-        }
-
-        .placeholder-content p {
-          color: #666;
-          font-size: 1.2rem;
-        }
-
-        .social-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-          gap: 2rem;
-          margin-top: 2rem;
-        }
-
-        .social-card {
-          background: rgba(0, 0, 0, 0.3);
-          border-radius: 15px;
-          padding: 2rem;
-          border: 2px solid rgba(255, 255, 0, 0.2);
-        }
-
-        .social-card h3 {
-          color: #FFFF00;
-          margin-bottom: 1.5rem;
-          text-align: center;
-        }
-
-        .twitter-embed {
-          border-radius: 10px;
-          overflow: hidden;
-        }
-
-        .community-links {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .community-button {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 1rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 2px solid rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
-          text-decoration: none;
-          color: white;
-          transition: all 0.3s ease;
-        }
-
-        .community-button:hover {
-          transform: translateX(5px);
-          background: rgba(255, 255, 255, 0.1);
-          border-color: #FFFF00;
-        }
-
-        .community-button .icon {
-          font-size: 2rem;
-          min-width: 50px;
-          text-align: center;
-        }
-
-        .community-button strong {
-          display: block;
-          margin-bottom: 0.2rem;
-        }
-
-        .community-button p {
-          margin: 0;
-          font-size: 0.9rem;
-          color: #aaa;
-        }
-
-        .community-button.telegram:hover {
-          border-color: #0088cc;
-        }
-
-        .community-button.tiktok:hover {
-          border-color: #ff0050;
-        }
-
-        .community-button.twitter:hover {
-          border-color: #1da1f2;
-        }
-
-        #roadmap ul {
-          list-style: none;
-          padding-left: 0;
-        }
-
-        #roadmap li {
-          padding: 1rem;
-          margin: 0.5rem 0;
-          background: rgba(0, 0, 0, 0.5);
-          border-left: 4px solid #FFFF00;
-          border-radius: 5px;
-          transition: all 0.3s ease;
-        }
-
-        #roadmap li:hover {
-          transform: translateX(10px);
-          background: rgba(255, 255, 0, 0.1);
-        }
-
-        footer {
-          text-align: center;
-          padding: 2rem;
-          background: rgba(0, 0, 0, 0.5);
-          margin-top: 4rem;
-        }
-
-        .reveal {
-          opacity: 0;
-          transform: translateY(30px);
-          animation: fadeInUp 0.6s ease forwards;
-        }
-
-        @keyframes fadeInUp {
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @media (max-width: 768px) {
-          .desktop-social-buttons {
-            display: none;
-          }
-
-          .mobile-top-buttons {
-            display: flex;
-          }
-
-          .mobile-social-icons {
-            display: flex;
-            justify-content: center;
-          }
-
-          header {
-            margin-top: 80px;
-            padding-top: 2rem;
-          }
-
-          .main-nav {
-            position: relative;
-            top: auto;
-            margin: 0 -20px 1rem;
-            z-index: 98;
-          }
-
-          main {
-            padding-top: 20px;
-          }
-
-          section {
-            scroll-margin-top: 20px;
-            margin: 1rem auto;
-          }
-
-          .pumper-float img {
-            width: 250px;
-            height: 250px;
-          }
-
-          h1 {
-            font-size: 2.5rem;
-          }
-
-          h2 {
-            font-size: 1.8rem;
-          }
-
-          .nav-container {
-            gap: 0.5rem;
-            padding: 0.5rem;
-          }
-
-          .main-nav a {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.8rem;
-          }
-
-          .token-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.8rem;
-          }
-          
-          .social-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .buy-button-large {
-            padding: 0.8rem 1.5rem;
-            font-size: 1rem;
-          }
-          
-          .token-card {
-            padding: 1rem;
-          }
-
-          .token-card .price {
-            font-size: 1.2rem;
-          }
-
-          .token-card .value {
-            font-size: 1rem;
-          }
-
-          section {
-            padding: 1.5rem;
-          }
-
-          .x-handle-input-group {
-            flex-direction: column;
-          }
-
-          .x-handle-input-group input {
-            width: 100%;
-          }
-
-          .x-handle-input-group button {
-            width: 100%;
+          .meme-preview-placeholder {
+            touch-action: none;
           }
         }
 
