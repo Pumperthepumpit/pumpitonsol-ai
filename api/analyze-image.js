@@ -19,70 +19,49 @@ export default async function handler(req, res) {
     const imageFormat = image.match(/^data:image\/(\w+);base64,/)?.[1] || 'jpeg';
     const mimeType = `image/${imageFormat}`;
     
-    const prompt = `You are an expert at detecting faces and mouths in ANY type of image - humans, animals, cartoons, anime, drawings, etc.
+    // Much more specific prompt based on what works
+    const prompt = `You are analyzing an image to place overlays. Return EXACT coordinates.
 
-Your task is to find ANY face-like structure and identify where to place cartoon lips and exclamation marks for a meme.
+CRITICAL: Look at the image and identify:
+1. WHERE IS THE MOUTH? The mouth is where lips are, where people speak/eat. 
+   - For a person in a suit on phone: mouth is on their FACE (not on tie/chest)
+   - Mouth is between nose and chin
+   - Usually around 65-70% down the face
 
-WHAT TO LOOK FOR:
-- Human faces (real photos or drawings)
-- Animal faces (dogs, cats, frogs, birds, etc.)
-- Cartoon/anime characters
-- Anthropomorphic objects with faces
-- Basically ANYTHING that has eyes and could have a mouth
+2. WHERE IS THE TOP OF HEAD? 
+   - The highest point of their head/hair
+   - Exclamations go ABOVE this point in empty space
 
-POSITIONING RULES:
-1. MOUTH/LIPS POSITION:
-   - For humans: Find the actual mouth/lips
-   - For animals: Find the mouth, muzzle, or beak area
-   - For cartoons: Find the mouth or where it should be
-   - If no clear mouth: Place it where a mouth would logically be (below eyes/nose area)
-   - For creatures facing sideways: Adjust position accordingly
+For a typical face:
+- Eyes: Y = 0.4-0.45
+- Nose tip: Y = 0.55
+- MOUTH CENTER: Y = 0.65-0.7
+- Chin: Y = 0.8
 
-2. EXCLAMATION POSITION:
-   - Place ABOVE the head/top of the character
-   - For animals with ears: Place above the ears
-   - For characters with hats/accessories: Place above those
-
-3. IF NO CLEAR FACE IS FOUND:
-   - Look for the main subject/character in the image
-   - Place lips in the lower-middle area of that subject
-   - Place exclamations above the subject
-
-Return JSON with coordinates as percentages (0.0 to 1.0):
+Return this exact JSON structure:
 {
-  "imageWidth": 1000,
-  "imageHeight": 1000,
   "faces": [
     {
       "faceId": 1,
-      "subjectType": "human|animal|cartoon|object",
-      "subjectName": "dog|cat|person|frog|etc",
       "mouthPosition": {
-        "centerX": 0.5,    // horizontal position (0=left, 1=right)
-        "centerY": 0.7,    // vertical position (0=top, 1=bottom)
-        "width": 0.1,      // suggested width based on subject size
-        "angle": 0.0       // rotation if face is tilted
+        "centerX": 0.5,
+        "centerY": 0.68,
+        "width": 0.08
       },
       "exclamationPosition": {
-        "centerX": 0.5,    // usually aligned with face center
-        "centerY": 0.2     // above the subject
+        "centerX": 0.5,
+        "centerY": 0.15
       },
-      "faceDirection": "left|center|right",
-      "faceSize": 0.3,     // how much of image the face takes up
-      "confidence": 0.9,
-      "notes": "Detected a dog facing left, mouth is on the muzzle"
+      "faceDirection": "center",
+      "faceSize": 0.25
     }
-  ],
-  "debugInfo": "Describe what you see and why you placed items there"
+  ]
 }
 
-IMPORTANT:
-- Always find SOMETHING to put lips on - be creative!
-- Adjust positions based on the subject (animal mouths are different from human mouths)
-- If multiple subjects, detect all of them
-- Include helpful notes about what you detected
-
-Return ONLY valid JSON.`;
+IMPORTANT: 
+- mouthPosition.centerY MUST be between 0.6 and 0.75
+- exclamationPosition.centerY MUST be between 0.1 and 0.3
+- These are percentages where 0=top, 1=bottom`;
 
     const result = await model.generateContent([
       prompt,
@@ -97,140 +76,95 @@ Return ONLY valid JSON.`;
     const response = await result.response;
     const text = response.text();
     
-    console.log('Gemini analysis response:', text);
+    console.log('Gemini raw response:', text);
     
     let positionData;
     try {
+      // Extract JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         positionData = JSON.parse(jsonMatch[0]);
         
-        if (!positionData.faces || !Array.isArray(positionData.faces)) {
-          // If no faces found, create a default placement
-          console.log('No faces detected, using default placement');
-          positionData = {
-            faces: [{
-              faceId: 1,
-              subjectType: "unknown",
-              subjectName: "main subject",
-              mouthPosition: {
-                centerX: 0.5,
-                centerY: 0.65,
-                width: 0.15,
-                angle: 0
-              },
-              exclamationPosition: {
-                centerX: 0.5,
-                centerY: 0.25
-              },
-              faceDirection: "center",
-              faceSize: 0.3,
-              confidence: 0.5,
-              notes: "No clear face detected, using default positioning"
-            }]
-          };
+        // Validate and fix positions if needed
+        if (positionData.faces && positionData.faces.length > 0) {
+          positionData.faces.forEach((face, index) => {
+            // Log what AI detected
+            console.log(`Face ${index + 1} detected:`, {
+              mouth: face.mouthPosition,
+              exclamation: face.exclamationPosition
+            });
+            
+            // Ensure mouth is in reasonable range
+            if (!face.mouthPosition.centerY || face.mouthPosition.centerY < 0.6 || face.mouthPosition.centerY > 0.75) {
+              console.log(`Fixing mouth position from ${face.mouthPosition.centerY} to 0.68`);
+              face.mouthPosition.centerY = 0.68;
+            }
+            
+            // Ensure exclamation is above head
+            if (!face.exclamationPosition.centerY || face.exclamationPosition.centerY > 0.3) {
+              console.log(`Fixing exclamation position from ${face.exclamationPosition.centerY} to 0.15`);
+              face.exclamationPosition.centerY = 0.15;
+            }
+            
+            // Ensure centerX values exist
+            face.mouthPosition.centerX = face.mouthPosition.centerX || 0.5;
+            face.exclamationPosition.centerX = face.exclamationPosition.centerX || 0.5;
+            
+            // Ensure other values
+            face.mouthPosition.width = face.mouthPosition.width || 0.08;
+            face.faceSize = face.faceSize || 0.25;
+            face.faceDirection = face.faceDirection || "center";
+          });
+        } else {
+          throw new Error('No faces detected');
         }
-        
-        // Adjust positions based on subject type
-        positionData.faces.forEach((face, index) => {
-          console.log(`Detected ${face.subjectType}: ${face.subjectName}`);
-          
-          // Animal-specific adjustments
-          if (face.subjectType === 'animal') {
-            // Animals often have mouths lower or more forward
-            if (face.subjectName?.includes('dog') || face.subjectName?.includes('wolf')) {
-              // Dogs have snouts, adjust forward if side view
-              if (face.faceDirection === 'left') {
-                face.mouthPosition.centerX = Math.max(0.2, face.mouthPosition.centerX - 0.1);
-              } else if (face.faceDirection === 'right') {
-                face.mouthPosition.centerX = Math.min(0.8, face.mouthPosition.centerX + 0.1);
-              }
-            }
-            
-            if (face.subjectName?.includes('cat')) {
-              // Cats have smaller mouths
-              face.mouthPosition.width = Math.min(0.08, face.mouthPosition.width);
-            }
-            
-            if (face.subjectName?.includes('bird')) {
-              // Birds have beaks, make lips smaller
-              face.mouthPosition.width = Math.min(0.06, face.mouthPosition.width);
-            }
-          }
-          
-          // Cartoon adjustments
-          if (face.subjectType === 'cartoon') {
-            // Cartoons often have exaggerated features
-            face.mouthPosition.width = Math.max(0.12, face.mouthPosition.width);
-          }
-          
-          // Ensure positions are within bounds
-          face.mouthPosition.centerX = Math.max(0.1, Math.min(0.9, face.mouthPosition.centerX));
-          face.mouthPosition.centerY = Math.max(0.3, Math.min(0.9, face.mouthPosition.centerY));
-          face.exclamationPosition.centerX = Math.max(0.1, Math.min(0.9, face.exclamationPosition.centerX));
-          face.exclamationPosition.centerY = Math.max(0.05, Math.min(0.5, face.exclamationPosition.centerY));
-          
-          // Default face size if missing
-          if (!face.faceSize || face.faceSize === 0) {
-            face.faceSize = 0.25;
-          }
-        });
-        
-        console.log('✅ Final positioning data:', JSON.stringify(positionData, null, 2));
-        
       } else {
-        throw new Error('No JSON found in response');
+        throw new Error('No valid JSON in response');
       }
     } catch (parseError) {
-      console.error('Failed to parse Gemini response:', text);
-      // Return default positioning as fallback
+      console.error('Error parsing Gemini response:', parseError);
+      console.error('Raw response was:', text);
+      
+      // Return default centered positions
       positionData = {
         faces: [{
           faceId: 1,
-          subjectType: "unknown",
-          subjectName: "subject",
           mouthPosition: {
             centerX: 0.5,
-            centerY: 0.65,
-            width: 0.15,
-            angle: 0
+            centerY: 0.68,  // Standard mouth position
+            width: 0.08
           },
           exclamationPosition: {
             centerX: 0.5,
-            centerY: 0.25
+            centerY: 0.15   // Above head
           },
           faceDirection: "center",
-          faceSize: 0.3,
-          confidence: 0.3,
-          notes: "Error in detection, using default positioning"
+          faceSize: 0.25
         }]
       };
     }
     
+    console.log('Returning position data:', JSON.stringify(positionData, null, 2));
     return res.status(200).json(positionData);
     
   } catch (error) {
-    console.error('Gemini positioning error:', error);
-    // Return default positioning as ultimate fallback
+    console.error('API Error:', error);
+    
+    // Always return valid position data even on error
     return res.status(200).json({
       faces: [{
         faceId: 1,
-        subjectType: "unknown",
-        subjectName: "subject",
         mouthPosition: {
           centerX: 0.5,
-          centerY: 0.65,
-          width: 0.15,
-          angle: 0
+          centerY: 0.68,
+          width: 0.08
         },
         exclamationPosition: {
           centerX: 0.5,
-          centerY: 0.25
+          centerY: 0.15
         },
         faceDirection: "center",
-        faceSize: 0.3,
-        confidence: 0.1,
-        notes: "API error, using default positioning"
+        faceSize: 0.25
       }]
     });
   }
