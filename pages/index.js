@@ -1708,6 +1708,31 @@ export default function Home() {
           }
 
           .token-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .community-memes {
+            grid-template-columns: 1fr;
+          }
+
+          .pumper-float img {
+            width: 200px;
+            height: 200px;
+          }
+
+          h1 {
+            font-size: 2rem;
+          }
+
+          .mobile-social-icons {
+            font-size: 1.2rem;
+            gap: 0.8rem;
+          }
+        }
+      `}</style>
+    </>
+  );
+}
             grid-template-columns: repeat(2, 1fr);
             gap: 0.8rem;
           }
@@ -1762,24 +1787,3 @@ export default function Home() {
           }
 
           .token-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .community-memes {
-            grid-template-columns: 1fr;
-          }
-
-          .pumper-float img {
-            width: 200px;
-            height: 200px;
-          }
-
-          h1 {
-            font-size: 2rem;
-          }
-
-          .mobile-social-icons {
-            font-size: 1.2rem;
-            gap: 0.8rem;
-          }
-        }
