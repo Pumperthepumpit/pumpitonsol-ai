@@ -238,7 +238,7 @@ export default function Home() {
       }
 
       const positionData = await response.json();
-      console.log('📍 Positioning data received:', positionData);
+      console.log('📍 Full positioning data received:', JSON.stringify(positionData, null, 2));
 
       if (!positionData.faces || positionData.faces.length === 0) {
         throw new Error('No faces detected in image');
@@ -253,134 +253,168 @@ export default function Home() {
       // Load the original image
       const img = new Image();
       
-      img.onload = async () => {
-        // Set canvas size to match image
-        canvas.width = img.width;
-        canvas.height = img.height;
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = imageDataUrl;
+      });
+
+      // Set canvas size to match image
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      console.log(`📐 Canvas size: ${canvas.width}x${canvas.height}`);
+      
+      // Draw original image
+      ctx.drawImage(img, 0, 0);
+      
+      // Load PNG assets
+      const lipImage = new Image();
+      const exclamationImage = new Image();
+      
+      // Load lips PNG
+      await new Promise((resolve, reject) => {
+        lipImage.onload = () => {
+          console.log('✅ Lips PNG loaded successfully!');
+          console.log(`   Original lips dimensions: ${lipImage.width}x${lipImage.height}`);
+          resolve();
+        };
+        lipImage.onerror = () => {
+          reject(new Error('Failed to load lips.png'));
+        };
+        lipImage.src = '/meme-assets/lips.png';
+      });
+      
+      // Load exclamation PNG
+      await new Promise((resolve, reject) => {
+        exclamationImage.onload = () => {
+          console.log('✅ Exclamation PNG loaded successfully!');
+          console.log(`   Original exclamation dimensions: ${exclamationImage.width}x${exclamationImage.height}`);
+          resolve();
+        };
+        exclamationImage.onerror = () => {
+          reject(new Error('Failed to load exclamation.png'));
+        };
+        exclamationImage.src = '/meme-assets/exclamation.png';
+      });
+      
+      console.log('🎉 All PNG assets loaded successfully!');
+      
+      // Process each detected face
+      positionData.faces.forEach((face, index) => {
+        console.log(`\n🎭 Processing face ${index + 1}:`);
+        console.log(`   Face data:`, JSON.stringify(face, null, 2));
         
-        // Draw original image
-        ctx.drawImage(img, 0, 0);
+        // Calculate actual pixel positions from percentages
+        const mouthPixelX = face.mouthPosition.centerX * canvas.width;
+        const mouthPixelY = face.mouthPosition.centerY * canvas.height;
+        const exclamationPixelX = face.exclamationPosition.centerX * canvas.width;
+        const exclamationPixelY = face.exclamationPosition.centerY * canvas.height;
         
-        // Load PNG assets from public root
-        const lipImage = new Image();
-        const exclamationImage = new Image();
+        // === IMPROVED LIP SIZING ===
+        // Calculate base scale from canvas size
+        const canvasMinDimension = Math.min(canvas.width, canvas.height);
+        const baseScale = canvasMinDimension / 800; // Normalize to 800px base
         
-        try {
-          // Load lips from public root
-          console.log('📎 Loading lips.png from meme-assets folder...');
-          await new Promise((resolve, reject) => {
-            lipImage.onload = () => {
-              console.log('✅ Lips PNG loaded successfully!');
-              resolve();
-            };
-            lipImage.onerror = () => {
-              console.error('❌ Failed to load lips.png from /meme-assets/lips.png');
-              reject(new Error('Failed to load lips.png - make sure it exists in /public/meme-assets/'));
-            };
-            lipImage.src = '/meme-assets/lips.png';
-          });
-          
-          // Load exclamations from public root
-          console.log('📎 Loading exclamation.png from meme-assets folder...');
-          await new Promise((resolve, reject) => {
-            exclamationImage.onload = () => {
-              console.log('✅ Exclamation PNG loaded successfully!');
-              resolve();
-            };
-            exclamationImage.onerror = () => {
-              console.error('❌ Failed to load exclamation.png from /meme-assets/exclamation.png');
-              reject(new Error('Failed to load exclamation.png - make sure it exists in /public/meme-assets/'));
-            };
-            exclamationImage.src = '/meme-assets/exclamation.png';
-          });
-          
-          console.log('🎉 All PNG assets loaded successfully!');
-          
-          // Process each detected face
-          positionData.faces.forEach((face, index) => {
-            console.log(`🎭 Processing face ${index + 1}:`, face);
-            
-            // Calculate actual pixel positions from percentages
-            const mouthPixelX = face.mouthPosition.centerX * canvas.width;
-            const mouthPixelY = face.mouthPosition.centerY * canvas.height;
-            const exclamationPixelX = face.exclamationPosition.centerX * canvas.width;
-            const exclamationPixelY = face.exclamationPosition.centerY * canvas.height;
-            
-            // Scale lips based on face size and mouth width (improved scaling)
-            const baseLipWidth = Math.max((face.mouthPosition.width || 0.08) * canvas.width, 50); // Minimum 50px width
-            const lipAspectRatio = lipImage.height / lipImage.width;
-            const lipWidth = baseLipWidth;
-            const lipHeight = baseLipWidth * lipAspectRatio;
-            
-            // Position lips centered on mouth
-            const lipX = mouthPixelX - (lipWidth / 2);
-            const lipY = mouthPixelY - (lipHeight / 2);
-            
-            console.log(`👄 Drawing lips CENTERED at: (${Math.round(lipX)}, ${Math.round(lipY)}) size: ${Math.round(lipWidth)}x${Math.round(lipHeight)}`);
-            console.log(`   Mouth detected at: X=${face.mouthPosition.centerX}, Y=${face.mouthPosition.centerY}`);
-            
-            // Draw lips (simplified - no rotation for now)
-            ctx.drawImage(lipImage, lipX, lipY, lipWidth, lipHeight);
-            
-            // Calculate exclamation size - better scaling like Gemini's example
-            const exclamationScale = (face.faceSize || 0.25) * 0.3; // 30% of face size
-            const exclamationWidth = canvas.width * exclamationScale;
-            const exclamationAspectRatio = exclamationImage.height / exclamationImage.width;
-            const exclamationHeight = exclamationWidth * exclamationAspectRatio;
-            
-            // Center exclamation on detected position
-            const exclamationX = exclamationPixelX - (exclamationWidth / 2);
-            const exclamationY = exclamationPixelY - (exclamationHeight / 2);
-            
-            console.log(`❗ Drawing exclamation CENTERED at: (${Math.round(exclamationX)}, ${Math.round(exclamationY)}) size: ${Math.round(exclamationWidth)}x${Math.round(exclamationHeight)}`);
-            console.log(`   Exclamation position: X=${face.exclamationPosition.centerX}, Y=${face.exclamationPosition.centerY}`);
-            
-            // Draw single exclamation image
-            ctx.drawImage(exclamationImage, exclamationX, exclamationY, exclamationWidth, exclamationHeight);
-          });
-          
-          // Convert canvas to blob and create download URL
-          canvas.toBlob((blob) => {
-            const memeUrl = URL.createObjectURL(blob);
-            setPreview(memeUrl);
-            setGeneratedMeme(memeUrl);
-            
-            // Add to community memes
-            const newMeme = {
-              url: memeUrl,
-              creator: xHandle,
-              timestamp: Date.now(),
-              pngOverlay: true,
-              facesDetected: positionData.faces.length
-            };
-            
-            setCommunityMemes(prev => {
-              const updated = [newMeme, ...prev].slice(0, 3);
-              return updated;
-            });
-            
-            setIsProcessing(false);
-            
-            console.log('🎉 PNG overlay meme generated successfully!');
-          }, 'image/png');
-          
-        } catch (pngError) {
-          console.error('PNG loading failed:', pngError);
-          setError(`Failed to load PNG assets: ${pngError.message}`);
-          setIsProcessing(false);
+        // Get face size scale
+        const faceScale = face.faceSize || 0.25;
+        
+        // Calculate lip dimensions
+        // Lips should be proportional to face size
+        const lipWidthPercent = Math.max(0.15, faceScale * 0.6); // 60% of face size, minimum 15% of canvas
+        const targetLipWidth = canvas.width * lipWidthPercent;
+        
+        // Maintain aspect ratio of the lip image
+        const lipAspectRatio = lipImage.width / lipImage.height;
+        const finalLipWidth = targetLipWidth;
+        const finalLipHeight = targetLipWidth / lipAspectRatio;
+        
+        // Position lips centered on mouth
+        const lipX = mouthPixelX - (finalLipWidth / 2);
+        const lipY = mouthPixelY - (finalLipHeight / 2);
+        
+        console.log(`👄 Lip calculations:`);
+        console.log(`   Canvas size: ${canvas.width}x${canvas.height}`);
+        console.log(`   Face scale: ${faceScale}`);
+        console.log(`   Lip width percent: ${lipWidthPercent}`);
+        console.log(`   Final lip size: ${Math.round(finalLipWidth)}x${Math.round(finalLipHeight)}`);
+        console.log(`   Lip position: (${Math.round(lipX)}, ${Math.round(lipY)})`);
+        console.log(`   Mouth coordinates: (${face.mouthPosition.centerX}, ${face.mouthPosition.centerY})`);
+        
+        // Save context for potential transformations
+        ctx.save();
+        
+        // Handle face direction for mirroring
+        if (face.faceDirection === 'left') {
+          // Face looking left - flip the lips horizontally
+          ctx.translate(mouthPixelX, mouthPixelY);
+          ctx.scale(-1, 1); // Flip horizontally
+          ctx.drawImage(lipImage, -finalLipWidth/2, -finalLipHeight/2, finalLipWidth, finalLipHeight);
+          console.log('   ← Lips mirrored for left-facing face');
+        } else if (face.faceDirection === 'right') {
+          // Face looking right - normal orientation
+          ctx.drawImage(lipImage, lipX, lipY, finalLipWidth, finalLipHeight);
+          console.log('   → Lips normal for right-facing face');
+        } else {
+          // Center facing - normal orientation
+          ctx.drawImage(lipImage, lipX, lipY, finalLipWidth, finalLipHeight);
+          console.log('   ↑ Lips normal for center-facing face');
         }
-      };
+        
+        ctx.restore();
+        
+        // === IMPROVED EXCLAMATION SIZING ===
+        // Exclamations should also be proportional to face
+        const exclamationWidthPercent = Math.max(0.18, faceScale * 0.7); // 70% of face size, minimum 18%
+        const targetExclamationWidth = canvas.width * exclamationWidthPercent;
+        
+        // Maintain aspect ratio
+        const exclamationAspectRatio = exclamationImage.width / exclamationImage.height;
+        const finalExclamationWidth = targetExclamationWidth;
+        const finalExclamationHeight = targetExclamationWidth / exclamationAspectRatio;
+        
+        // Center exclamation on detected position
+        const exclamationX = exclamationPixelX - (finalExclamationWidth / 2);
+        const exclamationY = exclamationPixelY - (finalExclamationHeight / 2);
+        
+        console.log(`\n❗ Exclamation calculations:`);
+        console.log(`   Exclamation width percent: ${exclamationWidthPercent}`);
+        console.log(`   Final exclamation size: ${Math.round(finalExclamationWidth)}x${Math.round(finalExclamationHeight)}`);
+        console.log(`   Exclamation position: (${Math.round(exclamationX)}, ${Math.round(exclamationY)})`);
+        console.log(`   Exclamation coordinates: (${face.exclamationPosition.centerX}, ${face.exclamationPosition.centerY})`);
+        
+        // Draw exclamation
+        ctx.drawImage(exclamationImage, exclamationX, exclamationY, finalExclamationWidth, finalExclamationHeight);
+      });
       
-      img.onerror = () => {
-        setError('Failed to load image');
+      // Convert canvas to blob and create download URL
+      canvas.toBlob((blob) => {
+        const memeUrl = URL.createObjectURL(blob);
+        setPreview(memeUrl);
+        setGeneratedMeme(memeUrl);
+        
+        // Add to community memes
+        const newMeme = {
+          url: memeUrl,
+          creator: xHandle,
+          timestamp: Date.now(),
+          pngOverlay: true,
+          facesDetected: positionData.faces.length
+        };
+        
+        setCommunityMemes(prev => {
+          const updated = [newMeme, ...prev].slice(0, 3);
+          return updated;
+        });
+        
         setIsProcessing(false);
-      };
-      
-      // Load the original image
-      img.src = imageDataUrl;
+        
+        console.log('\n🎉 PNG overlay meme generated successfully!');
+        console.log(`📊 Summary: ${positionData.faces.length} face(s) processed`);
+      }, 'image/png');
       
     } catch (error) {
-      console.error('PNG overlay meme generation failed:', error);
+      console.error('❌ PNG overlay meme generation failed:', error);
       setError(`Meme generation failed: ${error.message}`);
       setIsProcessing(false);
     }
