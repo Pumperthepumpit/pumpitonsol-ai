@@ -509,9 +509,18 @@ export default function Home() {
       const container = containerRef.current;
       const containerRect = container.getBoundingClientRect();
       
-      // Calculate relative positions
-      const scaleX = img.width / containerRect.width;
-      const scaleY = img.height / containerRect.height;
+      // Get the displayed image size
+      const displayedImg = container.querySelector('.preview-image');
+      const displayedImgRect = displayedImg.getBoundingClientRect();
+      
+      // Calculate scale factors
+      const scaleX = img.width / displayedImgRect.width;
+      const scaleY = img.height / displayedImgRect.height;
+      
+      // Calculate base scale to match 120px display size
+      const baseDisplaySize = 120; // This matches the CSS width
+      const lipBaseScale = (baseDisplaySize / lipImage.width) * scaleX;
+      const exclamationBaseScale = (baseDisplaySize / exclamationImage.width) * scaleX;
       
       // Draw lips
       ctx.save();
@@ -519,7 +528,9 @@ export default function Home() {
       const lipCenterY = (containerRect.height / 2 + lipPosition.y) * scaleY;
       ctx.translate(lipCenterX, lipCenterY);
       ctx.rotate(lipRotation * Math.PI / 180);
-      ctx.scale(lipScale, lipScale);
+      // Apply base scale times user scale
+      const finalLipScale = lipBaseScale * lipScale;
+      ctx.scale(finalLipScale, finalLipScale);
       ctx.drawImage(
         lipImage,
         -lipImage.width / 2,
@@ -533,7 +544,9 @@ export default function Home() {
       const exclamationCenterY = (containerRect.height / 2 + exclamationPosition.y) * scaleY;
       ctx.translate(exclamationCenterX, exclamationCenterY);
       ctx.rotate(exclamationRotation * Math.PI / 180);
-      ctx.scale(exclamationScale, exclamationScale);
+      // Apply base scale times user scale
+      const finalExclamationScale = exclamationBaseScale * exclamationScale;
+      ctx.scale(finalExclamationScale, finalExclamationScale);
       ctx.drawImage(
         exclamationImage,
         -exclamationImage.width / 2,
