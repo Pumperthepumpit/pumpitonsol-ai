@@ -1,5 +1,7 @@
 import Head from 'next/head';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSpring, animated, to } from '@react-spring/web';
+import { useDrag, usePinch } from '@use-gesture/react';
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -21,16 +23,35 @@ export default function Home() {
   });
   const [jupiterLoaded, setJupiterLoaded] = useState(false);
   
-  // New states for multi-tier detection
-  const [detectionMode, setDetectionMode] = useState('auto');
-  const [clickPosition, setClickPosition] = useState(null);
-  const [showModeSelector, setShowModeSelector] = useState(false);
-  const [detectionStatus, setDetectionStatus] = useState('');
+  // New states for draggable overlays
+  const [showOverlays, setShowOverlays] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragEnabled, setDragEnabled] = useState(true);
   
-  // New states for two-click manual positioning
-  const [manualStep, setManualStep] = useState('lips'); // 'lips' or 'exclamation'
-  const [lipPosition, setLipPosition] = useState(null);
-  const [exclamationPosition, setExclamationPosition] = useState(null);
+  // Separate springs for each overlay
+  const [lipSpring, lipApi] = useSpring(() => ({
+    x: 0,
+    y: 0,
+    scale: 1,
+    rotation: 0,
+    config: { tension: 300, friction: 30 }
+  }));
+  
+  const [exclamationSpring, exclamationApi] = useSpring(() => ({
+    x: 0,
+    y: 0,
+    scale: 1,
+    rotation: 0,
+    config: { tension: 300, friction: 30 }
+  }));
+  
+  // Refs for overlay bounds
+  const containerRef = useRef(null);
+  const lipRef = useRef(null);
+  const exclamationRef = useRef(null);
+  
+  // Drag and drop states
+  const [isDragOver, setIsDragOver] = useState(false);
 
   useEffect(() => {
     const checkJupiter = setInterval(() => {
@@ -55,58 +76,6 @@ export default function Home() {
           fixedOutputMint: true,
         },
       });
-    }
-  }, [walletAddress]);
-
-  useEffect(() => {
-    const initJupiter = () => {
-      if (window.Jupiter && walletAddress) {
-        window.Jupiter.init({
-          displayMode: 'widget',
-          integratedTargetId: 'jupiter-terminal',
-          endpoint: 'https://api.mainnet-beta.solana.com',
-          strictTokenList: false,
-          defaultExplorer: 'Solscan',
-          formProps: {
-            initialInputTokenAddress: 'So11111111111111111111111111111111111111112',
-            initialOutputTokenAddress: 'B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk',
-            initialAmount: '100000000',
-            fixedOutputMint: true,
-          },
-          enableWalletPassthrough: true,
-          onSuccess: ({ txid }) => {
-            console.log('Swap successful:', txid);
-          },
-          onSwapError: ({ error }) => {
-            console.error('Swap error:', error);
-          },
-        });
-        
-        if (window.solana && window.Jupiter.syncProps) {
-          window.Jupiter.syncProps({
-            passthroughWalletContextState: {
-              wallet: window.solana,
-              wallets: [],
-              select: () => {},
-              connect: async () => {
-                const response = await window.solana.connect();
-                return response.publicKey.toString();
-              },
-              disconnect: async () => {
-                await window.solana.disconnect();
-              },
-              connecting: false,
-              connected: !!walletAddress,
-              disconnecting: false,
-              publicKey: walletAddress ? { toBase58: () => walletAddress } : null,
-            }
-          });
-        }
-      }
-    };
-
-    if (walletAddress) {
-      initJupiter();
     }
   }, [walletAddress]);
 
@@ -178,6 +147,27 @@ export default function Home() {
     }));
   };
 
+  // Modern drag and drop handlers
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files[0]) {
+      handleFileSelect({ target: { files } });
+    }
+  };
+
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -185,10 +175,13 @@ export default function Home() {
     setSelectedFile(file);
     setError('');
     setGeneratedMeme(null);
-    setDetectionStatus('');
+    setShowOverlays(false);
     
-    const originalPreview = URL.createObjectURL(file);
-    setPreview(originalPreview);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPreview(e.target.result);
+    };
+    reader.readAsDataURL(file);
 
     if (!xHandle) {
       setShowXForm(true);
@@ -201,6 +194,82 @@ export default function Home() {
       setShowXForm(false);
     }
   };
+
+  // Gesture handlers for lips
+  const bindLipDrag = useDrag((state) => {
+    const { movement: [mx, my], dragging, memo = lipSpring.x.get() } = state;
+    
+    if (dragging) {
+      setIsDragging(true);
+      lipApi.start({ 
+        x: memo + mx, 
+        y: lipSpring.y.get() + my,
+        immediate: true 
+      });
+    } else {
+      setIsDragging(false);
+      return lipSpring.x.get();
+    }
+  }, {
+    from: () => [lipSpring.x.get(), lipSpring.y.get()],
+    bounds: containerRef,
+    rubberband: true
+  });
+
+  const bindLipPinch = usePinch((state) => {
+    const { offset: [d], origin: [ox, oy], first, movement: [mx, my], memo } = state;
+    
+    if (first) {
+      const lipEl = lipRef.current;
+      const rect = lipEl.getBoundingClientRect();
+      const x = ox - rect.left - rect.width / 2;
+      const y = oy - rect.top - rect.height / 2;
+      return { x, y, scale: lipSpring.scale.get(), rotation: lipSpring.rotation.get() };
+    }
+    
+    const scale = Math.min(Math.max(memo.scale * (1 + d / 200), 0.5), 3);
+    const rotation = memo.rotation + mx / 5;
+    
+    lipApi.start({ scale, rotation });
+  });
+
+  // Gesture handlers for exclamation
+  const bindExclamationDrag = useDrag((state) => {
+    const { movement: [mx, my], dragging, memo = exclamationSpring.x.get() } = state;
+    
+    if (dragging) {
+      setIsDragging(true);
+      exclamationApi.start({ 
+        x: memo + mx, 
+        y: exclamationSpring.y.get() + my,
+        immediate: true 
+      });
+    } else {
+      setIsDragging(false);
+      return exclamationSpring.x.get();
+    }
+  }, {
+    from: () => [exclamationSpring.x.get(), exclamationSpring.y.get()],
+    bounds: containerRef,
+    rubberband: true
+  });
+
+  const bindExclamationPinch = usePinch((state) => {
+    const { offset: [d], origin: [ox, oy], first, movement: [mx, my], memo } = state;
+    
+    if (first) {
+      const exclamationEl = exclamationRef.current;
+      const rect = exclamationEl.getBoundingClientRect();
+      const x = ox - rect.left - rect.width / 2;
+      const y = oy - rect.top - rect.height / 2;
+      return { x, y, scale: exclamationSpring.scale.get(), rotation: exclamationSpring.rotation.get() };
+    }
+    
+    const scale = Math.min(Math.max(memo.scale * (1 + d / 200), 0.5), 3);
+    const rotation = memo.rotation + mx / 5;
+    
+    exclamationApi.start({ scale, rotation });
+  });
 
   const generateMeme = async () => {
     if (!selectedFile) {
@@ -215,8 +284,6 @@ export default function Home() {
 
     setIsProcessing(true);
     setError('');
-    setShowModeSelector(false);
-    setDetectionStatus('🚀 Starting multi-tier face detection...');
 
     try {
       // Convert image to base64
@@ -227,390 +294,8 @@ export default function Home() {
         reader.readAsDataURL(selectedFile);
       });
 
-      // Create image element
-      const img = new Image();
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = imageDataUrl;
-      });
-
-      // Create canvas
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-
-      // Load PNG assets
-      const [lipImage, exclamationImage] = await Promise.all([
-        loadImage('/meme-assets/lips.png'),
-        loadImage('/meme-assets/exclamation.png')
-      ]);
-
-      console.log('✅ PNG assets loaded successfully!');
-
-      let positioningData = null;
-
-      // Handle different detection modes
-      if (detectionMode === 'manual' && lipPosition && exclamationPosition) {
-        console.log('📍 Using manual positioning...');
-        setDetectionStatus('📍 Using manual positioning...');
-        positioningData = {
-          method: 'manual',
-          faces: [{
-            mouthPosition: {
-              centerX: lipPosition.x / 100,
-              centerY: lipPosition.y / 100
-            },
-            exclamationPosition: {
-              centerX: exclamationPosition.x / 100,
-              centerY: exclamationPosition.y / 100
-            },
-            faceSize: 0.3
-          }]
-        };
-      } else if (detectionMode === 'manual') {
-        setError('Please click to place both lips and exclamation marks!');
-        setIsProcessing(false);
-        return;
-      } else {
-        // Try MediaPipe first (for human faces)
-        console.log('🔍 Tier 1: Attempting MediaPipe detection for human faces...');
-        setDetectionStatus('🧑 Checking for human faces with MediaPipe...');
-        positioningData = await tryMediaPipeDetection(canvas);
-
-        // If MediaPipe fails, try Replicate for anime/cartoons
-        if (!positioningData || positioningData.faces.length === 0) {
-          console.log('🎌 Tier 2: Trying Replicate anime/cartoon detection...');
-          setDetectionStatus('🦸 Checking for anime/cartoon characters...');
-          positioningData = await tryReplicateAnimeDetection(imageDataUrl);
-        }
-
-        // If anime detection fails, try Replicate for animals
-        if (!positioningData || positioningData.faces.length === 0) {
-          console.log('🐾 Tier 3: Trying Replicate animal detection...');
-          setDetectionStatus('🐕 Checking for animal faces...');
-          positioningData = await tryReplicateAnimalDetection(imageDataUrl);
-        }
-
-        // If all Replicate models fail, try Gemini as fallback
-        if (!positioningData || positioningData.faces.length === 0) {
-          console.log('🤖 Tier 4: Trying Gemini AI as fallback...');
-          setDetectionStatus('🤖 Using Gemini AI for general detection...');
-          positioningData = await tryGeminiDetection(imageDataUrl);
-        }
-
-        // If everything fails, prompt for manual mode
-        if (!positioningData || positioningData.faces.length === 0) {
-          setError('No faces detected! Try manual positioning mode.');
-          setShowModeSelector(true);
-          setIsProcessing(false);
-          setDetectionStatus('');
-          return;
-        }
-      }
-
-      console.log(`✅ Using ${positioningData.method} detection method`);
-      console.log(`📊 Detected ${positioningData.faces.length} face(s)`);
-      setDetectionStatus(`✅ Detected ${positioningData.faces.length} face(s) using ${positioningData.method}`);
-
-      // Clear and redraw original image
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-
-      // Process each detected/positioned face
-      positioningData.faces.forEach((face, index) => {
-        console.log(`\n🎭 Processing face ${index + 1}:`);
-        
-        let mouthCenterX, mouthCenterY, targetLipWidth, targetLipHeight;
-        let exclamationX, exclamationY, exclamationWidth, exclamationHeight;
-        let faceAngle = 0;
-
-        if (positioningData.method === 'mediapipe' && face.landmarks) {
-          // High precision MediaPipe positioning
-          const { mouthBounds, faceMetrics } = face;
-          
-          mouthCenterX = mouthBounds.centerX;
-          mouthCenterY = mouthBounds.centerY;
-          
-          // BIGGER lips for meme effect
-          const lipScale = 3.0; // Even bigger!
-          const lipAspectRatio = lipImage.width / lipImage.height;
-          targetLipWidth = Math.max(
-            mouthBounds.width * lipScale,
-            canvas.width * 0.15
-          );
-          targetLipHeight = targetLipWidth / lipAspectRatio;
-          
-          faceAngle = faceMetrics.angle;
-          
-          exclamationX = faceMetrics.foreheadCenter.x;
-          exclamationY = faceMetrics.foreheadCenter.y - 80;
-          exclamationWidth = faceMetrics.faceWidth * 0.7;
-          exclamationHeight = exclamationWidth / (exclamationImage.width / exclamationImage.height);
-          
-        } else {
-          // Replicate, Gemini, or manual positioning
-          mouthCenterX = face.mouthPosition.centerX * canvas.width;
-          mouthCenterY = face.mouthPosition.centerY * canvas.height;
-          
-          // Different scaling based on detection method
-          let lipScale = 2.5;
-          if (positioningData.method === 'replicate-anime') {
-            lipScale = 3.0; // Bigger for anime style
-          } else if (positioningData.method === 'replicate-animal') {
-            lipScale = 2.8; // Adjusted for animals
-          }
-          
-          const estimatedMouthWidth = canvas.width * (face.faceSize || 0.25) * 0.3;
-          const lipAspectRatio = lipImage.width / lipImage.height;
-          targetLipWidth = Math.max(
-            estimatedMouthWidth * lipScale,
-            canvas.width * 0.12
-          );
-          targetLipHeight = targetLipWidth / lipAspectRatio;
-          
-          exclamationX = face.exclamationPosition.centerX * canvas.width;
-          exclamationY = face.exclamationPosition.centerY * canvas.height;
-          const exclamationScale = (face.faceSize || 0.25) * 2.5;
-          exclamationWidth = canvas.width * exclamationScale;
-          exclamationHeight = exclamationWidth / (exclamationImage.width / exclamationImage.height);
-        }
-
-        console.log(`👄 Lip size: ${Math.round(targetLipWidth)}x${Math.round(targetLipHeight)}`);
-        console.log(`📍 Mouth center: (${Math.round(mouthCenterX)}, ${Math.round(mouthCenterY)})`);
-
-        // Draw lips with rotation if detected
-        ctx.save();
-        ctx.translate(mouthCenterX, mouthCenterY);
-        if (faceAngle) ctx.rotate(faceAngle);
-        ctx.drawImage(
-          lipImage,
-          -targetLipWidth / 2,
-          -targetLipHeight / 2,
-          targetLipWidth,
-          targetLipHeight
-        );
-        ctx.restore();
-
-        // Draw exclamation
-        ctx.drawImage(
-          exclamationImage,
-          exclamationX - exclamationWidth / 2,
-          exclamationY - exclamationHeight / 2,
-          exclamationWidth,
-          exclamationHeight
-        );
-
-        console.log(`✅ Overlays applied using ${positioningData.method}`);
-      });
-
-      // Convert to blob and display
-      canvas.toBlob((blob) => {
-        const memeUrl = URL.createObjectURL(blob);
-        setPreview(memeUrl);
-        setGeneratedMeme(memeUrl);
-        
-        setCommunityMemes(prev => [{
-          url: memeUrl,
-          creator: xHandle,
-          timestamp: Date.now(),
-          pngOverlay: true,
-          facesDetected: positioningData.faces.length,
-          detectionMethod: positioningData.method
-        }, ...prev].slice(0, 3));
-        
-        setIsProcessing(false);
-        setLipPosition(null);
-        setExclamationPosition(null);
-        setManualStep('lips');
-        setDetectionStatus('');
-        
-        console.log(`🎉 Meme generated successfully using ${positioningData.method}!`);
-      }, 'image/png');
-      
-    } catch (error) {
-      console.error('❌ Meme generation failed:', error);
-      setError(`Meme generation failed: ${error.message}`);
-      setIsProcessing(false);
-      setDetectionStatus('');
-    }
-  };
-
-  // MediaPipe detection function
-  async function tryMediaPipeDetection(canvas) {
-    try {
-      if (!window.FaceMesh) {
-        console.log('MediaPipe not loaded, skipping...');
-        return null;
-      }
-
-      const faceMesh = new window.FaceMesh({
-        locateFile: (file) => {
-          return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`;
-        }
-      });
-      
-      faceMesh.setOptions({
-        maxNumFaces: 5,
-        refineLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      });
-
-      let results = null;
-      
-      return new Promise((resolve) => {
-        faceMesh.onResults((mpResults) => {
-          results = mpResults;
-          
-          if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
-            resolve(null);
-            return;
-          }
-
-          const faces = results.multiFaceLandmarks.map((landmarks) => {
-            // Mouth landmarks
-            const mouthIndices = [13, 14, 269, 270, 267, 271, 272, 15, 16, 17, 18, 87, 86, 85, 84, 61, 291];
-            
-            let minX = Infinity, maxX = -Infinity;
-            let minY = Infinity, maxY = -Infinity;
-            
-            mouthIndices.forEach(index => {
-              const point = landmarks[index];
-              const x = point.x * canvas.width;
-              const y = point.y * canvas.height;
-              minX = Math.min(minX, x);
-              maxX = Math.max(maxX, x);
-              minY = Math.min(minY, y);
-              maxY = Math.max(maxY, y);
-            });
-            
-            // Eye positions for angle
-            const leftEye = landmarks[33];
-            const rightEye = landmarks[263];
-            const angle = Math.atan2(
-              (rightEye.y - leftEye.y) * canvas.height,
-              (rightEye.x - leftEye.x) * canvas.width
-            );
-            
-            // Face width
-            const leftCheek = landmarks[234];
-            const rightCheek = landmarks[454];
-            const faceWidth = Math.abs(rightCheek.x - leftCheek.x) * canvas.width;
-            
-            // Forehead position
-            const forehead = landmarks[10];
-            
-            return {
-              landmarks: landmarks,
-              mouthBounds: {
-                centerX: (minX + maxX) / 2,
-                centerY: (minY + maxY) / 2,
-                width: maxX - minX,
-                height: maxY - minY
-              },
-              faceMetrics: {
-                angle: angle,
-                faceWidth: faceWidth,
-                foreheadCenter: {
-                  x: forehead.x * canvas.width,
-                  y: forehead.y * canvas.height
-                }
-              }
-            };
-          });
-
-          resolve({
-            method: 'mediapipe',
-            faces: faces
-          });
-        });
-
-        // Send image to MediaPipe
-        faceMesh.send({ image: canvas });
-        
-        // Timeout if no results
-        setTimeout(() => {
-          if (!results) resolve(null);
-        }, 1000);
-      });
-    } catch (error) {
-      console.error('MediaPipe error:', error);
-      return null;
-    }
-  }
-
-  // Replicate anime detection
-  async function tryReplicateAnimeDetection(imageDataUrl) {
-    try {
-      const response = await fetch('/api/detect-anime-face', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: imageDataUrl
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Anime detection failed');
-      }
-
-      const result = await response.json();
-      
-      if (result.faces && result.faces.length > 0) {
-        return {
-          method: 'replicate-anime',
-          faces: result.faces
-        };
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Replicate anime error:', error);
-      return null;
-    }
-  }
-
-  // Replicate animal detection
-  async function tryReplicateAnimalDetection(imageDataUrl) {
-    try {
-      const response = await fetch('/api/detect-animal-face', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: imageDataUrl
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Animal detection failed');
-      }
-
-      const result = await response.json();
-      
-      if (result.faces && result.faces.length > 0) {
-        return {
-          method: 'replicate-animal',
-          faces: result.faces
-        };
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Replicate animal error:', error);
-      return null;
-    }
-  }
-
-  // Gemini detection function (existing)
-  async function tryGeminiDetection(imageDataUrl) {
-    try {
+      // Try Gemini detection
+      console.log('🤖 Attempting Gemini AI detection...');
       const response = await fetch('/api/analyze-image', {
         method: 'POST',
         headers: {
@@ -621,25 +306,137 @@ export default function Home() {
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Gemini API failed');
+      let positionData = null;
+      
+      if (response.ok) {
+        positionData = await response.json();
       }
 
-      const positionData = await response.json();
-      
-      if (positionData.faces && positionData.faces.length > 0) {
-        return {
-          method: 'gemini',
-          faces: positionData.faces
+      // Default positions if AI fails
+      if (!positionData || !positionData.faces || positionData.faces.length === 0) {
+        console.log('Using default center positions');
+        positionData = {
+          faces: [{
+            mouthPosition: { centerX: 0.5, centerY: 0.6 },
+            exclamationPosition: { centerX: 0.5, centerY: 0.3 },
+            faceSize: 0.3
+          }]
         };
       }
+
+      // Get container dimensions
+      const container = containerRef.current;
+      if (container) {
+        const rect = container.getBoundingClientRect();
+        const face = positionData.faces[0];
+        
+        // Position overlays based on AI or defaults
+        const lipX = (face.mouthPosition.centerX - 0.5) * rect.width;
+        const lipY = (face.mouthPosition.centerY - 0.5) * rect.height;
+        const exclamationX = (face.exclamationPosition.centerX - 0.5) * rect.width;
+        const exclamationY = (face.exclamationPosition.centerY - 0.5) * rect.height;
+        
+        // Set initial positions
+        lipApi.start({ x: lipX, y: lipY, scale: 1, rotation: 0 });
+        exclamationApi.start({ x: exclamationX, y: exclamationY, scale: 1, rotation: 0 });
+      }
+
+      setShowOverlays(true);
+      setIsProcessing(false);
       
-      return null;
     } catch (error) {
-      console.error('Gemini error:', error);
-      return null;
+      console.error('Meme generation failed:', error);
+      setError(`Meme generation failed: ${error.message}`);
+      setIsProcessing(false);
     }
-  }
+  };
+
+  const downloadMeme = async () => {
+    if (!selectedFile || !showOverlays) return;
+    
+    setDragEnabled(false);
+    
+    try {
+      // Create canvas
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Load base image
+      const img = new Image();
+      img.src = preview;
+      await new Promise(resolve => img.onload = resolve);
+      
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      
+      // Load overlay images
+      const [lipImage, exclamationImage] = await Promise.all([
+        loadImage('/meme-assets/lips.png'),
+        loadImage('/meme-assets/exclamation.png')
+      ]);
+      
+      // Get current positions and transforms
+      const container = containerRef.current;
+      const containerRect = container.getBoundingClientRect();
+      
+      // Calculate relative positions
+      const scaleX = img.width / containerRect.width;
+      const scaleY = img.height / containerRect.height;
+      
+      // Draw lips
+      ctx.save();
+      const lipCenterX = (containerRect.width / 2 + lipSpring.x.get()) * scaleX;
+      const lipCenterY = (containerRect.height / 2 + lipSpring.y.get()) * scaleY;
+      ctx.translate(lipCenterX, lipCenterY);
+      ctx.rotate(lipSpring.rotation.get() * Math.PI / 180);
+      ctx.scale(lipSpring.scale.get(), lipSpring.scale.get());
+      ctx.drawImage(
+        lipImage,
+        -lipImage.width / 2,
+        -lipImage.height / 2
+      );
+      ctx.restore();
+      
+      // Draw exclamation
+      ctx.save();
+      const exclamationCenterX = (containerRect.width / 2 + exclamationSpring.x.get()) * scaleX;
+      const exclamationCenterY = (containerRect.height / 2 + exclamationSpring.y.get()) * scaleY;
+      ctx.translate(exclamationCenterX, exclamationCenterY);
+      ctx.rotate(exclamationSpring.rotation.get() * Math.PI / 180);
+      ctx.scale(exclamationSpring.scale.get(), exclamationSpring.scale.get());
+      ctx.drawImage(
+        exclamationImage,
+        -exclamationImage.width / 2,
+        -exclamationImage.height / 2
+      );
+      ctx.restore();
+      
+      // Convert to blob and download
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pumpit-meme-${Date.now()}.png`;
+        a.click();
+        
+        // Save to community memes
+        setCommunityMemes(prev => [{
+          url: url,
+          creator: xHandle,
+          timestamp: Date.now()
+        }, ...prev].slice(0, 6));
+        
+        setGeneratedMeme(url);
+      }, 'image/png');
+      
+    } catch (error) {
+      console.error('Download failed:', error);
+      setError('Failed to download meme');
+    } finally {
+      setDragEnabled(true);
+    }
+  };
 
   // Helper function to load images
   function loadImage(src) {
@@ -651,60 +448,13 @@ export default function Home() {
     });
   }
 
-  // Updated manual click handler with better mobile support
-  const handleCanvasClick = (e) => {
-    if (detectionMode !== 'manual') return;
-    
-    let clientX, clientY;
-    
-    // Handle both mouse and touch events
-    if (e.type === 'touchstart' || e.type === 'touchend') {
-      e.preventDefault(); // Prevent zoom on double tap
-      const touch = e.changedTouches[0];
-      clientX = touch.clientX;
-      clientY = touch.clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    }
-    
-    const rect = e.target.getBoundingClientRect();
-    
-    // Account for scroll position
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-    
-    const x = ((clientX - rect.left - scrollLeft) / rect.width) * 100;
-    const y = ((clientY - rect.top - scrollTop) / rect.height) * 100;
-    
-    if (manualStep === 'lips') {
-      setLipPosition({ x, y });
-      setManualStep('exclamation');
-      console.log(`👄 Lips position set: ${x.toFixed(1)}%, ${y.toFixed(1)}%`);
-    } else if (manualStep === 'exclamation') {
-      setExclamationPosition({ x, y });
-      console.log(`❗ Exclamation position set: ${x.toFixed(1)}%, ${y.toFixed(1)}%`);
-    }
-  };
-
-  const downloadMeme = () => {
-    if (!generatedMeme) return;
-    
-    const a = document.createElement('a');
-    a.href = generatedMeme;
-    a.download = `pumpit-meme-${Date.now()}.png`;
-    a.click();
-  };
-
   return (
     <>
       <Head>
         <title>PumpItOnSol - AI-Powered Meme Generator</title>
-        <meta name="description" content="Transform any photo into $PUMPIT memes - works with humans, cartoons, anime, and animals!" />
+        <meta name="description" content="Transform any photo into $PUMPIT memes!" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <script src="https://terminal.jup.ag/main-v2.js" data-preload></script>
-        <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js" crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
       </Head>
 
       <div className="desktop-social-buttons">
@@ -872,7 +622,8 @@ export default function Home() {
               </p>
             </div>
           </section>
-		  <section id="about" className="reveal">
+
+          <section id="about" className="reveal">
             <h2>About Us</h2>
             <div className={`expandable-content ${expandedSections.about ? 'expanded' : ''}`}>
               <p className="preview-text">
@@ -922,7 +673,7 @@ export default function Home() {
           <section id="generator" className="reveal">
             <h2>🎨 AI-Powered Meme Generator</h2>
             <p>
-              Transform any image into a $PUMPIT meme! Our advanced AI works with humans, anime, cartoons, and even your pets!
+              Transform any image into a $PUMPIT meme! Just upload, position the overlays, and download!
             </p>
             
             {showXForm && (
@@ -938,39 +689,6 @@ export default function Home() {
                   />
                   <button type="submit">Continue</button>
                 </form>
-              </div>
-            )}
-            
-            <div className="ai-status">
-              <p>🎯 4-Tier AI Detection System</p>
-              <p>🧑 <strong>Tier 1:</strong> MediaPipe for humans (468 face points!)</p>
-              <p>🦸 <strong>Tier 2:</strong> Replicate AI for anime/cartoons</p>
-              <p>🐕 <strong>Tier 3:</strong> Replicate AI for animals</p>
-              <p>🤖 <strong>Tier 4:</strong> Gemini AI universal fallback</p>
-              <p>🎯 <strong>Manual:</strong> Click to position anywhere!</p>
-            </div>
-            
-            {showModeSelector && (
-              <div className="mode-selector">
-                <h3>No faces detected! Choose how to proceed:</h3>
-                <button 
-                  onClick={() => {
-                    setDetectionMode('manual');
-                    setShowModeSelector(false);
-                  }}
-                  className="mode-button"
-                >
-                  🎯 Manual Position Mode
-                </button>
-                <button 
-                  onClick={() => {
-                    setShowModeSelector(false);
-                    setError('');
-                  }}
-                  className="mode-button"
-                >
-                  🔄 Try Different Image
-                </button>
               </div>
             )}
             
@@ -993,196 +711,113 @@ export default function Home() {
             )}
             
             <div className="meme-upload">
-              <div className="upload-section">
-                <label htmlFor="memeImage">📸 Choose Your Image:</label>
+              <div 
+                className={`modern-upload-zone ${isDragOver ? 'drag-over' : ''} ${selectedFile ? 'has-file' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => !selectedFile && document.getElementById('memeImage').click()}
+              >
                 <input 
                   type="file" 
                   id="memeImage" 
                   accept="image/*" 
                   onChange={handleFileSelect}
-                  disabled={isProcessing}
+                  style={{ display: 'none' }}
                 />
                 
-                {selectedFile && xHandle && (
-                  <p className="file-selected">
-                    ✅ Selected: {selectedFile.name} | Creator: {xHandle}
-                  </p>
+                {!selectedFile ? (
+                  <div className="upload-content">
+                    <div className="upload-icon">📸</div>
+                    <h3>Drop your image here</h3>
+                    <p>or click to browse</p>
+                    <div className="supported-formats">
+                      JPG, PNG, GIF up to 10MB
+                    </div>
+                  </div>
+                ) : (
+                  <div className="preview-container" ref={containerRef}>
+                    <img src={preview} alt="Preview" className="preview-image" />
+                    
+                    {showOverlays && (
+                      <>
+                        <animated.div
+                          ref={lipRef}
+                          className={`overlay-element ${isDragging ? 'dragging' : ''}`}
+                          style={{
+                            transform: to([lipSpring.x, lipSpring.y, lipSpring.scale, lipSpring.rotation], 
+                              (x, y, scale, rotation) => 
+                              `translate(${x}px, ${y}px) scale(${scale}) rotate(${rotation}deg)`)
+                          }}
+                          {...(dragEnabled ? bindLipDrag() : {})}
+                          {...(dragEnabled ? bindLipPinch() : {})}
+                        >
+                          <img src="/meme-assets/lips.png" alt="Lips" />
+                        </animated.div>
+                        
+                        <animated.div
+                          ref={exclamationRef}
+                          className={`overlay-element ${isDragging ? 'dragging' : ''}`}
+                          style={{
+                            transform: to([exclamationSpring.x, exclamationSpring.y, exclamationSpring.scale, exclamationSpring.rotation], 
+                              (x, y, scale, rotation) => 
+                              `translate(${x}px, ${y}px) scale(${scale}) rotate(${rotation}deg)`)
+                          }}
+                          {...(dragEnabled ? bindExclamationDrag() : {})}
+                          {...(dragEnabled ? bindExclamationPinch() : {})}
+                        >
+                          <img src="/meme-assets/exclamation.png" alt="Exclamation" />
+                        </animated.div>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
               
-              <div className="generate-section">
-                <button 
-                  onClick={generateMeme}
-                  disabled={!selectedFile || isProcessing || !xHandle}
-                  className="generate-button"
-                >
-                  {isProcessing ? '🎨 AI Processing...' : '🔥 Generate $PUMPIT Meme'}
-                </button>
-                
-                <button 
-                  onClick={() => {
-                    setDetectionMode(detectionMode === 'manual' ? 'auto' : 'manual');
-                    setLipPosition(null);
-                    setExclamationPosition(null);
-                    setManualStep('lips');
-                  }}
-                  className="generate-button"
-                  style={{
-                    background: detectionMode === 'manual' 
-                      ? 'linear-gradient(135deg, #00FF00, #00AA00)' 
-                      : 'linear-gradient(135deg, #00FFFF, #0099CC)'
-                  }}
-                >
-                  {detectionMode === 'manual' ? '✅ Manual Mode ON' : '🎯 Switch to Manual Mode'}
-                </button>
-                
-                {detectionMode === 'manual' && (lipPosition || exclamationPosition) && (
+              {selectedFile && (
+                <div className="action-buttons">
                   <button 
                     onClick={() => {
-                      setLipPosition(null);
-                      setExclamationPosition(null);
-                      setManualStep('lips');
+                      setSelectedFile(null);
+                      setPreview('/pumper.png');
+                      setShowOverlays(false);
+                      setGeneratedMeme(null);
                     }}
-                    className="generate-button"
-                    style={{
-                      marginLeft: '1rem',
-                      background: 'linear-gradient(135deg, #FF6B6B, #CC5555)'
-                    }}
+                    className="secondary-button"
                   >
-                    🔄 Reset Positions
+                    🔄 Change Image
                   </button>
-                )}
-                
-                {generatedMeme && (
-                  <button 
-                    onClick={downloadMeme}
-                    className="generate-button"
-                    style={{marginLeft: '1rem', background: 'linear-gradient(135deg, #FFFF00, #FFD700)'}}
-                  >
-                    💾 Download Meme
-                  </button>
-                )}
-              </div>
-              
-              {detectionStatus && (
-                <div className="detection-status">
-                  <p>{detectionStatus}</p>
+                  
+                  {!showOverlays ? (
+                    <button 
+                      onClick={generateMeme}
+                      disabled={isProcessing || !xHandle}
+                      className="primary-button"
+                    >
+                      {isProcessing ? '🎨 Processing...' : '✨ Generate Meme'}
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={downloadMeme}
+                      className="download-button"
+                    >
+                      💾 Download Meme
+                    </button>
+                  )}
                 </div>
               )}
               
-              {detectionMode === 'manual' && (
-                <div className="manual-instructions">
-                  {manualStep === 'lips' && !lipPosition && (
-                    <p>👄 Click on the image where you want the LIPS to appear!</p>
-                  )}
-                  {manualStep === 'exclamation' && lipPosition && !exclamationPosition && (
-                    <p>❗ Now click where you want the EXCLAMATION MARKS!</p>
-                  )}
-                  {lipPosition && (
-                    <p className="position-confirmed">✅ Lips at {lipPosition.x.toFixed(0)}%, {lipPosition.y.toFixed(0)}%</p>
-                  )}
-                  {exclamationPosition && (
-                    <p className="position-confirmed">✅ Exclamation at {exclamationPosition.x.toFixed(0)}%, {exclamationPosition.y.toFixed(0)}%</p>
-                  )}
-                  {lipPosition && exclamationPosition && (
-                    <p className="position-confirmed">🎉 Both positions set! Click Generate to create your meme!</p>
-                  )}
+              {showOverlays && (
+                <div className="gesture-hints">
+                  <p>✋ Drag to move • 🤏 Pinch to resize • 🔄 Twist to rotate</p>
                 </div>
               )}
               
               {error && (
                 <div className="error-message">
                   ⚠️ {error}
-                  <br />
-                  <small>Try manual mode or a different image</small>
                 </div>
               )}
-              
-              <div 
-                className="meme-preview-placeholder"
-                onClick={handleCanvasClick}
-                onTouchStart={handleCanvasClick}
-                style={{
-                  cursor: detectionMode === 'manual' ? 'crosshair' : 'default',
-                  position: 'relative',
-                  touchAction: detectionMode === 'manual' ? 'none' : 'auto'
-                }}
-              >
-                <img 
-                  src={preview} 
-                  alt="Meme Preview" 
-                  style={{
-                    opacity: isProcessing ? 0.7 : 1,
-                    transition: 'opacity 0.3s ease'
-                  }}
-                />
-                
-                {detectionMode === 'manual' && lipPosition && (
-                  <div 
-                    className="position-marker lips-marker"
-                    style={{
-                      position: 'absolute',
-                      left: `${lipPosition.x}%`,
-                      top: `${lipPosition.y}%`,
-                      transform: 'translate(-50%, -50%)',
-                      width: '40px',
-                      height: '40px',
-                      border: '3px solid #FF69B4',
-                      borderRadius: '50%',
-                      boxShadow: '0 0 20px rgba(255, 105, 180, 0.5)',
-                      pointerEvents: 'none',
-                      zIndex: 10
-                    }}
-                  >
-                    <div style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      fontSize: '16px'
-                    }}>👄</div>
-                  </div>
-                )}
-                
-                {detectionMode === 'manual' && exclamationPosition && (
-                  <div 
-                    className="position-marker exclamation-marker"
-                    style={{
-                      position: 'absolute',
-                      left: `${exclamationPosition.x}%`,
-                      top: `${exclamationPosition.y}%`,
-                      transform: 'translate(-50%, -50%)',
-                      width: '40px',
-                      height: '40px',
-                      border: '3px solid #FFD700',
-                      borderRadius: '50%',
-                      boxShadow: '0 0 20px rgba(255, 215, 0, 0.5)',
-                      pointerEvents: 'none',
-                      zIndex: 10
-                    }}
-                  >
-                    <div style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      fontSize: '16px'
-                    }}>❗</div>
-                  </div>
-                )}
-                
-                {isProcessing ? (
-                  <p><strong>🎨 AI is analyzing your image...</strong></p>
-                ) : selectedFile ? (
-                  generatedMeme ? (
-                    <p><strong>🎉 Your $PUMPIT meme is ready!</strong></p>
-                  ) : (
-                    <p><strong>👆 Click "Generate" or use Manual Mode!</strong></p>
-                  )
-                ) : (
-                  <p><strong>Upload any image - human, cartoon, or animal!</strong></p>
-                )}
-              </div>
             </div>
           </section>
 
@@ -1190,7 +825,7 @@ export default function Home() {
             <h2>🗺️ Roadmap</h2>
             <ul>
               <li>✅ Phase 1: Launch $PUMPIT on Bonk.fun with meme identity + Pumper reveal</li>
-              <li>✅ Phase 2: 4-Tier AI meme generator with universal image support</li>
+              <li>✅ Phase 2: AI meme generator with smooth drag & drop editing</li>
               <li>📋 Phase 3: Collaborate with top meme communities</li>
               <li>📋 Phase 4: Community meme automation & viral campaigns</li>
               <li>📚 Phase 5: Pumper Comic Series - Exclusive stories for $PUMPIT holders!</li>
@@ -1205,17 +840,6 @@ export default function Home() {
                   <div key={index} className="meme-card">
                     <img src={meme.url} alt={`Community Meme ${index + 1}`} />
                     <p>Created by {meme.creator}</p>
-                    {meme.pngOverlay && <p className="png-badge">🎨 Custom PNG</p>}
-                    {meme.facesDetected && <p className="faces-badge">👥 {meme.facesDetected} face(s)</p>}
-                    {meme.detectionMethod && (
-                      <p className="method-badge">
-                        {meme.detectionMethod === 'mediapipe' && '🧑 Human'}
-                        {meme.detectionMethod === 'replicate-anime' && '🦸 Anime'}
-                        {meme.detectionMethod === 'replicate-animal' && '🐕 Animal'}
-                        {meme.detectionMethod === 'gemini' && '🤖 AI'}
-                        {meme.detectionMethod === 'manual' && '🎯 Manual'}
-                      </p>
-                    )}
                   </div>
                 ))
               ) : (
@@ -1306,7 +930,7 @@ export default function Home() {
         </main>
 
         <footer>
-          <p>© 2025 PumpItOnSol. Powered by 4-tier AI detection system. 🎨🚀</p>
+          <p>© 2025 PumpItOnSol. Powered by smooth gesture controls. 🎨🚀</p>
         </footer>
       </div>
 
@@ -1318,13 +942,28 @@ export default function Home() {
         }
 
         body {
-          font-family: 'Arial', sans-serif;
-          background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+          background: #0a0a0a;
           color: #ffffff;
           min-height: 100vh;
           overflow-x: hidden;
           margin: 0;
           padding: 0;
+        }
+
+        body::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: 
+            radial-gradient(circle at 20% 50%, rgba(255, 255, 0, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 40% 20%, rgba(255, 255, 0, 0.05) 0%, transparent 50%);
+          pointer-events: none;
+          z-index: 1;
         }
 
         .container {
@@ -1333,22 +972,18 @@ export default function Home() {
           padding: 0 20px;
           width: 100%;
           position: relative;
+          z-index: 2;
         }
 
-        main {
-          width: 100%;
-          padding-top: 60px;
-        }
-        
         .desktop-social-buttons {
           position: fixed;
-          top: 10px;
-          right: 10px;
+          top: 20px;
+          right: 20px;
           display: flex;
-          gap: 0.5rem;
+          gap: 0.75rem;
           z-index: 1000;
           flex-wrap: wrap;
-          max-width: calc(100vw - 20px);
+          max-width: calc(100vw - 40px);
         }
 
         .mobile-top-buttons {
@@ -1381,10 +1016,10 @@ export default function Home() {
         }
 
         .social-button {
-          padding: 0.4rem 0.8rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          border-radius: 25px;
+          padding: 0.6rem 1.2rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 50px;
           color: white;
           text-decoration: none;
           transition: all 0.3s ease;
@@ -1392,37 +1027,38 @@ export default function Home() {
           font-size: 0.9rem;
           white-space: nowrap;
           cursor: pointer;
+          font-weight: 500;
         }
 
         .social-button:hover {
-          background: rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.1);
           transform: translateY(-2px);
-          box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
         }
 
         .social-button.buy-button {
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
           font-weight: bold;
-          border-color: #FFFF00;
+          border: none;
         }
 
         .social-button.buy-button:hover {
           transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.5);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.5);
         }
 
         .social-button.wallet-button {
-          background: rgba(255, 255, 0, 0.2);
-          border-color: #FFFF00;
+          background: rgba(255, 255, 0, 0.1);
+          border-color: rgba(255, 255, 0, 0.3);
         }
 
         header {
           text-align: center;
-          padding: 4rem 1rem 2rem;
+          padding: 5rem 1rem 3rem;
           position: relative;
           overflow: hidden;
-          margin-top: 60px;
+          margin-top: 80px;
         }
 
         .header-content {
@@ -1435,16 +1071,16 @@ export default function Home() {
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          opacity: 0.25;
+          opacity: 0.1;
           animation: float 6s ease-in-out infinite;
           pointer-events: none;
-          filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+          filter: blur(1px);
           z-index: 0;
         }
 
         .pumper-float img {
-          width: 350px;
-          height: 350px;
+          width: 400px;
+          height: 400px;
         }
 
         @keyframes float {
@@ -1453,30 +1089,30 @@ export default function Home() {
         }
 
         h1 {
-          font-size: 3.5rem;
+          font-size: 4rem;
+          font-weight: 900;
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           margin-bottom: 1rem;
-          position: relative;
-          z-index: 1;
+          letter-spacing: -2px;
         }
 
         .main-nav {
           position: sticky;
           top: 0;
           z-index: 99;
-          background: rgba(0, 0, 0, 0.95);
-          backdrop-filter: blur(10px);
-          padding: 0.5rem 0;
-          margin: 0 0 2rem 0;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+          background: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(20px);
+          padding: 1rem 0;
+          margin: 0 0 3rem 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .nav-container {
           display: flex;
           justify-content: center;
-          gap: 1rem;
+          gap: 2rem;
           flex-wrap: wrap;
           max-width: 1200px;
           margin: 0 auto;
@@ -1486,37 +1122,34 @@ export default function Home() {
         .main-nav a {
           color: #ffffff;
           text-decoration: none;
-          padding: 0.5rem 1rem;
+          padding: 0.5rem 1.5rem;
           transition: all 0.3s ease;
-          border-radius: 5px;
-          font-size: 0.9rem;
+          border-radius: 25px;
+          font-weight: 500;
+          font-size: 0.95rem;
         }
 
         .main-nav a:hover {
-          background: rgba(255, 255, 0, 0.3);
+          background: rgba(255, 255, 0, 0.1);
           transform: translateY(-2px);
         }
 
-        main {
-          width: 100%;
-          padding-top: 20px;
-        }
-
         section {
-          margin: 2rem auto;
-          padding: 2rem;
-          background: rgba(0, 0, 0, 0.3);
-          border-radius: 10px;
-          color: white;
-          font-size: 1rem;
-          backdrop-filter: blur(5px);
-          max-width: 1200px;
+          margin: 4rem auto;
+          padding: 3rem;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 20px;
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         h2 {
-          font-size: 2.2rem;
-          margin-bottom: 1.5rem;
-          color: #FFFF00;
+          font-size: 2.5rem;
+          margin-bottom: 2rem;
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          font-weight: 800;
         }
 
         .expandable-content {
@@ -1527,10 +1160,20 @@ export default function Home() {
 
         .preview-text {
           margin-bottom: 1rem;
+          line-height: 1.8;
         }
 
         .full-content {
           animation: fadeIn 0.5s ease;
+          line-height: 1.8;
+        }
+
+        .full-content ul {
+          margin: 1rem 0 1rem 2rem;
+        }
+
+        .full-content li {
+          margin: 0.5rem 0;
         }
 
         @keyframes fadeIn {
@@ -1542,12 +1185,12 @@ export default function Home() {
           background: none;
           border: 2px solid #FFFF00;
           color: #FFFF00;
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
+          padding: 0.6rem 1.5rem;
+          border-radius: 25px;
           cursor: pointer;
           transition: all 0.3s ease;
-          font-weight: bold;
-          margin-top: 0.5rem;
+          font-weight: 600;
+          margin-top: 1rem;
         }
 
         .read-more-btn:hover {
@@ -1557,11 +1200,11 @@ export default function Home() {
         }
 
         .token-stats {
-          background: rgba(255, 255, 0, 0.1);
-          padding: 1.5rem;
-          border-radius: 10px;
+          background: rgba(255, 255, 0, 0.05);
+          padding: 2rem;
+          border-radius: 15px;
           margin-top: 2rem;
-          border: 2px solid rgba(255, 255, 0, 0.3);
+          border: 1px solid rgba(255, 255, 0, 0.2);
         }
 
         .token-stats h3 {
@@ -1570,29 +1213,29 @@ export default function Home() {
         }
 
         .token-stats p {
-          margin: 0.5rem 0;
+          margin: 0.75rem 0;
           font-family: 'Courier New', monospace;
           word-break: break-all;
+          opacity: 0.9;
         }
 
         .token-info-section {
-          background: linear-gradient(135deg, rgba(255, 255, 0, 0.05), rgba(255, 215, 0, 0.05));
-          border-radius: 20px;
-          padding: 2rem;
+          background: linear-gradient(135deg, rgba(255, 255, 0, 0.03), rgba(255, 215, 0, 0.03));
+          border: 1px solid rgba(255, 255, 0, 0.1);
         }
 
         .token-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1rem;
+          gap: 1.5rem;
           margin: 2rem 0;
         }
 
         .token-card {
           background: rgba(0, 0, 0, 0.3);
-          border: 2px solid rgba(255, 255, 0, 0.3);
+          border: 1px solid rgba(255, 255, 0, 0.2);
           border-radius: 15px;
-          padding: 1.5rem;
+          padding: 2rem;
           text-align: center;
           transition: all 0.3s ease;
         }
@@ -1600,32 +1243,32 @@ export default function Home() {
         .token-card:hover {
           transform: translateY(-5px);
           border-color: #FFFF00;
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.3);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.2);
         }
 
         .token-card h4 {
           color: #FFFF00;
-          margin-bottom: 0.5rem;
+          margin-bottom: 1rem;
           font-size: 0.9rem;
           text-transform: uppercase;
           letter-spacing: 1px;
         }
 
         .token-card .price {
-          font-size: 1.6rem;
+          font-size: 1.8rem;
           font-weight: bold;
           color: #ffffff;
           margin: 0.5rem 0;
         }
 
         .token-card .value {
-          font-size: 1.2rem;
+          font-size: 1.4rem;
           font-weight: bold;
           color: #ffffff;
         }
 
         .price-change {
-          font-size: 0.9rem;
+          font-size: 1rem;
           font-weight: 600;
         }
 
@@ -1638,46 +1281,46 @@ export default function Home() {
         }
 
         .loading {
-          color: #999;
+          color: #666;
           font-style: italic;
         }
 
         .buy-section {
           text-align: center;
-          margin-top: 2rem;
+          margin-top: 3rem;
         }
 
         .buy-button-large {
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
           border: none;
-          padding: 1rem 2.5rem;
+          padding: 1.2rem 3rem;
           font-size: 1.2rem;
           font-weight: bold;
           border-radius: 50px;
           cursor: pointer;
           transition: all 0.3s ease;
-          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.3);
         }
 
         .buy-button-large:hover {
           transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.6);
+          box-shadow: 0 15px 40px rgba(255, 255, 0, 0.5);
         }
 
         .buy-info {
-          color: #aaa;
+          color: #999;
           margin-top: 1rem;
           font-size: 0.9rem;
         }
 
         .token-link {
           display: inline-block;
-          margin-top: 0.5rem;
+          margin-top: 1rem;
           color: #FFFF00;
           text-decoration: none;
           font-weight: 600;
-          transition: color 0.3s ease;
+          transition: all 0.3s ease;
         }
 
         .token-link:hover {
@@ -1691,18 +1334,19 @@ export default function Home() {
           left: 0;
           width: 100%;
           height: 100%;
-          background: rgba(0, 0, 0, 0.8);
+          background: rgba(0, 0, 0, 0.9);
           display: flex;
           align-items: center;
           justify-content: center;
           z-index: 2000;
+          backdrop-filter: blur(10px);
         }
 
         .x-form {
-          background: #2d2d2d;
-          padding: 2rem;
-          border-radius: 15px;
-          border: 2px solid #FFFF00;
+          background: rgba(20, 20, 20, 0.95);
+          padding: 3rem;
+          border-radius: 20px;
+          border: 1px solid rgba(255, 255, 0, 0.3);
           text-align: center;
           max-width: 400px;
           width: 90%;
@@ -1710,48 +1354,57 @@ export default function Home() {
 
         .x-form h3 {
           color: #FFFF00;
-          margin-bottom: 1rem;
+          margin-bottom: 2rem;
+          font-size: 1.5rem;
         }
 
         .x-form input {
           width: 100%;
-          padding: 0.8rem;
-          margin-bottom: 1rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px solid rgba(255, 255, 0, 0.5);
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 0, 0.3);
           border-radius: 10px;
           color: white;
           font-size: 1rem;
+        }
+
+        .x-form input:focus {
+          outline: none;
+          border-color: #FFFF00;
+          box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.2);
         }
 
         .x-form button {
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
           border: none;
-          padding: 0.8rem 2rem;
-          border-radius: 25px;
+          padding: 1rem 2.5rem;
+          border-radius: 50px;
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
+          font-size: 1rem;
         }
 
         .x-form button:hover {
           transform: scale(1.05);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
         }
 
         .x-handle-section {
-          background: rgba(255, 255, 0, 0.1);
-          padding: 1.5rem;
-          border-radius: 10px;
+          background: rgba(255, 255, 0, 0.05);
+          padding: 2rem;
+          border-radius: 15px;
           margin-bottom: 2rem;
-          border: 2px solid rgba(255, 255, 0, 0.3);
+          border: 1px solid rgba(255, 255, 0, 0.2);
         }
 
         .x-handle-inline-form label {
           display: block;
           margin-bottom: 1rem;
           color: #FFFF00;
-          font-weight: bold;
+          font-weight: 600;
         }
 
         .x-handle-input-group {
@@ -1762,20 +1415,26 @@ export default function Home() {
 
         .x-handle-input-group input {
           flex: 1;
-          padding: 0.8rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px solid rgba(255, 255, 0, 0.5);
+          padding: 0.8rem 1rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 0, 0.3);
           border-radius: 10px;
           color: white;
           font-size: 1rem;
         }
 
+        .x-handle-input-group input:focus {
+          outline: none;
+          border-color: #FFFF00;
+          box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.2);
+        }
+
         .x-handle-input-group button {
-          padding: 0.8rem 1.5rem;
+          padding: 0.8rem 2rem;
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
           border: none;
-          border-radius: 25px;
+          border-radius: 50px;
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
@@ -1784,234 +1443,233 @@ export default function Home() {
 
         .x-handle-input-group button:hover {
           transform: scale(1.05);
-          box-shadow: 0 3px 10px rgba(255, 255, 0, 0.4);
-        }
-
-        .ai-status {
-          background: rgba(0, 0, 0, 0.5);
-          padding: 1.5rem;
-          border-radius: 10px;
-          margin-bottom: 2rem;
-          text-align: center;
-          border: 2px solid rgba(255, 255, 0, 0.3);
-        }
-
-        .ai-status p {
-          margin: 0.5rem 0;
-          font-size: 0.95rem;
-        }
-
-        .ai-status strong {
-          color: #FFFF00;
-        }
-
-        .mode-selector {
-          background: rgba(255, 255, 0, 0.1);
-          border: 2px solid #FFFF00;
-          border-radius: 15px;
-          padding: 2rem;
-          margin: 2rem 0;
-          text-align: center;
-        }
-        
-        .mode-selector h3 {
-          color: #FFFF00;
-          margin-bottom: 1.5rem;
-        }
-        
-        .mode-button {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          padding: 1rem 2rem;
-          margin: 0.5rem;
-          border-radius: 30px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-        
-        .mode-button:hover {
-          transform: scale(1.05);
-          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.5);
-        }
-        
-        .manual-instructions {
-          background: rgba(0, 255, 0, 0.1);
-          border: 2px solid rgba(0, 255, 0, 0.3);
-          border-radius: 10px;
-          padding: 1rem;
-          margin: 1rem 0;
-          text-align: center;
-        }
-        
-        .manual-instructions p {
-          color: #00FF00;
-          font-weight: bold;
-          margin: 0.5rem 0;
-        }
-        
-        .position-confirmed {
-          color: #00FF00;
-          font-size: 1.1rem;
-        }
-
-        .detection-status {
-          background: rgba(0, 255, 255, 0.1);
-          border: 2px solid rgba(0, 255, 255, 0.3);
-          border-radius: 10px;
-          padding: 1rem;
-          margin: 1rem 0;
-          text-align: center;
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        .detection-status p {
-          color: #00FFFF;
-          font-weight: bold;
-          margin: 0;
+          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
         }
 
         .meme-upload {
-          background: rgba(0, 0, 0, 0.4);
-          padding: 2rem;
-          border-radius: 15px;
           margin-top: 2rem;
         }
 
-        .upload-section {
-          margin-bottom: 2rem;
+        .modern-upload-zone {
+          width: 100%;
+          min-height: 500px;
+          border: 2px dashed rgba(255, 255, 0, 0.3);
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.02);
         }
 
-        .upload-section label {
-          display: block;
+        .modern-upload-zone:hover {
+          border-color: rgba(255, 255, 0, 0.5);
+          background: rgba(255, 255, 0, 0.05);
+        }
+
+        .modern-upload-zone.drag-over {
+          border-color: #FFFF00;
+          background: rgba(255, 255, 0, 0.1);
+          transform: scale(1.02);
+        }
+
+        .modern-upload-zone.has-file {
+          cursor: default;
+          border-style: solid;
+        }
+
+        .upload-content {
+          text-align: center;
+          padding: 3rem;
+        }
+
+        .upload-icon {
+          font-size: 4rem;
           margin-bottom: 1rem;
-          font-size: 1.2rem;
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.1); opacity: 1; }
+        }
+
+        .upload-content h3 {
+          font-size: 1.5rem;
+          margin-bottom: 0.5rem;
           color: #FFFF00;
         }
 
-        input[type="file"] {
-          display: block;
+        .upload-content p {
+          color: #999;
+          margin-bottom: 1rem;
+        }
+
+        .supported-formats {
+          font-size: 0.85rem;
+          color: #666;
+          background: rgba(255, 255, 255, 0.05);
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          display: inline-block;
+        }
+
+        .preview-container {
+          position: relative;
           width: 100%;
-          padding: 1rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 2px dashed rgba(255, 255, 0, 0.5);
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .preview-image {
+          max-width: 100%;
+          max-height: 500px;
           border-radius: 10px;
-          color: white;
+        }
+
+        .overlay-element {
+          position: absolute;
+          cursor: grab;
+          touch-action: none;
+          user-select: none;
+          transition: filter 0.2s ease;
+        }
+
+        .overlay-element:active {
+          cursor: grabbing;
+        }
+
+        .overlay-element.dragging {
+          filter: drop-shadow(0 10px 30px rgba(255, 255, 0, 0.5));
+        }
+
+        .overlay-element img {
+          width: 120px;
+          height: auto;
+          pointer-events: none;
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          margin-top: 2rem;
+        }
+
+        .primary-button, .secondary-button, .download-button {
+          padding: 1rem 2rem;
+          border-radius: 50px;
+          font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
+          border: none;
+          font-size: 1rem;
         }
 
-        input[type="file"]:hover {
-          background: rgba(255, 255, 255, 0.15);
-          border-color: #FFFF00;
-        }
-
-        .file-selected {
-          margin-top: 1rem;
-          color: #00ff00;
-        }
-
-        .generate-section {
-          text-align: center;
-        }
-
-        .generate-button {
-          padding: 1rem 2rem;
-          font-size: 1.1rem;
+        .primary-button {
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
-          border: none;
-          border-radius: 50px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          margin: 0.5rem;
-          font-weight: bold;
         }
 
-        .generate-button:hover:not(:disabled) {
+        .primary-button:hover:not(:disabled) {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
+        }
+
+        .secondary-button {
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .secondary-button:hover {
+          background: rgba(255, 255, 255, 0.2);
           transform: translateY(-2px);
-          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.5);
         }
 
-        .generate-button:disabled {
+        .download-button {
+          background: linear-gradient(135deg, #00FF00, #00CC00);
+          color: white;
+        }
+
+        .download-button:hover {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(0, 255, 0, 0.4);
+        }
+
+        .primary-button:disabled {
           opacity: 0.5;
           cursor: not-allowed;
         }
 
+        .gesture-hints {
+          text-align: center;
+          margin-top: 1rem;
+          padding: 1rem;
+          background: rgba(255, 255, 0, 0.05);
+          border-radius: 10px;
+          font-size: 0.9rem;
+          color: #FFFF00;
+        }
+
         .error-message {
-          background: rgba(255, 0, 0, 0.2);
+          background: rgba(255, 0, 0, 0.1);
           color: #ff6666;
           padding: 1rem;
           border-radius: 10px;
           margin-top: 1rem;
-          border: 1px solid rgba(255, 0, 0, 0.5);
-        }
-
-        .error-message small {
-          display: block;
-          margin-top: 0.5rem;
-          color: #ffaaaa;
-          font-size: 0.8rem;
-        }
-
-        .meme-preview-placeholder {
-          margin: 2rem auto;
+          border: 1px solid rgba(255, 0, 0, 0.3);
           text-align: center;
-          padding: 2rem;
-          background: rgba(0, 0, 0, 0.5);
-          border-radius: 15px;
-          min-height: 400px;
-          max-width: 600px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          position: relative;
         }
 
-        .meme-preview-placeholder img {
-          max-width: 100%;
-          max-height: 400px;
-          width: auto;
-          height: auto;
+        #roadmap ul {
+          list-style: none;
+          padding-left: 0;
+        }
+
+        #roadmap li {
+          padding: 1.5rem;
+          margin: 1rem 0;
+          background: rgba(255, 255, 255, 0.03);
+          border-left: 4px solid #FFFF00;
           border-radius: 10px;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+          transition: all 0.3s ease;
         }
-        
-        .position-marker {
-          animation: pulse 2s ease-in-out infinite;
-        }
-        
-        @keyframes pulse {
-          0% { transform: translate(-50%, -50%) scale(1); }
-          50% { transform: translate(-50%, -50%) scale(1.1); }
-          100% { transform: translate(-50%, -50%) scale(1); }
+
+        #roadmap li:hover {
+          transform: translateX(10px);
+          background: rgba(255, 255, 0, 0.05);
         }
 
         .community-memes {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 1.5rem;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 2rem;
           margin-top: 2rem;
         }
 
         .meme-card {
-          background: rgba(0, 0, 0, 0.5);
+          background: rgba(255, 255, 255, 0.03);
           border-radius: 15px;
           overflow: hidden;
           transition: transform 0.3s ease;
-          border: 2px solid rgba(255, 255, 0, 0.2);
+          border: 1px solid rgba(255, 255, 0, 0.1);
         }
 
         .meme-card:hover {
           transform: translateY(-5px);
-          border-color: #FFFF00;
+          border-color: rgba(255, 255, 0, 0.3);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
         .meme-card img {
           width: 100%;
-          height: 250px;
+          height: 200px;
           object-fit: cover;
         }
 
@@ -2020,33 +1678,14 @@ export default function Home() {
           text-align: center;
           color: #FFFF00;
           margin: 0;
-        }
-
-        .png-badge, .faces-badge, .method-badge {
-          background: rgba(255, 255, 0, 0.2);
-          color: #FFFF00;
-          padding: 0.3rem 0.8rem;
-          border-radius: 20px;
-          font-size: 0.8rem;
-          margin: 0.2rem;
-          display: inline-block;
-        }
-
-        .faces-badge {
-          background: rgba(0, 255, 255, 0.2);
-          color: #00ffff;
-        }
-
-        .method-badge {
-          background: rgba(255, 0, 255, 0.2);
-          color: #ff00ff;
+          font-weight: 500;
         }
 
         .meme-card.placeholder {
           display: flex;
           align-items: center;
           justify-content: center;
-          min-height: 300px;
+          min-height: 250px;
         }
 
         .placeholder-content {
@@ -2056,7 +1695,7 @@ export default function Home() {
 
         .placeholder-content p {
           color: #666;
-          font-size: 1.2rem;
+          font-size: 1.1rem;
         }
 
         .social-grid {
@@ -2067,10 +1706,10 @@ export default function Home() {
         }
 
         .social-card {
-          background: rgba(0, 0, 0, 0.3);
+          background: rgba(255, 255, 255, 0.03);
           border-radius: 15px;
           padding: 2rem;
-          border: 2px solid rgba(255, 255, 0, 0.2);
+          border: 1px solid rgba(255, 255, 0, 0.1);
         }
 
         .social-card h3 {
@@ -2094,10 +1733,10 @@ export default function Home() {
           display: flex;
           align-items: center;
           gap: 1rem;
-          padding: 1rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 2px solid rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
+          padding: 1.2rem;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 15px;
           text-decoration: none;
           color: white;
           transition: all 0.3s ease;
@@ -2105,7 +1744,7 @@ export default function Home() {
 
         .community-button:hover {
           transform: translateX(5px);
-          background: rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.05);
           border-color: #FFFF00;
         }
 
@@ -2117,13 +1756,13 @@ export default function Home() {
 
         .community-button strong {
           display: block;
-          margin-bottom: 0.2rem;
+          margin-bottom: 0.3rem;
         }
 
         .community-button p {
           margin: 0;
           font-size: 0.9rem;
-          color: #aaa;
+          color: #999;
         }
 
         .community-button.telegram:hover {
@@ -2138,39 +1777,25 @@ export default function Home() {
           border-color: #1da1f2;
         }
 
-        #roadmap ul {
-          list-style: none;
-          padding-left: 0;
-        }
-
-        #roadmap li {
-          padding: 1rem;
-          margin: 0.5rem 0;
-          background: rgba(0, 0, 0, 0.5);
-          border-left: 4px solid #FFFF00;
-          border-radius: 5px;
-          transition: all 0.3s ease;
-        }
-
-        #roadmap li:hover {
-          transform: translateX(10px);
-          background: rgba(255, 255, 0, 0.1);
-        }
-
         footer {
           text-align: center;
-          padding: 2rem;
+          padding: 3rem;
           background: rgba(0, 0, 0, 0.5);
-          margin-top: 4rem;
+          margin-top: 6rem;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        footer p {
+          color: #666;
         }
 
         .reveal {
           opacity: 0;
           transform: translateY(30px);
-          animation: fadeInUp 0.6s ease forwards;
+          animation: revealAnimation 0.6s ease forwards;
         }
 
-        @keyframes fadeInUp {
+        @keyframes revealAnimation {
           to {
             opacity: 1;
             transform: translateY(0);
@@ -2193,23 +1818,7 @@ export default function Home() {
 
           header {
             margin-top: 80px;
-            padding-top: 2rem;
-          }
-
-          .main-nav {
-            position: relative;
-            top: auto;
-            margin: 0 -20px 1rem;
-            z-index: 98;
-          }
-
-          main {
-            padding-top: 20px;
-          }
-
-          section {
-            scroll-margin-top: 20px;
-            margin: 1rem auto;
+            padding-top: 3rem;
           }
 
           .pumper-float img {
@@ -2218,77 +1827,69 @@ export default function Home() {
           }
 
           h1 {
-            font-size: 2.5rem;
+            font-size: 3rem;
           }
 
           h2 {
-            font-size: 1.8rem;
+            font-size: 2rem;
           }
 
           .nav-container {
-            gap: 0.5rem;
+            gap: 1rem;
             padding: 0.5rem;
           }
 
           .main-nav a {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.8rem;
+            padding: 0.4rem 1rem;
+            font-size: 0.85rem;
+          }
+
+          section {
+            padding: 2rem;
+            margin: 2rem auto;
           }
 
           .token-grid {
             grid-template-columns: repeat(2, 1fr);
-            gap: 0.8rem;
+            gap: 1rem;
           }
-          
-          .social-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .buy-button-large {
-            padding: 0.8rem 1.5rem;
-            font-size: 1rem;
-          }
-          
+
           .token-card {
-            padding: 1rem;
+            padding: 1.5rem;
           }
 
           .token-card .price {
-            font-size: 1.2rem;
+            font-size: 1.4rem;
           }
 
           .token-card .value {
-            font-size: 1rem;
-          }
-
-          section {
-            padding: 1.5rem;
+            font-size: 1.1rem;
           }
 
           .x-handle-input-group {
             flex-direction: column;
           }
 
-          .x-handle-input-group input {
-            width: 100%;
-          }
-
+          .x-handle-input-group input,
           .x-handle-input-group button {
             width: 100%;
           }
 
-          .position-marker {
-            width: 60px !important;
-            height: 60px !important;
-            border-width: 4px !important;
+          .overlay-element img {
+            width: 80px;
           }
 
-          .position-marker div {
-            font-size: 20px !important;
+          .action-buttons {
+            flex-direction: column;
           }
 
-          .meme-preview-placeholder {
-            touch-action: none;
+          .action-buttons button {
+            width: 100%;
+          }
+
+          .social-grid,
+          .community-memes {
+            grid-template-columns: 1fr;
           }
         }
 
@@ -2299,16 +1900,12 @@ export default function Home() {
           }
 
           .social-button {
-            padding: 0.3rem 0.6rem;
+            padding: 0.4rem 0.8rem;
             font-size: 0.8rem;
           }
 
-          .token-grid {
-            grid-template-columns: 1fr;
-          }
-          
-          .community-memes {
-            grid-template-columns: 1fr;
+          h1 {
+            font-size: 2.5rem;
           }
 
           .pumper-float img {
@@ -2316,13 +1913,16 @@ export default function Home() {
             height: 200px;
           }
 
-          h1 {
-            font-size: 2rem;
+          .token-grid {
+            grid-template-columns: 1fr;
           }
 
-          .mobile-social-icons {
-            font-size: 1.2rem;
-            gap: 0.8rem;
+          section {
+            padding: 1.5rem;
+          }
+
+          .overlay-element img {
+            width: 60px;
           }
         }
       `}</style>
