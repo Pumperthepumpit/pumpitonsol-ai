@@ -519,9 +519,7 @@ export default function Home() {
       const lipCenterY = (containerRect.height / 2 + lipPosition.y) * scaleY;
       ctx.translate(lipCenterX, lipCenterY);
       ctx.rotate(lipRotation * Math.PI / 180);
-      const lipFinalScale = lipScale * Math.min(scaleX, scaleY);
-      const exclamationFinalScale = exclamationScale * Math.min(scaleX, scaleY);
-      ctx.scale(exclamationFinalScale, exclamationFinalScale);
+      ctx.scale(lipScale, lipScale);
       ctx.drawImage(
         lipImage,
         -lipImage.width / 2,
@@ -535,7 +533,7 @@ export default function Home() {
       const exclamationCenterY = (containerRect.height / 2 + exclamationPosition.y) * scaleY;
       ctx.translate(exclamationCenterX, exclamationCenterY);
       ctx.rotate(exclamationRotation * Math.PI / 180);
-      
+      ctx.scale(exclamationScale, exclamationScale);
       ctx.drawImage(
         exclamationImage,
         -exclamationImage.width / 2,
@@ -576,6 +574,15 @@ export default function Home() {
       img.src = src;
     });
   }
+
+  // Get transform style as string
+  const getLipTransform = () => {
+    return `translate(${lipPosition.x}px, ${lipPosition.y}px) scale(${lipScale}) rotate(${lipRotation}deg)`;
+  };
+
+  const getExclamationTransform = () => {
+    return `translate(${exclamationPosition.x}px, ${exclamationPosition.y}px) scale(${exclamationScale}) rotate(${exclamationRotation}deg)`;
+  };
 
   return (
     <>
@@ -874,7 +881,7 @@ export default function Home() {
                           ref={lipRef}
                           className={`overlay-element ${dragging === 'lips' || dragging === 'lips-rotate' ? 'dragging' : ''}`}
                           style={{
-                            transform: `translate(${lipPosition.x}px, ${lipPosition.y}px) scale(${lipScale}) rotate(${lipRotation}deg)`
+                            transform: getLipTransform()
                           }}
                           onMouseDown={(e) => handleMouseDown(e, 'lips')}
                           onTouchStart={(e) => handleTouchStart(e, 'lips')}
@@ -889,7 +896,7 @@ export default function Home() {
                           ref={exclamationRef}
                           className={`overlay-element ${dragging === 'exclamation' || dragging === 'exclamation-rotate' ? 'dragging' : ''}`}
                           style={{
-                            transform: `translate(${exclamationPosition.x}px, ${exclamationPosition.y}px) scale(${exclamationScale}) rotate(${exclamationRotation}deg)`
+                            transform: getExclamationTransform()
                           }}
                           onMouseDown={(e) => handleMouseDown(e, 'exclamation')}
                           onTouchStart={(e) => handleTouchStart(e, 'exclamation')}
