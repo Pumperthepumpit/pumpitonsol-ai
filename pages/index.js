@@ -1,7 +1,7 @@
 import Head from 'next/head';
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSpring, animated, to } from '@react-spring/web';
-import { useDrag, usePinch } from '@use-gesture/react';
+import { useState, useEffect, useRef } from 'react';
+import { useSpring, animated } from '@react-spring/web';
+import { useGesture } from '@use-gesture/react';
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -26,23 +26,22 @@ export default function Home() {
   // New states for draggable overlays
   const [showOverlays, setShowOverlays] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragEnabled, setDragEnabled] = useState(true);
   
-  // Separate springs for each overlay
-  const [lipSpring, lipApi] = useSpring(() => ({
-    x: 0,
-    y: 0,
-    scale: 1,
-    rotation: 0,
-    config: { tension: 300, friction: 30 }
+  // Separate springs for each overlay with initial positions
+  const [{ lipX, lipY, lipScale, lipRotation }, lipApi] = useSpring(() => ({
+    lipX: 0,
+    lipY: 0,
+    lipScale: 1,
+    lipRotation: 0,
+    config: { tension: 200, friction: 30 }
   }));
   
-  const [exclamationSpring, exclamationApi] = useSpring(() => ({
-    x: 0,
-    y: 0,
-    scale: 1,
-    rotation: 0,
-    config: { tension: 300, friction: 30 }
+  const [{ excX, excY, excScale, excRotation }, excApi] = useSpring(() => ({
+    excX: 0,
+    excY: 0,
+    excScale: 1,
+    excRotation: 0,
+    config: { tension: 200, friction: 30 }
   }));
   
   // Refs for overlay bounds
@@ -52,6 +51,74 @@ export default function Home() {
   
   // Drag and drop states
   const [isDragOver, setIsDragOver] = useState(false);
+
+  // Gesture handlers for lips
+  const bindLip = useGesture({
+    onDrag: ({ movement: [mx, my], active }) => {
+      lipApi.start({ 
+        lipX: mx, 
+        lipY: my,
+        immediate: active
+      });
+      setIsDragging(active);
+    },
+    onPinch: ({ offset: [s], da: [distance, angle] }) => {
+      lipApi.start({
+        lipScale: s,
+        lipRotation: angle
+      });
+    },
+    onWheel: ({ event, delta: [, dy] }) => {
+      event.preventDefault();
+      lipApi.start({
+        lipScale: Math.max(0.5, Math.min(3, lipScale.get() - dy * 0.001))
+      });
+    }
+  }, {
+    target: lipRef,
+    drag: { 
+      from: () => [lipX.get(), lipY.get()],
+      bounds: containerRef
+    },
+    pinch: { 
+      scaleBounds: { min: 0.5, max: 3 },
+      rubberband: true 
+    }
+  });
+
+  // Gesture handlers for exclamation
+  const bindExclamation = useGesture({
+    onDrag: ({ movement: [mx, my], active }) => {
+      excApi.start({ 
+        excX: mx, 
+        excY: my,
+        immediate: active
+      });
+      setIsDragging(active);
+    },
+    onPinch: ({ offset: [s], da: [distance, angle] }) => {
+      excApi.start({
+        excScale: s,
+        excRotation: angle
+      });
+    },
+    onWheel: ({ event, delta: [, dy] }) => {
+      event.preventDefault();
+      excApi.start({
+        excScale: Math.max(0.5, Math.min(3, excScale.get() - dy * 0.001))
+      });
+    }
+  }, {
+    target: exclamationRef,
+    drag: { 
+      from: () => [excX.get(), excY.get()],
+      bounds: containerRef
+    },
+    pinch: { 
+      scaleBounds: { min: 0.5, max: 3 },
+      rubberband: true 
+    }
+  });
 
   useEffect(() => {
     const checkJupiter = setInterval(() => {
@@ -116,6 +183,14 @@ export default function Home() {
     const interval = setInterval(fetchTokenData, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Apply gesture bindings after overlays are shown
+  useEffect(() => {
+    if (showOverlays && lipRef.current && exclamationRef.current) {
+      bindLip();
+      bindExclamation();
+    }
+  }, [showOverlays]);
 
   const connectWallet = async () => {
     if (typeof window !== 'undefined' && window.solana) {
@@ -195,82 +270,6 @@ export default function Home() {
     }
   };
 
-  // Gesture handlers for lips
-  const bindLipDrag = useDrag((state) => {
-    const { movement: [mx, my], dragging, memo = lipSpring.x.get() } = state;
-    
-    if (dragging) {
-      setIsDragging(true);
-      lipApi.start({ 
-        x: memo + mx, 
-        y: lipSpring.y.get() + my,
-        immediate: true 
-      });
-    } else {
-      setIsDragging(false);
-      return lipSpring.x.get();
-    }
-  }, {
-    from: () => [lipSpring.x.get(), lipSpring.y.get()],
-    bounds: containerRef,
-    rubberband: true
-  });
-
-  const bindLipPinch = usePinch((state) => {
-    const { offset: [d], origin: [ox, oy], first, movement: [mx, my], memo } = state;
-    
-    if (first) {
-      const lipEl = lipRef.current;
-      const rect = lipEl.getBoundingClientRect();
-      const x = ox - rect.left - rect.width / 2;
-      const y = oy - rect.top - rect.height / 2;
-      return { x, y, scale: lipSpring.scale.get(), rotation: lipSpring.rotation.get() };
-    }
-    
-    const scale = Math.min(Math.max(memo.scale * (1 + d / 200), 0.5), 3);
-    const rotation = memo.rotation + mx / 5;
-    
-    lipApi.start({ scale, rotation });
-  });
-
-  // Gesture handlers for exclamation
-  const bindExclamationDrag = useDrag((state) => {
-    const { movement: [mx, my], dragging, memo = exclamationSpring.x.get() } = state;
-    
-    if (dragging) {
-      setIsDragging(true);
-      exclamationApi.start({ 
-        x: memo + mx, 
-        y: exclamationSpring.y.get() + my,
-        immediate: true 
-      });
-    } else {
-      setIsDragging(false);
-      return exclamationSpring.x.get();
-    }
-  }, {
-    from: () => [exclamationSpring.x.get(), exclamationSpring.y.get()],
-    bounds: containerRef,
-    rubberband: true
-  });
-
-  const bindExclamationPinch = usePinch((state) => {
-    const { offset: [d], origin: [ox, oy], first, movement: [mx, my], memo } = state;
-    
-    if (first) {
-      const exclamationEl = exclamationRef.current;
-      const rect = exclamationEl.getBoundingClientRect();
-      const x = ox - rect.left - rect.width / 2;
-      const y = oy - rect.top - rect.height / 2;
-      return { x, y, scale: exclamationSpring.scale.get(), rotation: exclamationSpring.rotation.get() };
-    }
-    
-    const scale = Math.min(Math.max(memo.scale * (1 + d / 200), 0.5), 3);
-    const rotation = memo.rotation + mx / 5;
-    
-    exclamationApi.start({ scale, rotation });
-  });
-
   const generateMeme = async () => {
     if (!selectedFile) {
       setError('Please select an image first!');
@@ -336,9 +335,15 @@ export default function Home() {
         const exclamationX = (face.exclamationPosition.centerX - 0.5) * rect.width;
         const exclamationY = (face.exclamationPosition.centerY - 0.5) * rect.height;
         
-        // Set initial positions
-        lipApi.start({ x: lipX, y: lipY, scale: 1, rotation: 0 });
-        exclamationApi.start({ x: exclamationX, y: exclamationY, scale: 1, rotation: 0 });
+        // Reset to initial positions
+        lipApi.start({ lipX: 0, lipY: 0, lipScale: 1, lipRotation: 0 });
+        excApi.start({ excX: 0, excY: 0, excScale: 1, excRotation: 0 });
+        
+        // Then animate to detected positions
+        setTimeout(() => {
+          lipApi.start({ lipX, lipY });
+          excApi.start({ excX: exclamationX, excY: exclamationY });
+        }, 100);
       }
 
       setShowOverlays(true);
@@ -353,8 +358,6 @@ export default function Home() {
 
   const downloadMeme = async () => {
     if (!selectedFile || !showOverlays) return;
-    
-    setDragEnabled(false);
     
     try {
       // Create canvas
@@ -386,11 +389,11 @@ export default function Home() {
       
       // Draw lips
       ctx.save();
-      const lipCenterX = (containerRect.width / 2 + lipSpring.x.get()) * scaleX;
-      const lipCenterY = (containerRect.height / 2 + lipSpring.y.get()) * scaleY;
+      const lipCenterX = (containerRect.width / 2 + lipX.get()) * scaleX;
+      const lipCenterY = (containerRect.height / 2 + lipY.get()) * scaleY;
       ctx.translate(lipCenterX, lipCenterY);
-      ctx.rotate(lipSpring.rotation.get() * Math.PI / 180);
-      ctx.scale(lipSpring.scale.get(), lipSpring.scale.get());
+      ctx.rotate(lipRotation.get() * Math.PI / 180);
+      ctx.scale(lipScale.get(), lipScale.get());
       ctx.drawImage(
         lipImage,
         -lipImage.width / 2,
@@ -400,11 +403,11 @@ export default function Home() {
       
       // Draw exclamation
       ctx.save();
-      const exclamationCenterX = (containerRect.width / 2 + exclamationSpring.x.get()) * scaleX;
-      const exclamationCenterY = (containerRect.height / 2 + exclamationSpring.y.get()) * scaleY;
+      const exclamationCenterX = (containerRect.width / 2 + excX.get()) * scaleX;
+      const exclamationCenterY = (containerRect.height / 2 + excY.get()) * scaleY;
       ctx.translate(exclamationCenterX, exclamationCenterY);
-      ctx.rotate(exclamationSpring.rotation.get() * Math.PI / 180);
-      ctx.scale(exclamationSpring.scale.get(), exclamationSpring.scale.get());
+      ctx.rotate(excRotation.get() * Math.PI / 180);
+      ctx.scale(excScale.get(), excScale.get());
       ctx.drawImage(
         exclamationImage,
         -exclamationImage.width / 2,
@@ -433,8 +436,6 @@ export default function Home() {
     } catch (error) {
       console.error('Download failed:', error);
       setError('Failed to download meme');
-    } finally {
-      setDragEnabled(true);
     }
   };
 
@@ -745,28 +746,20 @@ export default function Home() {
                           ref={lipRef}
                           className={`overlay-element ${isDragging ? 'dragging' : ''}`}
                           style={{
-                            transform: to([lipSpring.x, lipSpring.y, lipSpring.scale, lipSpring.rotation], 
-                              (x, y, scale, rotation) => 
-                              `translate(${x}px, ${y}px) scale(${scale}) rotate(${rotation}deg)`)
+                            transform: lipX.to((x) => `translate(${x}px, ${lipY.get()}px) scale(${lipScale.get()}) rotate(${lipRotation.get()}deg)`),
                           }}
-                          {...(dragEnabled ? bindLipDrag() : {})}
-                          {...(dragEnabled ? bindLipPinch() : {})}
                         >
-                          <img src="/meme-assets/lips.png" alt="Lips" />
+                          <img src="/meme-assets/lips.png" alt="Lips" draggable={false} />
                         </animated.div>
                         
                         <animated.div
                           ref={exclamationRef}
                           className={`overlay-element ${isDragging ? 'dragging' : ''}`}
                           style={{
-                            transform: to([exclamationSpring.x, exclamationSpring.y, exclamationSpring.scale, exclamationSpring.rotation], 
-                              (x, y, scale, rotation) => 
-                              `translate(${x}px, ${y}px) scale(${scale}) rotate(${rotation}deg)`)
+                            transform: excX.to((x) => `translate(${x}px, ${excY.get()}px) scale(${excScale.get()}) rotate(${excRotation.get()}deg)`),
                           }}
-                          {...(dragEnabled ? bindExclamationDrag() : {})}
-                          {...(dragEnabled ? bindExclamationPinch() : {})}
                         >
-                          <img src="/meme-assets/exclamation.png" alt="Exclamation" />
+                          <img src="/meme-assets/exclamation.png" alt="Exclamation" draggable={false} />
                         </animated.div>
                       </>
                     )}
@@ -809,7 +802,7 @@ export default function Home() {
               
               {showOverlays && (
                 <div className="gesture-hints">
-                  <p>✋ Drag to move • 🤏 Pinch to resize • 🔄 Twist to rotate</p>
+                  <p>✋ Drag to move • 🤏 Pinch to resize • 🔄 Twist to rotate • 🖱️ Scroll to resize</p>
                 </div>
               )}
               
@@ -1538,6 +1531,9 @@ export default function Home() {
           touch-action: none;
           user-select: none;
           transition: filter 0.2s ease;
+          transform-origin: center;
+          left: 50%;
+          top: 50%;
         }
 
         .overlay-element:active {
@@ -1552,6 +1548,8 @@ export default function Home() {
           width: 120px;
           height: auto;
           pointer-events: none;
+          display: block;
+          transform: translate(-50%, -50%);
         }
 
         .action-buttons {
