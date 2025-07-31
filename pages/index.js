@@ -517,12 +517,26 @@ export default function Home() {
       const scaleX = img.width / displayedImgRect.width;
       const scaleY = img.height / displayedImgRect.height;
       
+      // Debug logging
+      console.log('Image dimensions:', { 
+        original: { w: img.width, h: img.height },
+        displayed: { w: displayedImgRect.width, h: displayedImgRect.height },
+        scaleX, scaleY,
+        lipImageSize: { w: lipImage.width, h: lipImage.height }
+      });
+      
       // Calculate base scale to match 120px display size
       const baseDisplaySize = 120; // This matches the CSS width
-      // Calculate what 120px on screen translates to in the full resolution image
-      const scaledDisplaySize = baseDisplaySize * scaleX;
-      const lipBaseScale = scaledDisplaySize / lipImage.width;
-      const exclamationBaseScale = scaledDisplaySize / exclamationImage.width;
+      // Simple approach: just scale based on what we see
+      const lipBaseScale = (baseDisplaySize * scaleX) / lipImage.width;
+      const exclamationBaseScale = (baseDisplaySize * scaleX) / exclamationImage.width;
+      
+      console.log('Scale calculations:', {
+        baseDisplaySize,
+        lipBaseScale,
+        lipScale,
+        finalScale: lipBaseScale * lipScale
+      });
       
       // Draw lips
       ctx.save();
@@ -531,8 +545,8 @@ export default function Home() {
       const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
       ctx.translate(lipCenterX, lipCenterY);
       ctx.rotate(lipRotation * Math.PI / 180);
-      // Only apply base scale times user scale (no resolution scale here)
-      const finalLipScale = lipBaseScale * lipScale;
+      // Divide by 2 to fix the double size issue
+      const finalLipScale = (lipBaseScale * lipScale) / 2;
       ctx.scale(finalLipScale, finalLipScale);
       ctx.drawImage(
         lipImage,
@@ -548,8 +562,8 @@ export default function Home() {
       const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
       ctx.translate(exclamationCenterX, exclamationCenterY);
       ctx.rotate(exclamationRotation * Math.PI / 180);
-      // Only apply base scale times user scale (no resolution scale here)
-      const finalExclamationScale = exclamationBaseScale * exclamationScale;
+      // Divide by 2 to fix the double size issue
+      const finalExclamationScale = (exclamationBaseScale * exclamationScale) / 2;
       ctx.scale(finalExclamationScale, finalExclamationScale);
       ctx.drawImage(
         exclamationImage,
