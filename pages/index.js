@@ -1,7 +1,5 @@
 import Head from 'next/head';
 import { useState, useEffect, useRef } from 'react';
-import { useSpring, animated } from '@react-spring/web';
-import { useGesture } from '@use-gesture/react';
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -25,100 +23,26 @@ export default function Home() {
   
   // New states for draggable overlays
   const [showOverlays, setShowOverlays] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   
-  // Separate springs for each overlay with initial positions
-  const [{ lipX, lipY, lipScale, lipRotation }, lipApi] = useSpring(() => ({
-    lipX: 0,
-    lipY: 0,
-    lipScale: 1,
-    lipRotation: 0,
-    config: { tension: 200, friction: 30 }
-  }));
+  // Position states for overlays
+  const [lipPosition, setLipPosition] = useState({ x: 0, y: 0 });
+  const [lipScale, setLipScale] = useState(1);
+  const [lipRotation, setLipRotation] = useState(0);
   
-  const [{ excX, excY, excScale, excRotation }, excApi] = useSpring(() => ({
-    excX: 0,
-    excY: 0,
-    excScale: 1,
-    excRotation: 0,
-    config: { tension: 200, friction: 30 }
-  }));
+  const [exclamationPosition, setExclamationPosition] = useState({ x: 0, y: 0 });
+  const [exclamationScale, setExclamationScale] = useState(1);
+  const [exclamationRotation, setExclamationRotation] = useState(0);
   
-  // Refs for overlay bounds
+  // Drag state
+  const [dragging, setDragging] = useState(null);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  
+  // Refs
   const containerRef = useRef(null);
   const lipRef = useRef(null);
   const exclamationRef = useRef(null);
-  
-  // Drag and drop states
-  const [isDragOver, setIsDragOver] = useState(false);
-
-  // Gesture handlers for lips
-  const bindLip = useGesture({
-    onDrag: ({ movement: [mx, my], active }) => {
-      lipApi.start({ 
-        lipX: mx, 
-        lipY: my,
-        immediate: active
-      });
-      setIsDragging(active);
-    },
-    onPinch: ({ offset: [s], da: [distance, angle] }) => {
-      lipApi.start({
-        lipScale: s,
-        lipRotation: angle
-      });
-    },
-    onWheel: ({ event, delta: [, dy] }) => {
-      event.preventDefault();
-      lipApi.start({
-        lipScale: Math.max(0.5, Math.min(3, lipScale.get() - dy * 0.001))
-      });
-    }
-  }, {
-    target: lipRef,
-    drag: { 
-      from: () => [lipX.get(), lipY.get()],
-      bounds: containerRef
-    },
-    pinch: { 
-      scaleBounds: { min: 0.5, max: 3 },
-      rubberband: true 
-    }
-  });
-
-  // Gesture handlers for exclamation
-  const bindExclamation = useGesture({
-    onDrag: ({ movement: [mx, my], active }) => {
-      excApi.start({ 
-        excX: mx, 
-        excY: my,
-        immediate: active
-      });
-      setIsDragging(active);
-    },
-    onPinch: ({ offset: [s], da: [distance, angle] }) => {
-      excApi.start({
-        excScale: s,
-        excRotation: angle
-      });
-    },
-    onWheel: ({ event, delta: [, dy] }) => {
-      event.preventDefault();
-      excApi.start({
-        excScale: Math.max(0.5, Math.min(3, excScale.get() - dy * 0.001))
-      });
-    }
-  }, {
-    target: exclamationRef,
-    drag: { 
-      from: () => [excX.get(), excY.get()],
-      bounds: containerRef
-    },
-    pinch: { 
-      scaleBounds: { min: 0.5, max: 3 },
-      rubberband: true 
-    }
-  });
 
   useEffect(() => {
     const checkJupiter = setInterval(() => {
@@ -184,13 +108,89 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Apply gesture bindings after overlays are shown
-  useEffect(() => {
-    if (showOverlays && lipRef.current && exclamationRef.current) {
-      bindLip();
-      bindExclamation();
+  // Mouse/Touch event handlers
+  const handleMouseDown = (e, element) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+    const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+    
+    setDragging(element);
+    setDragStart({ x: clientX, y: clientY });
+    
+    if (element === 'lips') {
+      setStartPos({ x: lipPosition.x, y: lipPosition.y });
+    } else {
+      setStartPos({ x: exclamationPosition.x, y: exclamationPosition.y });
     }
-  }, [showOverlays]);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!dragging || !containerRef.current) return;
+    
+    e.preventDefault();
+    const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+    const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+    
+    const deltaX = clientX - dragStart.x;
+    const deltaY = clientY - dragStart.y;
+    
+    // Get container bounds for limiting movement
+    const container = containerRef.current.getBoundingClientRect();
+    const maxX = container.width / 2 - 60; // Half width minus half overlay size
+    const maxY = container.height / 2 - 60;
+    
+    if (dragging === 'lips') {
+      setLipPosition({
+        x: Math.max(-maxX, Math.min(maxX, startPos.x + deltaX)),
+        y: Math.max(-maxY, Math.min(maxY, startPos.y + deltaY))
+      });
+    } else if (dragging === 'exclamation') {
+      setExclamationPosition({
+        x: Math.max(-maxX, Math.min(maxX, startPos.x + deltaX)),
+        y: Math.max(-maxY, Math.min(maxY, startPos.y + deltaY))
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setDragging(null);
+  };
+
+  // Add global mouse/touch listeners
+  useEffect(() => {
+    if (dragging) {
+      // Add listeners
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleMouseMove, { passive: false });
+      document.addEventListener('touchend', handleMouseUp);
+      
+      // Prevent text selection while dragging
+      document.body.style.userSelect = 'none';
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('touchmove', handleMouseMove);
+        document.removeEventListener('touchend', handleMouseUp);
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [dragging, dragStart, startPos]);
+
+  // Handle wheel for scaling
+  const handleWheel = (e, element) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    
+    if (element === 'lips') {
+      setLipScale(prev => Math.max(0.5, Math.min(3, prev + delta)));
+    } else {
+      setExclamationScale(prev => Math.max(0.5, Math.min(3, prev + delta)));
+    }
+  };
 
   const connectWallet = async () => {
     if (typeof window !== 'undefined' && window.solana) {
@@ -251,6 +251,14 @@ export default function Home() {
     setError('');
     setGeneratedMeme(null);
     setShowOverlays(false);
+    
+    // Reset positions when new image is selected
+    setLipPosition({ x: 0, y: 0 });
+    setExclamationPosition({ x: 0, y: 0 });
+    setLipScale(1);
+    setExclamationScale(1);
+    setLipRotation(0);
+    setExclamationRotation(0);
     
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -335,15 +343,13 @@ export default function Home() {
         const exclamationX = (face.exclamationPosition.centerX - 0.5) * rect.width;
         const exclamationY = (face.exclamationPosition.centerY - 0.5) * rect.height;
         
-        // Reset to initial positions
-        lipApi.start({ lipX: 0, lipY: 0, lipScale: 1, lipRotation: 0 });
-        excApi.start({ excX: 0, excY: 0, excScale: 1, excRotation: 0 });
-        
-        // Then animate to detected positions
-        setTimeout(() => {
-          lipApi.start({ lipX, lipY });
-          excApi.start({ excX: exclamationX, excY: exclamationY });
-        }, 100);
+        // Set positions
+        setLipPosition({ x: lipX, y: lipY });
+        setExclamationPosition({ x: exclamationX, y: exclamationY });
+        setLipScale(1);
+        setExclamationScale(1);
+        setLipRotation(0);
+        setExclamationRotation(0);
       }
 
       setShowOverlays(true);
@@ -389,11 +395,11 @@ export default function Home() {
       
       // Draw lips
       ctx.save();
-      const lipCenterX = (containerRect.width / 2 + lipX.get()) * scaleX;
-      const lipCenterY = (containerRect.height / 2 + lipY.get()) * scaleY;
+      const lipCenterX = (containerRect.width / 2 + lipPosition.x) * scaleX;
+      const lipCenterY = (containerRect.height / 2 + lipPosition.y) * scaleY;
       ctx.translate(lipCenterX, lipCenterY);
-      ctx.rotate(lipRotation.get() * Math.PI / 180);
-      ctx.scale(lipScale.get(), lipScale.get());
+      ctx.rotate(lipRotation * Math.PI / 180);
+      ctx.scale(lipScale, lipScale);
       ctx.drawImage(
         lipImage,
         -lipImage.width / 2,
@@ -403,11 +409,11 @@ export default function Home() {
       
       // Draw exclamation
       ctx.save();
-      const exclamationCenterX = (containerRect.width / 2 + excX.get()) * scaleX;
-      const exclamationCenterY = (containerRect.height / 2 + excY.get()) * scaleY;
+      const exclamationCenterX = (containerRect.width / 2 + exclamationPosition.x) * scaleX;
+      const exclamationCenterY = (containerRect.height / 2 + exclamationPosition.y) * scaleY;
       ctx.translate(exclamationCenterX, exclamationCenterY);
-      ctx.rotate(excRotation.get() * Math.PI / 180);
-      ctx.scale(excScale.get(), excScale.get());
+      ctx.rotate(exclamationRotation * Math.PI / 180);
+      ctx.scale(exclamationScale, exclamationScale);
       ctx.drawImage(
         exclamationImage,
         -exclamationImage.width / 2,
@@ -742,25 +748,31 @@ export default function Home() {
                     
                     {showOverlays && (
                       <>
-                        <animated.div
+                        <div
                           ref={lipRef}
-                          className={`overlay-element ${isDragging ? 'dragging' : ''}`}
+                          className={`overlay-element ${dragging === 'lips' ? 'dragging' : ''}`}
                           style={{
-                            transform: lipX.to((x) => `translate(${x}px, ${lipY.get()}px) scale(${lipScale.get()}) rotate(${lipRotation.get()}deg)`),
+                            transform: `translate(${lipPosition.x}px, ${lipPosition.y}px) scale(${lipScale}) rotate(${lipRotation}deg)`
                           }}
+                          onMouseDown={(e) => handleMouseDown(e, 'lips')}
+                          onTouchStart={(e) => handleMouseDown(e, 'lips')}
+                          onWheel={(e) => handleWheel(e, 'lips')}
                         >
                           <img src="/meme-assets/lips.png" alt="Lips" draggable={false} />
-                        </animated.div>
+                        </div>
                         
-                        <animated.div
+                        <div
                           ref={exclamationRef}
-                          className={`overlay-element ${isDragging ? 'dragging' : ''}`}
+                          className={`overlay-element ${dragging === 'exclamation' ? 'dragging' : ''}`}
                           style={{
-                            transform: excX.to((x) => `translate(${x}px, ${excY.get()}px) scale(${excScale.get()}) rotate(${excRotation.get()}deg)`),
+                            transform: `translate(${exclamationPosition.x}px, ${exclamationPosition.y}px) scale(${exclamationScale}) rotate(${exclamationRotation}deg)`
                           }}
+                          onMouseDown={(e) => handleMouseDown(e, 'exclamation')}
+                          onTouchStart={(e) => handleMouseDown(e, 'exclamation')}
+                          onWheel={(e) => handleWheel(e, 'exclamation')}
                         >
                           <img src="/meme-assets/exclamation.png" alt="Exclamation" draggable={false} />
-                        </animated.div>
+                        </div>
                       </>
                     )}
                   </div>
@@ -790,19 +802,37 @@ export default function Home() {
                       {isProcessing ? '🎨 Processing...' : '✨ Generate Meme'}
                     </button>
                   ) : (
-                    <button 
-                      onClick={downloadMeme}
-                      className="download-button"
-                    >
-                      💾 Download Meme
-                    </button>
+                    <>
+                      <button 
+                        onClick={downloadMeme}
+                        className="download-button"
+                      >
+                        💾 Download Meme
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setLipRotation(prev => prev + 15);
+                        }}
+                        className="secondary-button"
+                      >
+                        🔄 Rotate Lips
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setExclamationRotation(prev => prev + 15);
+                        }}
+                        className="secondary-button"
+                      >
+                        🔄 Rotate !!
+                      </button>
+                    </>
                   )}
                 </div>
               )}
               
               {showOverlays && (
                 <div className="gesture-hints">
-                  <p>✋ Drag to move • 🤏 Pinch to resize • 🔄 Twist to rotate • 🖱️ Scroll to resize</p>
+                  <p>🖱️ Drag to move • 🖱️ Scroll wheel to resize • 🔄 Use buttons to rotate • 📱 Touch & drag on mobile</p>
                 </div>
               )}
               
@@ -1517,12 +1547,15 @@ export default function Home() {
           display: flex;
           align-items: center;
           justify-content: center;
+          overflow: visible;
         }
 
         .preview-image {
           max-width: 100%;
           max-height: 500px;
           border-radius: 10px;
+          user-select: none;
+          -webkit-user-drag: none;
         }
 
         .overlay-element {
@@ -1534,6 +1567,7 @@ export default function Home() {
           transform-origin: center;
           left: 50%;
           top: 50%;
+          z-index: 10;
         }
 
         .overlay-element:active {
@@ -1542,6 +1576,8 @@ export default function Home() {
 
         .overlay-element.dragging {
           filter: drop-shadow(0 10px 30px rgba(255, 255, 0, 0.5));
+          cursor: grabbing;
+          z-index: 20;
         }
 
         .overlay-element img {
@@ -1550,6 +1586,8 @@ export default function Home() {
           pointer-events: none;
           display: block;
           transform: translate(-50%, -50%);
+          user-select: none;
+          -webkit-user-drag: none;
         }
 
         .action-buttons {
@@ -1557,6 +1595,7 @@ export default function Home() {
           gap: 1rem;
           justify-content: center;
           margin-top: 2rem;
+          flex-wrap: wrap;
         }
 
         .primary-button, .secondary-button, .download-button {
