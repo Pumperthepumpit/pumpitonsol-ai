@@ -519,7 +519,9 @@ export default function Home() {
       const lipCenterY = (containerRect.height / 2 + lipPosition.y) * scaleY;
       ctx.translate(lipCenterX, lipCenterY);
       ctx.rotate(lipRotation * Math.PI / 180);
-      ctx.scale(lipScale, lipScale);
+      const lipFinalScale = lipScale * Math.min(scaleX, scaleY);
+      const exclamationFinalScale = exclamationScale * Math.min(scaleX, scaleY);
+      ctx.scale(exclamationFinalScale, exclamationFinalScale);
       ctx.drawImage(
         lipImage,
         -lipImage.width / 2,
@@ -533,7 +535,7 @@ export default function Home() {
       const exclamationCenterY = (containerRect.height / 2 + exclamationPosition.y) * scaleY;
       ctx.translate(exclamationCenterX, exclamationCenterY);
       ctx.rotate(exclamationRotation * Math.PI / 180);
-      ctx.scale(exclamationScale, exclamationScale);
+      
       ctx.drawImage(
         exclamationImage,
         -exclamationImage.width / 2,
