@@ -39,6 +39,10 @@ export default function Home() {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   
+  // Touch gesture states
+  const [touches, setTouches] = useState([]);
+  const [gestureStart, setGestureStart] = useState({ distance: 0, angle: 0, scale: 1, rotation: 0 });
+  
   // Refs
   const containerRef = useRef(null);
   const lipRef = useRef(null);
@@ -116,6 +120,22 @@ export default function Home() {
     const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
     const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
     
+    // Check if Alt key is pressed for rotation on desktop
+    if (e.altKey && e.type === 'mousedown') {
+      setDragging(element + '-rotate');
+      const rect = e.currentTarget.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const angle = Math.atan2(clientY - centerY, clientX - centerX) * 180 / Math.PI;
+      setDragStart({ x: clientX, y: clientY, angle });
+      if (element === 'lips') {
+        setStartPos({ rotation: lipRotation });
+      } else {
+        setStartPos({ rotation: exclamationRotation });
+      }
+      return;
+    }
+    
     setDragging(element);
     setDragStart({ x: clientX, y: clientY });
     
@@ -127,35 +147,132 @@ export default function Home() {
   };
 
   const handleMouseMove = (e) => {
-    if (!dragging || !containerRef.current) return;
+    if (!dragging) return;
     
     e.preventDefault();
     const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
     const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
     
+    // Handle rotation
+    if (dragging.includes('-rotate')) {
+      const element = dragging.replace('-rotate', '');
+      const rect = element === 'lips' ? lipRef.current?.getBoundingClientRect() : exclamationRef.current?.getBoundingClientRect();
+      if (rect) {
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const angle = Math.atan2(clientY - centerY, clientX - centerX) * 180 / Math.PI;
+        const deltaAngle = angle - dragStart.angle;
+        
+        if (element === 'lips') {
+          setLipRotation(startPos.rotation + deltaAngle);
+        } else {
+          setExclamationRotation(startPos.rotation + deltaAngle);
+        }
+      }
+      return;
+    }
+    
+    // Handle regular drag - NO BOUNDARIES
     const deltaX = clientX - dragStart.x;
     const deltaY = clientY - dragStart.y;
     
-    // Get container bounds for limiting movement
-    const container = containerRef.current.getBoundingClientRect();
-    const maxX = container.width / 2 - 60; // Half width minus half overlay size
-    const maxY = container.height / 2 - 60;
-    
     if (dragging === 'lips') {
       setLipPosition({
-        x: Math.max(-maxX, Math.min(maxX, startPos.x + deltaX)),
-        y: Math.max(-maxY, Math.min(maxY, startPos.y + deltaY))
+        x: startPos.x + deltaX,
+        y: startPos.y + deltaY
       });
     } else if (dragging === 'exclamation') {
       setExclamationPosition({
-        x: Math.max(-maxX, Math.min(maxX, startPos.x + deltaX)),
-        y: Math.max(-maxY, Math.min(maxY, startPos.y + deltaY))
+        x: startPos.x + deltaX,
+        y: startPos.y + deltaY
       });
     }
   };
 
   const handleMouseUp = () => {
     setDragging(null);
+  };
+
+  // Touch gesture handlers for pinch and rotate
+  const handleTouchStart = (e, element) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.touches.length === 1) {
+      // Single touch - start drag
+      handleMouseDown(e, element);
+    } else if (e.touches.length === 2) {
+      // Two touches - prepare for pinch/rotate
+      setDragging(null); // Cancel any drag
+      
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      
+      const distance = Math.sqrt(
+        Math.pow(touch2.clientX - touch1.clientX, 2) +
+        Math.pow(touch2.clientY - touch1.clientY, 2)
+      );
+      
+      const angle = Math.atan2(
+        touch2.clientY - touch1.clientY,
+        touch2.clientX - touch1.clientX
+      ) * 180 / Math.PI;
+      
+      setGestureStart({
+        distance,
+        angle,
+        scale: element === 'lips' ? lipScale : exclamationScale,
+        rotation: element === 'lips' ? lipRotation : exclamationRotation,
+        element
+      });
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2 && gestureStart.element) {
+      e.preventDefault();
+      
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      
+      // Calculate new distance for pinch
+      const distance = Math.sqrt(
+        Math.pow(touch2.clientX - touch1.clientX, 2) +
+        Math.pow(touch2.clientY - touch1.clientY, 2)
+      );
+      
+      // Calculate new angle for rotation
+      const angle = Math.atan2(
+        touch2.clientY - touch1.clientY,
+        touch2.clientX - touch1.clientX
+      ) * 180 / Math.PI;
+      
+      // Apply scale
+      const scaleDelta = distance / gestureStart.distance;
+      const newScale = Math.max(0.3, Math.min(3, gestureStart.scale * scaleDelta));
+      
+      // Apply rotation
+      const rotationDelta = angle - gestureStart.angle;
+      const newRotation = gestureStart.rotation + rotationDelta;
+      
+      if (gestureStart.element === 'lips') {
+        setLipScale(newScale);
+        setLipRotation(newRotation);
+      } else {
+        setExclamationScale(newScale);
+        setExclamationRotation(newRotation);
+      }
+    } else if (e.touches.length === 1 && dragging) {
+      // Continue single touch drag
+      handleMouseMove(e);
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (e.touches.length === 0) {
+      setDragging(null);
+      setGestureStart({ distance: 0, angle: 0, scale: 1, rotation: 0, element: null });
+    }
   };
 
   // Add global mouse/touch listeners
@@ -169,6 +286,7 @@ export default function Home() {
       
       // Prevent text selection while dragging
       document.body.style.userSelect = 'none';
+      document.body.style.cursor = dragging.includes('-rotate') ? 'grabbing' : 'grabbing';
       
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
@@ -176,6 +294,7 @@ export default function Home() {
         document.removeEventListener('touchmove', handleMouseMove);
         document.removeEventListener('touchend', handleMouseUp);
         document.body.style.userSelect = '';
+        document.body.style.cursor = '';
       };
     }
   }, [dragging, dragStart, startPos]);
@@ -183,12 +302,13 @@ export default function Home() {
   // Handle wheel for scaling
   const handleWheel = (e, element) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    e.stopPropagation();
+    const delta = e.deltaY > 0 ? -0.05 : 0.05;
     
     if (element === 'lips') {
-      setLipScale(prev => Math.max(0.5, Math.min(3, prev + delta)));
+      setLipScale(prev => Math.max(0.3, Math.min(3, prev + delta)));
     } else {
-      setExclamationScale(prev => Math.max(0.5, Math.min(3, prev + delta)));
+      setExclamationScale(prev => Math.max(0.3, Math.min(3, prev + delta)));
     }
   };
 
@@ -750,12 +870,14 @@ export default function Home() {
                       <>
                         <div
                           ref={lipRef}
-                          className={`overlay-element ${dragging === 'lips' ? 'dragging' : ''}`}
+                          className={`overlay-element ${dragging === 'lips' || dragging === 'lips-rotate' ? 'dragging' : ''}`}
                           style={{
                             transform: `translate(${lipPosition.x}px, ${lipPosition.y}px) scale(${lipScale}) rotate(${lipRotation}deg)`
                           }}
                           onMouseDown={(e) => handleMouseDown(e, 'lips')}
-                          onTouchStart={(e) => handleMouseDown(e, 'lips')}
+                          onTouchStart={(e) => handleTouchStart(e, 'lips')}
+                          onTouchMove={handleTouchMove}
+                          onTouchEnd={handleTouchEnd}
                           onWheel={(e) => handleWheel(e, 'lips')}
                         >
                           <img src="/meme-assets/lips.png" alt="Lips" draggable={false} />
@@ -763,12 +885,14 @@ export default function Home() {
                         
                         <div
                           ref={exclamationRef}
-                          className={`overlay-element ${dragging === 'exclamation' ? 'dragging' : ''}`}
+                          className={`overlay-element ${dragging === 'exclamation' || dragging === 'exclamation-rotate' ? 'dragging' : ''}`}
                           style={{
                             transform: `translate(${exclamationPosition.x}px, ${exclamationPosition.y}px) scale(${exclamationScale}) rotate(${exclamationRotation}deg)`
                           }}
                           onMouseDown={(e) => handleMouseDown(e, 'exclamation')}
-                          onTouchStart={(e) => handleMouseDown(e, 'exclamation')}
+                          onTouchStart={(e) => handleTouchStart(e, 'exclamation')}
+                          onTouchMove={handleTouchMove}
+                          onTouchEnd={handleTouchEnd}
                           onWheel={(e) => handleWheel(e, 'exclamation')}
                         >
                           <img src="/meme-assets/exclamation.png" alt="Exclamation" draggable={false} />
@@ -802,37 +926,20 @@ export default function Home() {
                       {isProcessing ? '🎨 Processing...' : '✨ Generate Meme'}
                     </button>
                   ) : (
-                    <>
-                      <button 
-                        onClick={downloadMeme}
-                        className="download-button"
-                      >
-                        💾 Download Meme
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setLipRotation(prev => prev + 15);
-                        }}
-                        className="secondary-button"
-                      >
-                        🔄 Rotate Lips
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setExclamationRotation(prev => prev + 15);
-                        }}
-                        className="secondary-button"
-                      >
-                        🔄 Rotate !!
-                      </button>
-                    </>
+                    <button 
+                      onClick={downloadMeme}
+                      className="download-button"
+                    >
+                      💾 Download Meme
+                    </button>
                   )}
                 </div>
               )}
               
               {showOverlays && (
                 <div className="gesture-hints">
-                  <p>🖱️ Drag to move • 🖱️ Scroll wheel to resize • 🔄 Use buttons to rotate • 📱 Touch & drag on mobile</p>
+                  <p className="desktop-hint">🖱️ Drag to move • Scroll to resize • Alt+drag to rotate</p>
+                  <p className="mobile-hint">👆 Drag to move • 🤏 Pinch to resize • 🔄 Twist to rotate</p>
                 </div>
               )}
               
@@ -1652,6 +1759,24 @@ export default function Home() {
           border-radius: 10px;
           font-size: 0.9rem;
           color: #FFFF00;
+        }
+
+        .gesture-hints .desktop-hint {
+          display: block;
+        }
+
+        .gesture-hints .mobile-hint {
+          display: none;
+        }
+
+        @media (max-width: 768px) {
+          .gesture-hints .desktop-hint {
+            display: none;
+          }
+          
+          .gesture-hints .mobile-hint {
+            display: block;
+          }
         }
 
         .error-message {
