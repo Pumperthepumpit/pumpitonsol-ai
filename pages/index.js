@@ -519,9 +519,10 @@ export default function Home() {
       
       // Calculate base scale to match 120px display size
       const baseDisplaySize = 120; // This matches the CSS width
-      // Don't multiply by scaleX here - just get the ratio
-      const lipBaseScale = baseDisplaySize / lipImage.width;
-      const exclamationBaseScale = baseDisplaySize / exclamationImage.width;
+      // Calculate what 120px on screen translates to in the full resolution image
+      const scaledDisplaySize = baseDisplaySize * scaleX;
+      const lipBaseScale = scaledDisplaySize / lipImage.width;
+      const exclamationBaseScale = scaledDisplaySize / exclamationImage.width;
       
       // Draw lips
       ctx.save();
@@ -530,8 +531,8 @@ export default function Home() {
       const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
       ctx.translate(lipCenterX, lipCenterY);
       ctx.rotate(lipRotation * Math.PI / 180);
-      // Apply base scale times user scale times resolution scale
-      const finalLipScale = lipBaseScale * lipScale * scaleX;
+      // Only apply base scale times user scale (no resolution scale here)
+      const finalLipScale = lipBaseScale * lipScale;
       ctx.scale(finalLipScale, finalLipScale);
       ctx.drawImage(
         lipImage,
@@ -547,8 +548,8 @@ export default function Home() {
       const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
       ctx.translate(exclamationCenterX, exclamationCenterY);
       ctx.rotate(exclamationRotation * Math.PI / 180);
-      // Apply base scale times user scale times resolution scale
-      const finalExclamationScale = exclamationBaseScale * exclamationScale * scaleX;
+      // Only apply base scale times user scale (no resolution scale here)
+      const finalExclamationScale = exclamationBaseScale * exclamationScale;
       ctx.scale(finalExclamationScale, finalExclamationScale);
       ctx.drawImage(
         exclamationImage,
