@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import { useState, useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabase';
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -15,6 +16,7 @@ export default function Home() {
   const [xHandle, setXHandle] = useState('');
   const [showXForm, setShowXForm] = useState(false);
   const [communityMemes, setCommunityMemes] = useState([]);
+  const [isLoadingMemes, setIsLoadingMemes] = useState(true);
   const [expandedSections, setExpandedSections] = useState({
     vision: false,
     about: false
@@ -47,6 +49,30 @@ export default function Home() {
   const containerRef = useRef(null);
   const lipRef = useRef(null);
   const exclamationRef = useRef(null);
+
+  // Fetch community memes from Supabase
+  useEffect(() => {
+    fetchCommunityMemes();
+  }, []);
+
+  const fetchCommunityMemes = async () => {
+    try {
+      setIsLoadingMemes(true);
+      const { data, error } = await supabase
+        .from('memes')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+      
+      setCommunityMemes(data || []);
+    } catch (error) {
+      console.error('Error fetching memes:', error);
+    } finally {
+      setIsLoadingMemes(false);
+    }
+  };
 
   useEffect(() => {
     const checkJupiter = setInterval(() => {
@@ -572,28 +598,76 @@ export default function Home() {
       );
       ctx.restore();
       
-      // Convert to blob and download
-      canvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `pumpit-meme-${Date.now()}.png`;
-        a.click();
-        
-        // Save to community memes
-        setCommunityMemes(prev => [{
-          url: url,
-          creator: xHandle,
-          timestamp: Date.now()
-        }, ...prev].slice(0, 6));
-        
-        setGeneratedMeme(url);
-      }, 'image/png');
+      // Convert to blob
+      const blob = await new Promise(resolve => {
+        canvas.toBlob(resolve, 'image/png');
+      });
+
+      // Upload to Supabase Storage
+      const fileName = `meme-${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('memes')
+        .upload(fileName, blob, {
+          contentType: 'image/png'
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('memes')
+        .getPublicUrl(fileName);
+
+      // Save to database
+      const { data: memeData, error: dbError } = await supabase
+        .from('memes')
+        .insert({
+          image_url: publicUrl,
+          creator_x_handle: xHandle,
+          creator_wallet: walletAddress
+        })
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+
+      // Download locally
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `pumpit-meme-${Date.now()}.png`;
+      a.click();
+      
+      setGeneratedMeme(publicUrl);
+      
+      // Refresh community memes
+      fetchCommunityMemes();
+      
+      // Show share options
+      setTimeout(() => {
+        if (confirm('Meme created! Share it on X/Twitter?')) {
+          shareOnTwitter(memeData.id);
+        }
+      }, 500);
       
     } catch (error) {
       console.error('Download failed:', error);
-      setError('Failed to download meme');
+      setError('Failed to save meme: ' + error.message);
     }
+  };
+
+  // Share functions
+  const shareOnTwitter = (memeId) => {
+    const memeUrl = `${window.location.origin}/meme/${memeId}`;
+    const text = `Check out my $PUMPIT meme! 🚀\n\nJoin the movement: `;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(memeUrl)}&hashtags=PUMPIT,Solana,PumpItOnSol`;
+    window.open(twitterUrl, '_blank');
+  };
+
+  const shareOnTelegram = (imageUrl) => {
+    const text = `Check out my $PUMPIT meme! 🚀\n\nJoin us at @Pumpetcto`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(imageUrl)}&text=${encodeURIComponent(text)}`;
+    window.open(telegramUrl, '_blank');
   };
 
   // Helper function to load images
@@ -1005,11 +1079,35 @@ export default function Home() {
           <section id="community" className="reveal">
             <h2>🔥 Latest Community Memes</h2>
             <div className="community-memes">
-              {communityMemes.length > 0 ? (
-                communityMemes.map((meme, index) => (
-                  <div key={index} className="meme-card">
-                    <img src={meme.url} alt={`Community Meme ${index + 1}`} />
-                    <p>Created by {meme.creator}</p>
+              {isLoadingMemes ? (
+                <div className="loading-memes">
+                  <p>Loading awesome memes...</p>
+                </div>
+              ) : communityMemes.length > 0 ? (
+                communityMemes.map((meme) => (
+                  <div key={meme.id} className="meme-card">
+                    <img src={meme.image_url} alt={`Community Meme by ${meme.creator_x_handle}`} />
+                    <div className="meme-info">
+                      <p className="creator">by {meme.creator_x_handle}</p>
+                      <div className="meme-stats">
+                        <span>❤️ {meme.likes_count}</span>
+                        <span>🔄 {meme.shares_count}</span>
+                      </div>
+                      <div className="share-buttons">
+                        <button 
+                          onClick={() => shareOnTwitter(meme.id)}
+                          className="share-btn twitter"
+                        >
+                          🐦 Share
+                        </button>
+                        <button 
+                          onClick={() => shareOnTelegram(meme.image_url)}
+                          className="share-btn telegram"
+                        >
+                          💬 Share
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ))
               ) : (
@@ -1875,12 +1973,68 @@ export default function Home() {
           object-fit: cover;
         }
 
-        .meme-card p {
+        .meme-info {
           padding: 1rem;
+        }
+
+        .meme-card .creator {
           text-align: center;
           color: #FFFF00;
-          margin: 0;
+          margin: 0.5rem 0;
           font-weight: 500;
+        }
+
+        .meme-stats {
+          display: flex;
+          justify-content: center;
+          gap: 1.5rem;
+          margin: 0.5rem 0;
+          color: #999;
+          font-size: 0.9rem;
+        }
+
+        .share-buttons {
+          display: flex;
+          gap: 0.5rem;
+          margin-top: 0.75rem;
+        }
+
+        .share-btn {
+          flex: 1;
+          padding: 0.5rem;
+          border: none;
+          border-radius: 8px;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-weight: 500;
+        }
+
+        .share-btn.twitter {
+          background: #1DA1F2;
+          color: white;
+        }
+
+        .share-btn.twitter:hover {
+          background: #1a8cd8;
+          transform: translateY(-1px);
+        }
+
+        .share-btn.telegram {
+          background: #0088cc;
+          color: white;
+        }
+
+        .share-btn.telegram:hover {
+          background: #0077b3;
+          transform: translateY(-1px);
+        }
+
+        .loading-memes {
+          grid-column: 1 / -1;
+          text-align: center;
+          padding: 3rem;
+          color: #FFFF00;
         }
 
         .meme-card.placeholder {
