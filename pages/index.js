@@ -65,16 +65,42 @@ export default function Home() {
   const fetchCommunityMemes = async () => {
     try {
       setIsLoadingMemes(true);
-      const { data, error } = await supabase
+      
+      // First, get the top meme by combined score
+      const { data: allMemes, error: allError } = await supabase
         .from('memes')
         .select('*')
-        .order('likes_count', { ascending: false, nullsFirst: false })
-        .order('shares_count', { ascending: false, nullsFirst: false })
-        .limit(6);
-
-      if (error) throw error;
+        .order('likes_count', { ascending: false, nullsFirst: false });
       
-      setCommunityMemes(data || []);
+      if (allError) throw allError;
+      
+      // Calculate combined scores and sort
+      const memesWithScores = (allMemes || []).map(meme => ({
+        ...meme,
+        combinedScore: (meme.likes_count || 0) + (meme.shares_count || 0)
+      })).sort((a, b) => b.combinedScore - a.combinedScore);
+      
+      // Get the top meme
+      const topMeme = memesWithScores[0];
+      
+      // Get the 5 most recent memes (excluding the top meme if it's also recent)
+      const { data: recentMemes, error: recentError } = await supabase
+        .from('memes')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(6);
+      
+      if (recentError) throw recentError;
+      
+      // Filter out the top meme from recent if it's there, and take only 5
+      const filteredRecent = (recentMemes || [])
+        .filter(meme => !topMeme || meme.id !== topMeme.id)
+        .slice(0, 5);
+      
+      // Combine: top meme + 5 most recent
+      const finalMemes = topMeme ? [topMeme, ...filteredRecent] : filteredRecent;
+      
+      setCommunityMemes(finalMemes);
     } catch (error) {
       console.error('Error fetching memes:', error);
     } finally {
@@ -709,74 +735,78 @@ export default function Home() {
 
   // Share functions with tracking
   const shareOnTwitter = async (memeId) => {
+    // Find the meme to get creator info
+    const meme = communityMemes.find(m => m.id === memeId);
+    if (!meme) return;
+    
     // Trigger animation
     setShareAnimatingId(memeId);
     setTimeout(() => setShareAnimatingId(null), 600);
     
     // Update share count FIRST
     try {
-      const meme = communityMemes.find(m => m.id === memeId);
-      if (meme) {
-        const newShareCount = (meme.shares_count || 0) + 1;
-        
-        const { data, error } = await supabase
-          .from('memes')
-          .update({ shares_count: newShareCount })
-          .eq('id', memeId)
-          .select();
-        
-        if (error) {
-          console.error('Error updating share count:', error);
-        } else {
-          // Update local state immediately to show the change
-          setCommunityMemes(prev => prev.map(m => 
-            m.id === memeId ? { ...m, shares_count: newShareCount } : m
-          ));
-        }
+      const newShareCount = (meme.shares_count || 0) + 1;
+      
+      const { data, error } = await supabase
+        .from('memes')
+        .update({ shares_count: newShareCount })
+        .eq('id', memeId)
+        .select();
+      
+      if (error) {
+        console.error('Error updating share count:', error);
+      } else {
+        // Update local state immediately to show the change
+        setCommunityMemes(prev => prev.map(m => 
+          m.id === memeId ? { ...m, shares_count: newShareCount } : m
+        ));
       }
     } catch (error) {
       console.error('Error updating share count:', error);
     }
     
-    // Then open Twitter share dialog
+    // Then open Twitter share dialog with new message
     const memeUrl = `${window.location.origin}/meme/${memeId}`;
-    const text = `Check out my $PUMPIT meme! 🚀\n\nJoin the movement: `;
+    const creatorHandle = meme.creator_x_handle || 'anonymous';
+    const text = `Sharing meme created by ${creatorHandle} 🚀\n\nJoin the movement: letspumpit.com`;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(memeUrl)}&hashtags=PUMPIT,Solana,PumpItOnSol`;
     window.open(twitterUrl, '_blank');
   };
 
   const shareOnTelegram = async (memeId, imageUrl) => {
+    // Find the meme to get creator info
+    const meme = communityMemes.find(m => m.id === memeId);
+    if (!meme) return;
+    
     // Trigger animation
     setShareAnimatingId(memeId);
     setTimeout(() => setShareAnimatingId(null), 600);
     
     // Update share count FIRST
     try {
-      const meme = communityMemes.find(m => m.id === memeId);
-      if (meme) {
-        const newShareCount = (meme.shares_count || 0) + 1;
-        
-        const { data, error } = await supabase
-          .from('memes')
-          .update({ shares_count: newShareCount })
-          .eq('id', memeId)
-          .select();
-        
-        if (error) {
-          console.error('Error updating share count:', error);
-        } else {
-          // Update local state immediately to show the change
-          setCommunityMemes(prev => prev.map(m => 
-            m.id === memeId ? { ...m, shares_count: newShareCount } : m
-          ));
-        }
+      const newShareCount = (meme.shares_count || 0) + 1;
+      
+      const { data, error } = await supabase
+        .from('memes')
+        .update({ shares_count: newShareCount })
+        .eq('id', memeId)
+        .select();
+      
+      if (error) {
+        console.error('Error updating share count:', error);
+      } else {
+        // Update local state immediately to show the change
+        setCommunityMemes(prev => prev.map(m => 
+          m.id === memeId ? { ...m, shares_count: newShareCount } : m
+        ));
       }
     } catch (error) {
       console.error('Error updating share count:', error);
     }
     
-    // Then open Telegram share dialog
-    const text = `Check out my $PUMPIT meme! 🚀\n\nJoin us at @Pumpetcto`;
+    // Then open Telegram share dialog with new message
+    const creatorHandle = meme.creator_x_handle || 'anonymous';
+    const text = `Sharing meme created by ${creatorHandle} 🚀\n\nVisit: letspumpit.com\nJoin us at @Pumpetcto`;
     const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(imageUrl)}&text=${encodeURIComponent(text)}`;
     window.open(telegramUrl, '_blank');
   };
