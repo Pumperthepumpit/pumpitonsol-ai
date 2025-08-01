@@ -1600,6 +1600,14 @@ export default function Home() {
           transform: scale(1.05);
         }
 
+        .token-stats {
+          background: rgba(255, 255, 0, 0.05);
+          padding: 2rem;
+          border-radius: 15px;
+          margin-top: 2rem;
+          border: 1px solid rgba(255, 255, 0, 0.2);
+        }
+
         .token-stats h3 {
           color: #FFFF00;
           margin-bottom: 1rem;
@@ -2474,12 +2482,4 @@ export default function Home() {
       `}</style>
     </>
   );
-}-stats {
-          background: rgba(255, 255, 0, 0.05);
-          padding: 2rem;
-          border-radius: 15px;
-          margin-top: 2rem;
-          border: 1px solid rgba(255, 255, 0, 0.2);
-        }
-
-        .token
+}
