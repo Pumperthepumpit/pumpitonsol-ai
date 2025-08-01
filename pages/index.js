@@ -67,8 +67,8 @@ export default function Home() {
       const { data, error } = await supabase
         .from('memes')
         .select('*')
-        .order('likes_count', { ascending: false })
-        .order('shares_count', { ascending: false })
+        .order('likes_count', { ascending: false, nullsFirst: false })
+        .order('shares_count', { ascending: false, nullsFirst: false })
         .limit(6);
 
       if (error) throw error;
@@ -712,13 +712,15 @@ export default function Home() {
     try {
       const meme = communityMemes.find(m => m.id === memeId);
       if (meme) {
-        await supabase
+        const { error } = await supabase
           .from('memes')
-          .update({ shares_count: meme.shares_count + 1 })
+          .update({ shares_count: (meme.shares_count || 0) + 1 })
           .eq('id', memeId);
         
+        if (error) throw error;
+        
         // Refresh to show updated count
-        fetchCommunityMemes();
+        await fetchCommunityMemes();
       }
     } catch (error) {
       console.error('Error updating share count:', error);
@@ -736,13 +738,15 @@ export default function Home() {
     try {
       const meme = communityMemes.find(m => m.id === memeId);
       if (meme) {
-        await supabase
+        const { error } = await supabase
           .from('memes')
-          .update({ shares_count: meme.shares_count + 1 })
+          .update({ shares_count: (meme.shares_count || 0) + 1 })
           .eq('id', memeId);
         
+        if (error) throw error;
+        
         // Refresh to show updated count
-        fetchCommunityMemes();
+        await fetchCommunityMemes();
       }
     } catch (error) {
       console.error('Error updating share count:', error);
