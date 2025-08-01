@@ -582,30 +582,21 @@ export default function Home() {
       const displayedImg = container.querySelector('.preview-image');
       const displayedImgRect = displayedImg.getBoundingClientRect();
       
-      // Calculate the offset between container center and image center
-      const containerCenterX = containerRect.width / 2;
-      const containerCenterY = containerRect.height / 2;
-      const imageCenterX = displayedImgRect.left - containerRect.left + displayedImgRect.width / 2;
-      const imageCenterY = displayedImgRect.top - containerRect.top + displayedImgRect.height / 2;
-      const offsetX = imageCenterX - containerCenterX;
-      const offsetY = imageCenterY - containerCenterY;
-      
       // Calculate scale factors
       const scaleX = img.width / displayedImgRect.width;
       const scaleY = img.height / displayedImgRect.height;
       
       // Debug logging
-      console.log('Debug info:', { 
-        container: { w: containerRect.width, h: containerRect.height },
-        image: { w: displayedImgRect.width, h: displayedImgRect.height },
-        offset: { x: offsetX, y: offsetY },
+      console.log('Image dimensions:', { 
+        original: { w: img.width, h: img.height },
+        displayed: { w: displayedImgRect.width, h: displayedImgRect.height },
         scaleX, scaleY,
-        lipPosition,
-        lipScale
+        lipImageSize: { w: lipImage.width, h: lipImage.height }
       });
       
       // Calculate base scale to match 120px display size
       const baseDisplaySize = 120; // This matches the CSS width
+      // Simple approach: just scale based on what we see
       const lipBaseScale = (baseDisplaySize * scaleX) / lipImage.width;
       const exclamationBaseScale = (baseDisplaySize * scaleX) / exclamationImage.width;
       
@@ -616,11 +607,23 @@ export default function Home() {
         finalScale: lipBaseScale * lipScale
       });
       
+      // Scale compensation factors
+      // When scale increases, overlays appear to shift down and toward center
+      // These factors compensate for that visual shift
+      const lipScaleCompensationY = -(lipScale - 1) * 30; // Negative to move up
+      const lipScaleCompensationX = -(lipScale - 1) * 15; // Adjust horizontal drift
+      
+      const exclamationScaleCompensationY = -(exclamationScale - 1) * 30;
+      const exclamationScaleCompensationX = -(exclamationScale - 1) * 15;
+      
       // Draw lips
       ctx.save();
-      // Adjust position to account for container/image offset
-      const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x + offsetX) * scaleX;
-      const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y + offsetY) * scaleY;
+      // Apply scale compensation to position
+      const lipAdjustedX = lipPosition.x + (lipPosition.x > 0 ? lipScaleCompensationX : -lipScaleCompensationX);
+      const lipAdjustedY = lipPosition.y + lipScaleCompensationY;
+      
+      const lipCenterX = (displayedImgRect.width / 2 + lipAdjustedX) * scaleX;
+      const lipCenterY = (displayedImgRect.height / 2 + lipAdjustedY) * scaleY;
       ctx.translate(lipCenterX, lipCenterY);
       ctx.rotate(lipRotation * Math.PI / 180);
       // Divide by 2 to fix the double size issue
@@ -635,9 +638,12 @@ export default function Home() {
       
       // Draw exclamation
       ctx.save();
-      // Adjust position to account for container/image offset
-      const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x + offsetX) * scaleX;
-      const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y + offsetY) * scaleY;
+      // Apply scale compensation to position
+      const exclamationAdjustedX = exclamationPosition.x + (exclamationPosition.x > 0 ? exclamationScaleCompensationX : -exclamationScaleCompensationX);
+      const exclamationAdjustedY = exclamationPosition.y + exclamationScaleCompensationY;
+      
+      const exclamationCenterX = (displayedImgRect.width / 2 + exclamationAdjustedX) * scaleX;
+      const exclamationCenterY = (displayedImgRect.height / 2 + exclamationAdjustedY) * scaleY;
       ctx.translate(exclamationCenterX, exclamationCenterY);
       ctx.rotate(exclamationRotation * Math.PI / 180);
       // Divide by 2 to fix the double size issue
