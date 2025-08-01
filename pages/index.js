@@ -1,3 +1,4 @@
+﻿import Head from 'next/head';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -455,7 +456,7 @@ export default function Home() {
       });
 
       // Try Gemini detection
-      console.log('🤖 Attempting Gemini AI detection...');
+      console.log('ðŸ¤– Attempting Gemini AI detection...');
       const response = await fetch('/api/analyze-image', {
         method: 'POST',
         headers: {
@@ -739,7 +740,7 @@ export default function Home() {
     
     // Then open Twitter share dialog
     const memeUrl = `${window.location.origin}/meme/${memeId}`;
-    const text = `Check out my $PUMPIT meme! 🚀\n\nJoin the movement: `;
+    const text = `Check out my $PUMPIT meme! ðŸš€\n\nJoin the movement: `;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(memeUrl)}&hashtags=PUMPIT,Solana,PumpItOnSol`;
     window.open(twitterUrl, '_blank');
   };
@@ -775,7 +776,7 @@ export default function Home() {
     }
     
     // Then open Telegram share dialog
-    const text = `Check out my $PUMPIT meme! 🚀\n\nJoin us at @Pumpetcto`;
+    const text = `Check out my $PUMPIT meme! ðŸš€\n\nJoin us at @Pumpetcto`;
     const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(imageUrl)}&text=${encodeURIComponent(text)}`;
     window.open(telegramUrl, '_blank');
   };
@@ -810,10 +811,10 @@ export default function Home() {
 
       <div className="desktop-social-buttons">
         <a href="https://x.com/pumpitonsol" target="_blank" rel="noopener noreferrer" className="social-button">
-          𝕏
+          ð•
         </a>
         <a href="https://www.tiktok.com/@pumper.the.pumpit" target="_blank" rel="noopener noreferrer" className="social-button">
-          ♪ TikTok
+          â™ª TikTok
         </a>
         <a href="https://t.me/Pumpetcto" target="_blank" rel="noopener noreferrer" className="social-button">
           TG
@@ -831,7 +832,7 @@ export default function Home() {
           onClick={handleBuyClick}
           className="social-button buy-button"
         >
-          🚀 Buy $PUMPIT
+          ðŸš€ Buy $PUMPIT
         </button>
       </div>
 
@@ -849,7 +850,7 @@ export default function Home() {
           onClick={handleBuyClick}
           className="social-button buy-button"
         >
-          🚀 Buy $PUMPIT
+          ðŸš€ Buy $PUMPIT
         </button>
       </div>
 
@@ -863,10 +864,10 @@ export default function Home() {
             <p>Making Solana smile, one meme at a time</p>
             <div className="mobile-social-icons">
               <a href="https://x.com/pumpitonsol" target="_blank" rel="noopener noreferrer" title="X/Twitter">
-                𝕏
+                ð•
               </a>
               <a href="https://www.tiktok.com/@pumper.the.pumpit" target="_blank" rel="noopener noreferrer" title="TikTok">
-                ♪
+                â™ª
               </a>
               <a href="https://t.me/Pumpetcto" target="_blank" rel="noopener noreferrer" title="Telegram">
                 TG
@@ -897,7 +898,7 @@ export default function Home() {
               {expandedSections.vision && (
                 <div className="full-content">
                   <p>
-                    Launched on Bonk, $PUMPIT is focused on real growth. Pumper has the ability to adapt — 
+                    Launched on Bonk, $PUMPIT is focused on real growth. Pumper has the ability to adapt â€” 
                     changing his face to support other strong tokens and communities he believes are the best ones to be in.
                   </p>
                 </div>
@@ -908,7 +909,7 @@ export default function Home() {
             </div>
             
             <div className="token-stats">
-              <h3>📊 Token Stats</h3>
+              <h3>ðŸ“Š Token Stats</h3>
               <p>Contract Address: B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk</p>
               <p>Total Supply: 1,000,000,000 $PUMPIT</p>
               <a 
@@ -917,13 +918,13 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="token-link"
               >
-                View on LetsBonk.fun →
+                View on LetsBonk.fun â†’
               </a>
             </div>
           </section>
 
           <section id="token-info" className="reveal token-info-section">
-            <h2>💎 $PUMPIT Live Data</h2>
+            <h2>ðŸ’Ž $PUMPIT Live Data</h2>
             <div className="token-grid">
               <div className="token-card">
                 <h4>Price</h4>
@@ -966,7 +967,7 @@ export default function Home() {
                 onClick={handleBuyClick}
                 className="buy-button-large"
               >
-                🚀 Buy $PUMPIT Now
+                ðŸš€ Buy $PUMPIT Now
               </button>
               <p className="buy-info">
                 Buy directly with SOL using Jupiter DEX aggregator
@@ -978,7 +979,7 @@ export default function Home() {
             <h2>About Us</h2>
             <div className={`expandable-content ${expandedSections.about ? 'expanded' : ''}`}>
               <p className="preview-text">
-                <strong>Yes — $PUMPIT faced setbacks before. We've been rugged. Not once, but twice.</strong>
+                <strong>Yes â€” $PUMPIT faced setbacks before. We've been rugged. Not once, but twice.</strong>
                 {!expandedSections.about && '...'}
               </p>
               {expandedSections.about && (
@@ -986,30 +987,30 @@ export default function Home() {
                   <p>
                     But here's the difference: We learn. We adapt. We grow. To take $PUMPIT to the next level, 
                     we've made key updates to our meme identity. Originally, the project was linked to an old meme format. 
-                    But in order to grow and collaborate with bigger communities, we needed a fresh, clear look — 
+                    But in order to grow and collaborate with bigger communities, we needed a fresh, clear look â€” 
                     without using anyone's real face or risking ownership issues.
                   </p>
                   <p>
-                    Now meet <strong>Pumper</strong> — the official face of $PUMPIT. From now on, $PUMPIT's official meme template includes:
+                    Now meet <strong>Pumper</strong> â€” the official face of $PUMPIT. From now on, $PUMPIT's official meme template includes:
                   </p>
                   <ul>
                     <li>The same suit, phone, and oversized lips</li>
-                    <li>Exclamation marks — because we support bonk.fun and its ecosystem</li>
-                    <li>The face changes — replaced by the popular tokens we support</li>
+                    <li>Exclamation marks â€” because we support bonk.fun and its ecosystem</li>
+                    <li>The face changes â€” replaced by the popular tokens we support</li>
                   </ul>
                   <p>
                     Pumper represents not just $PUMPIT, but the entire community: A clean, recognizable identity 
                     that can feature any token while staying true to our roots.
                   </p>
                   <p>
-                    <strong>Why?</strong> Because we're not just building a token — we're building connections. 
+                    <strong>Why?</strong> Because we're not just building a token â€” we're building connections. 
                     By adapting the face, we connect with other communities while keeping our own brand locked in. 
                     Every time we feature a token, we advertise for both $PUMPIT and them. More exposure. 
                     More partnerships. Bigger growth.
                   </p>
                   <p>
-                    And most importantly: We're working for you — the community. Those who believed in us, 
-                    the CTO leaders. We're here to make this a successful adventure — and as fun as possible. 
+                    And most importantly: We're working for you â€” the community. Those who believed in us, 
+                    the CTO leaders. We're here to make this a successful adventure â€” and as fun as possible. 
                     This community is only the beginning. <strong>Thank you all for believing, supporting, 
                     and pushing $PUMPIT forward.</strong>
                   </p>
@@ -1022,7 +1023,7 @@ export default function Home() {
           </section>
 
           <section id="generator" className="reveal">
-            <h2>🎨 AI-Powered Meme Generator</h2>
+            <h2>ðŸŽ¨ AI-Powered Meme Generator</h2>
             <p>
               Transform any image into a $PUMPIT meme! Just upload, position the overlays, and download!
             </p>
@@ -1079,7 +1080,7 @@ export default function Home() {
                 
                 {!selectedFile ? (
                   <div className="upload-content">
-                    <div className="upload-icon">📸</div>
+                    <div className="upload-icon">ðŸ“¸</div>
                     <h3>Drop your image here</h3>
                     <p>or click to browse</p>
                     <div className="supported-formats">
@@ -1138,7 +1139,7 @@ export default function Home() {
                     }}
                     className="secondary-button"
                   >
-                    🔄 Change Image
+                    ðŸ”„ Change Image
                   </button>
                   
                   {!showOverlays ? (
@@ -1147,14 +1148,14 @@ export default function Home() {
                       disabled={isProcessing || !xHandle}
                       className="primary-button"
                     >
-                      {isProcessing ? '🎨 Processing...' : '✨ Generate Meme'}
+                      {isProcessing ? 'ðŸŽ¨ Processing...' : 'âœ¨ Generate Meme'}
                     </button>
                   ) : (
                     <button 
                       onClick={downloadMeme}
                       className="download-button"
                     >
-                      💾 Download Meme
+                      ðŸ’¾ Download Meme
                     </button>
                   )}
                 </div>
@@ -1162,32 +1163,32 @@ export default function Home() {
               
               {showOverlays && (
                 <div className="gesture-hints">
-                  <p className="desktop-hint">🖱️ Drag to move • Scroll to resize • Alt+drag to rotate</p>
-                  <p className="mobile-hint">👆 Drag to move • 🤏 Pinch to resize • 🔄 Twist to rotate</p>
+                  <p className="desktop-hint">ðŸ–±ï¸ Drag to move â€¢ Scroll to resize â€¢ Alt+drag to rotate</p>
+                  <p className="mobile-hint">ðŸ‘† Drag to move â€¢ ðŸ¤ Pinch to resize â€¢ ðŸ”„ Twist to rotate</p>
                 </div>
               )}
               
               {error && (
                 <div className="error-message">
-                  ⚠️ {error}
+                  âš ï¸ {error}
                 </div>
               )}
             </div>
           </section>
 
           <section id="roadmap" className="reveal">
-            <h2>🗺️ Roadmap</h2>
+            <h2>ðŸ—ºï¸ Roadmap</h2>
             <ul>
-              <li>✅ Phase 1: Launch $PUMPIT on Bonk.fun with meme identity + Pumper reveal</li>
-              <li>✅ Phase 2: AI meme generator with smooth drag & drop editing</li>
-              <li>📋 Phase 3: Collaborate with top meme communities</li>
-              <li>📋 Phase 4: Community meme automation & viral campaigns</li>
-              <li>📚 Phase 5: Pumper Comic Series - Exclusive stories for $PUMPIT holders!</li>
+              <li>âœ… Phase 1: Launch $PUMPIT on Bonk.fun with meme identity + Pumper reveal</li>
+              <li>âœ… Phase 2: AI meme generator with smooth drag & drop editing</li>
+              <li>ðŸ“‹ Phase 3: Collaborate with top meme communities</li>
+              <li>ðŸ“‹ Phase 4: Community meme automation & viral campaigns</li>
+              <li>ðŸ“š Phase 5: Pumper Comic Series - Exclusive stories for $PUMPIT holders!</li>
             </ul>
           </section>
 
           <section id="community" className="reveal">
-            <h2>🔥 Top Community Memes</h2>
+            <h2>ðŸ”¥ Top Community Memes</h2>
             <div className="community-memes">
               {isLoadingMemes ? (
                 <div className="loading-memes">
@@ -1205,10 +1206,10 @@ export default function Home() {
                           className={`like-button ${likedMemes.includes(meme.id) ? 'liked' : ''}`}
                           type="button"
                         >
-                          ❤️ {meme.likes_count}
+                          â¤ï¸ {meme.likes_count}
                         </button>
                         <span className={`share-counter ${meme.id === shareAnimatingId ? 'animating' : ''}`}>
-                          🔄 {meme.shares_count}
+                          ðŸ”„ {meme.shares_count}
                         </span>
                       </div>
                       <div className="share-buttons">
@@ -1217,7 +1218,7 @@ export default function Home() {
                           className="share-btn twitter"
                           type="button"
                         >
-                          𝕏 Share
+                          ð• Share
                         </button>
                         <button 
                           onClick={() => shareOnTelegram(meme.id, meme.image_url)}
@@ -1234,17 +1235,17 @@ export default function Home() {
                 <>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>🎨 Be the first to create a meme!</p>
+                      <p>ðŸŽ¨ Be the first to create a meme!</p>
                     </div>
                   </div>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>🚀 Your meme here</p>
+                      <p>ðŸš€ Your meme here</p>
                     </div>
                   </div>
                   <div className="meme-card placeholder">
                     <div className="placeholder-content">
-                      <p>💎 Join the revolution!</p>
+                      <p>ðŸ’Ž Join the revolution!</p>
                     </div>
                   </div>
                 </>
@@ -1253,10 +1254,10 @@ export default function Home() {
           </section>
 
           <section id="social" className="reveal">
-            <h2>🌐 Join the $PUMPIT Community</h2>
+            <h2>ðŸŒ Join the $PUMPIT Community</h2>
             <div className="social-grid">
               <div className="social-card">
-                <h3>𝕏 Latest from X/Twitter</h3>
+                <h3>ð• Latest from X/Twitter</h3>
                 <div className="twitter-embed">
                   <a 
                     className="twitter-timeline" 
@@ -1292,7 +1293,7 @@ export default function Home() {
                     rel="noopener noreferrer"
                     className="community-button tiktok"
                   >
-                    <span className="icon">♪</span>
+                    <span className="icon">â™ª</span>
                     <div>
                       <strong>TikTok Videos</strong>
                       <p>Watch Pumper's latest content</p>
@@ -1305,7 +1306,7 @@ export default function Home() {
                     rel="noopener noreferrer"
                     className="community-button twitter"
                   >
-                    <span className="icon">𝕏</span>
+                    <span className="icon">ð•</span>
                     <div>
                       <strong>X / Twitter</strong>
                       <p>Follow for real-time updates</p>
@@ -1318,7 +1319,7 @@ export default function Home() {
         </main>
 
         <footer>
-          <p>© 2025 PumpItOnSol. Powered by smooth gesture controls. 🎨🚀</p>
+          <p>Â© 2025 PumpItOnSol. Powered by smooth gesture controls. ðŸŽ¨ðŸš€</p>
         </footer>
       </div>
 
