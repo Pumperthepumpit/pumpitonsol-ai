@@ -708,16 +708,29 @@ export default function Home() {
 
   // Share functions with tracking
   const shareOnTwitter = async (memeId) => {
+    console.log('Sharing meme:', memeId);
+    
     // Update share count
     try {
       const meme = communityMemes.find(m => m.id === memeId);
+      console.log('Found meme:', meme);
+      
       if (meme) {
-        const { error } = await supabase
-          .from('memes')
-          .update({ shares_count: (meme.shares_count || 0) + 1 })
-          .eq('id', memeId);
+        const newShareCount = (meme.shares_count || 0) + 1;
+        console.log('Updating shares to:', newShareCount);
         
-        if (error) throw error;
+        const { data, error } = await supabase
+          .from('memes')
+          .update({ shares_count: newShareCount })
+          .eq('id', memeId)
+          .select();
+        
+        if (error) {
+          console.error('Supabase error:', error);
+          throw error;
+        }
+        
+        console.log('Update result:', data);
         
         // Refresh to show updated count
         await fetchCommunityMemes();
