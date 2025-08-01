@@ -1289,6 +1289,659 @@ export default function Home() {
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 50px;
           color: white;
+          font-size: 1rem;
+        }
+
+        .x-form input:focus {
+          outline: none;
+          border-color: #FFFF00;
+          box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.2);
+        }
+
+        .x-form button {
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          padding: 1rem 2.5rem;
+          border-radius: 50px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-size: 1rem;
+        }
+
+        .x-form button:hover {
+          transform: scale(1.05);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
+        }
+
+        .x-handle-section {
+          background: rgba(255, 255, 0, 0.05);
+          padding: 2rem;
+          border-radius: 15px;
+          margin-bottom: 2rem;
+          border: 1px solid rgba(255, 255, 0, 0.2);
+        }
+
+        .x-handle-inline-form label {
+          display: block;
+          margin-bottom: 1rem;
+          color: #FFFF00;
+          font-weight: 600;
+        }
+
+        .x-handle-input-group {
+          display: flex;
+          gap: 1rem;
+          align-items: center;
+        }
+
+        .x-handle-input-group input {
+          flex: 1;
+          padding: 0.8rem 1rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 0, 0.3);
+          border-radius: 10px;
+          color: white;
+          font-size: 1rem;
+        }
+
+        .x-handle-input-group input:focus {
+          outline: none;
+          border-color: #FFFF00;
+          box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.2);
+        }
+
+        .x-handle-input-group button {
+          padding: 0.8rem 2rem;
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          border-radius: 50px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          white-space: nowrap;
+        }
+
+        .x-handle-input-group button:hover {
+          transform: scale(1.05);
+          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
+        }
+
+        .meme-upload {
+          margin-top: 2rem;
+        }
+
+        .modern-upload-zone {
+          width: 100%;
+          min-height: 500px;
+          border: 2px dashed rgba(255, 255, 0, 0.3);
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .modern-upload-zone:hover {
+          border-color: rgba(255, 255, 0, 0.5);
+          background: rgba(255, 255, 0, 0.05);
+        }
+
+        .modern-upload-zone.drag-over {
+          border-color: #FFFF00;
+          background: rgba(255, 255, 0, 0.1);
+          transform: scale(1.02);
+        }
+
+        .modern-upload-zone.has-file {
+          cursor: default;
+          border-style: solid;
+        }
+
+        .upload-content {
+          text-align: center;
+          padding: 3rem;
+        }
+
+        .upload-icon {
+          font-size: 4rem;
+          margin-bottom: 1rem;
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.1); opacity: 1; }
+        }
+
+        .upload-content h3 {
+          font-size: 1.5rem;
+          margin-bottom: 0.5rem;
+          color: #FFFF00;
+        }
+
+        .upload-content p {
+          color: #999;
+          margin-bottom: 1rem;
+        }
+
+        .supported-formats {
+          font-size: 0.85rem;
+          color: #666;
+          background: rgba(255, 255, 255, 0.05);
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          display: inline-block;
+        }
+
+        .preview-container {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: visible;
+        }
+
+        .preview-image {
+          max-width: 100%;
+          max-height: 500px;
+          border-radius: 10px;
+          user-select: none;
+          -webkit-user-drag: none;
+        }
+
+        .overlay-element {
+          position: absolute;
+          cursor: grab;
+          touch-action: none;
+          user-select: none;
+          transition: filter 0.2s ease;
+          transform-origin: center;
+          left: 50%;
+          top: 50%;
+          z-index: 10;
+        }
+
+        .overlay-element:active {
+          cursor: grabbing;
+        }
+
+        .overlay-element.dragging {
+          filter: drop-shadow(0 10px 30px rgba(255, 255, 0, 0.5));
+          cursor: grabbing;
+          z-index: 20;
+        }
+
+        .overlay-element img {
+          width: 120px;
+          height: auto;
+          pointer-events: none;
+          display: block;
+          transform: translate(-50%, -50%);
+          user-select: none;
+          -webkit-user-drag: none;
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          margin-top: 2rem;
+          flex-wrap: wrap;
+        }
+
+        .primary-button, .secondary-button, .download-button {
+          padding: 1rem 2rem;
+          border-radius: 50px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          border: none;
+          font-size: 1rem;
+        }
+
+        .primary-button {
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+        }
+
+        .primary-button:hover:not(:disabled) {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
+        }
+
+        .secondary-button {
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .secondary-button:hover {
+          background: rgba(255, 255, 255, 0.2);
+          transform: translateY(-2px);
+        }
+
+        .download-button {
+          background: linear-gradient(135deg, #00FF00, #00CC00);
+          color: white;
+        }
+
+        .download-button:hover {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(0, 255, 0, 0.4);
+        }
+
+        .primary-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .gesture-hints {
+          text-align: center;
+          margin-top: 1rem;
+          padding: 1rem;
+          background: rgba(255, 255, 0, 0.05);
+          border-radius: 10px;
+          font-size: 0.9rem;
+          color: #FFFF00;
+        }
+
+        .gesture-hints .desktop-hint {
+          display: block;
+        }
+
+        .gesture-hints .mobile-hint {
+          display: none;
+        }
+
+        @media (max-width: 768px) {
+          .gesture-hints .desktop-hint {
+            display: none;
+          }
+          
+          .gesture-hints .mobile-hint {
+            display: block;
+          }
+        }
+
+        .error-message {
+          background: rgba(255, 0, 0, 0.1);
+          color: #ff6666;
+          padding: 1rem;
+          border-radius: 10px;
+          margin-top: 1rem;
+          border: 1px solid rgba(255, 0, 0, 0.3);
+          text-align: center;
+        }
+
+        #roadmap ul {
+          list-style: none;
+          padding-left: 0;
+        }
+
+        #roadmap li {
+          padding: 1.5rem;
+          margin: 1rem 0;
+          background: rgba(255, 255, 255, 0.03);
+          border-left: 4px solid #FFFF00;
+          border-radius: 10px;
+          transition: all 0.3s ease;
+        }
+
+        #roadmap li:hover {
+          transform: translateX(10px);
+          background: rgba(255, 255, 0, 0.05);
+        }
+
+        .community-memes {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 2rem;
+          margin-top: 2rem;
+        }
+
+        .meme-card {
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 15px;
+          overflow: hidden;
+          transition: transform 0.3s ease;
+          border: 1px solid rgba(255, 255, 0, 0.1);
+        }
+
+        .meme-card:hover {
+          transform: translateY(-5px);
+          border-color: rgba(255, 255, 0, 0.3);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .meme-card img {
+          width: 100%;
+          height: auto;
+          object-fit: contain;
+          max-height: 400px;
+          background: #000;
+        }
+
+        .meme-info {
+          padding: 1rem;
+        }
+
+        .meme-card .creator {
+          text-align: center;
+          color: #FFFF00;
+          margin: 0.5rem 0;
+          font-weight: 500;
+        }
+
+        .meme-stats {
+          display: flex;
+          justify-content: center;
+          gap: 1.5rem;
+          margin: 0.5rem 0;
+          color: #999;
+          font-size: 0.9rem;
+        }
+
+        .share-buttons {
+          display: flex;
+          gap: 0.5rem;
+          margin-top: 0.75rem;
+        }
+
+        .share-btn {
+          flex: 1;
+          padding: 0.5rem;
+          border: none;
+          border-radius: 8px;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-weight: 500;
+        }
+
+        .share-btn.twitter {
+          background: #1DA1F2;
+          color: white;
+        }
+
+        .share-btn.twitter:hover {
+          background: #1a8cd8;
+          transform: translateY(-1px);
+        }
+
+        .share-btn.telegram {
+          background: #0088cc;
+          color: white;
+        }
+
+        .share-btn.telegram:hover {
+          background: #0077b3;
+          transform: translateY(-1px);
+        }
+
+        .loading-memes {
+          grid-column: 1 / -1;
+          text-align: center;
+          padding: 3rem;
+          color: #FFFF00;
+        }
+
+        .meme-card.placeholder {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 250px;
+        }
+
+        .placeholder-content {
+          padding: 2rem;
+          text-align: center;
+        }
+
+        .placeholder-content p {
+          color: #666;
+          font-size: 1.1rem;
+        }
+
+        .social-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+          gap: 2rem;
+          margin-top: 2rem;
+        }
+
+        .social-card {
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 15px;
+          padding: 2rem;
+          border: 1px solid rgba(255, 255, 0, 0.1);
+        }
+
+        .social-card h3 {
+          color: #FFFF00;
+          margin-bottom: 1.5rem;
+          text-align: center;
+        }
+
+        .twitter-embed {
+          border-radius: 10px;
+          overflow: hidden;
+        }
+
+        .community-links {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .community-button {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1.2rem;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 15px;
+          text-decoration: none;
+          color: white;
+          transition: all 0.3s ease;
+        }
+
+        .community-button:hover {
+          transform: translateX(5px);
+          background: rgba(255, 255, 255, 0.05);
+          border-color: #FFFF00;
+        }
+
+        .community-button .icon {
+          font-size: 2rem;
+          min-width: 50px;
+          text-align: center;
+        }
+
+        .community-button strong {
+          display: block;
+          margin-bottom: 0.3rem;
+        }
+
+        .community-button p {
+          margin: 0;
+          font-size: 0.9rem;
+          color: #999;
+        }
+
+        .community-button.telegram:hover {
+          border-color: #0088cc;
+        }
+
+        .community-button.tiktok:hover {
+          border-color: #ff0050;
+        }
+
+        .community-button.twitter:hover {
+          border-color: #1da1f2;
+        }
+
+        footer {
+          text-align: center;
+          padding: 3rem;
+          background: rgba(0, 0, 0, 0.5);
+          margin-top: 6rem;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        footer p {
+          color: #666;
+        }
+
+        .reveal {
+          opacity: 0;
+          transform: translateY(30px);
+          animation: revealAnimation 0.6s ease forwards;
+        }
+
+        @keyframes revealAnimation {
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @media (max-width: 768px) {
+          .desktop-social-buttons {
+            display: none;
+          }
+
+          .mobile-top-buttons {
+            display: flex;
+          }
+
+          .mobile-social-icons {
+            display: flex;
+            justify-content: center;
+          }
+
+          header {
+            margin-top: 80px;
+            padding-top: 3rem;
+          }
+
+          .pumper-float img {
+            width: 250px;
+            height: 250px;
+          }
+
+          h1 {
+            font-size: 3rem;
+          }
+
+          h2 {
+            font-size: 2rem;
+          }
+
+          .nav-container {
+            gap: 1rem;
+            padding: 0.5rem;
+          }
+
+          .main-nav a {
+            padding: 0.4rem 1rem;
+            font-size: 0.85rem;
+          }
+
+          section {
+            padding: 2rem;
+            margin: 2rem auto;
+          }
+
+          .token-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+          }
+
+          .token-card {
+            padding: 1.5rem;
+          }
+
+          .token-card .price {
+            font-size: 1.4rem;
+          }
+
+          .token-card .value {
+            font-size: 1.1rem;
+          }
+
+          .x-handle-input-group {
+            flex-direction: column;
+          }
+
+          .x-handle-input-group input,
+          .x-handle-input-group button {
+            width: 100%;
+          }
+
+          .overlay-element img {
+            width: 80px;
+          }
+
+          .action-buttons {
+            flex-direction: column;
+          }
+
+          .action-buttons button {
+            width: 100%;
+          }
+
+          .social-grid,
+          .community-memes {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .mobile-top-buttons {
+            right: 5px;
+            top: 5px;
+          }
+
+          .social-button {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+          }
+
+          h1 {
+            font-size: 2.5rem;
+          }
+
+          .pumper-float img {
+            width: 200px;
+            height: 200px;
+          }
+
+          .token-grid {
+            grid-template-columns: 1fr;
+          }
+
+          section {
+            padding: 1.5rem;
+          }
+
+          .overlay-element img {
+            width: 60px;
+          }
+        }
+      `}</style>
+    </>
+  );
+}
           text-decoration: none;
           transition: all 0.3s ease;
           backdrop-filter: blur(10px);
@@ -1634,654 +2287,3 @@ export default function Home() {
           border: 1px solid rgba(255, 255, 0, 0.3);
           border-radius: 10px;
           color: white;
-          font-size: 1rem;
-        }
-
-        .x-form input:focus {
-          outline: none;
-          border-color: #FFFF00;
-          box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.2);
-        }
-
-        .x-form button {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          padding: 1rem 2.5rem;
-          border-radius: 50px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-size: 1rem;
-        }
-
-        .x-form button:hover {
-          transform: scale(1.05);
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
-        }
-
-        .x-handle-section {
-          background: rgba(255, 255, 0, 0.05);
-          padding: 2rem;
-          border-radius: 15px;
-          margin-bottom: 2rem;
-          border: 1px solid rgba(255, 255, 0, 0.2);
-        }
-
-        .x-handle-inline-form label {
-          display: block;
-          margin-bottom: 1rem;
-          color: #FFFF00;
-          font-weight: 600;
-        }
-
-        .x-handle-input-group {
-          display: flex;
-          gap: 1rem;
-          align-items: center;
-        }
-
-        .x-handle-input-group input {
-          flex: 1;
-          padding: 0.8rem 1rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 0, 0.3);
-          border-radius: 10px;
-          color: white;
-          font-size: 1rem;
-        }
-
-        .x-handle-input-group input:focus {
-          outline: none;
-          border-color: #FFFF00;
-          box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.2);
-        }
-
-        .x-handle-input-group button {
-          padding: 0.8rem 2rem;
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          border-radius: 50px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          white-space: nowrap;
-        }
-
-        .x-handle-input-group button:hover {
-          transform: scale(1.05);
-          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
-        }
-
-        .meme-upload {
-          margin-top: 2rem;
-        }
-
-        .modern-upload-zone {
-          width: 100%;
-          min-height: 500px;
-          border: 2px dashed rgba(255, 255, 0, 0.3);
-          border-radius: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.3s ease;
-          cursor: pointer;
-          position: relative;
-          overflow: hidden;
-          background: rgba(255, 255, 255, 0.02);
-        }
-
-        .modern-upload-zone:hover {
-          border-color: rgba(255, 255, 0, 0.5);
-          background: rgba(255, 255, 0, 0.05);
-        }
-
-        .modern-upload-zone.drag-over {
-          border-color: #FFFF00;
-          background: rgba(255, 255, 0, 0.1);
-          transform: scale(1.02);
-        }
-
-        .modern-upload-zone.has-file {
-          cursor: default;
-          border-style: solid;
-        }
-
-        .upload-content {
-          text-align: center;
-          padding: 3rem;
-        }
-
-        .upload-icon {
-          font-size: 4rem;
-          margin-bottom: 1rem;
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 0.8; }
-          50% { transform: scale(1.1); opacity: 1; }
-        }
-
-        .upload-content h3 {
-          font-size: 1.5rem;
-          margin-bottom: 0.5rem;
-          color: #FFFF00;
-        }
-
-        .upload-content p {
-          color: #999;
-          margin-bottom: 1rem;
-        }
-
-        .supported-formats {
-          font-size: 0.85rem;
-          color: #666;
-          background: rgba(255, 255, 255, 0.05);
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          display: inline-block;
-        }
-
-        .preview-container {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          overflow: visible;
-        }
-
-        .preview-image {
-          max-width: 100%;
-          max-height: 500px;
-          border-radius: 10px;
-          user-select: none;
-          -webkit-user-drag: none;
-        }
-
-        .overlay-element {
-          position: absolute;
-          cursor: grab;
-          touch-action: none;
-          user-select: none;
-          transition: filter 0.2s ease;
-          transform-origin: center;
-          left: 50%;
-          top: 50%;
-          z-index: 10;
-        }
-
-        .overlay-element:active {
-          cursor: grabbing;
-        }
-
-        .overlay-element.dragging {
-          filter: drop-shadow(0 10px 30px rgba(255, 255, 0, 0.5));
-          cursor: grabbing;
-          z-index: 20;
-        }
-
-        .overlay-element img {
-          width: 120px;
-          height: auto;
-          pointer-events: none;
-          display: block;
-          transform: translate(-50%, -50%);
-          user-select: none;
-          -webkit-user-drag: none;
-        }
-
-        .action-buttons {
-          display: flex;
-          gap: 1rem;
-          justify-content: center;
-          margin-top: 2rem;
-          flex-wrap: wrap;
-        }
-
-        .primary-button, .secondary-button, .download-button {
-          padding: 1rem 2rem;
-          border-radius: 50px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          border: none;
-          font-size: 1rem;
-        }
-
-        .primary-button {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-        }
-
-        .primary-button:hover:not(:disabled) {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
-        }
-
-        .secondary-button {
-          background: rgba(255, 255, 255, 0.1);
-          color: white;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .secondary-button:hover {
-          background: rgba(255, 255, 255, 0.2);
-          transform: translateY(-2px);
-        }
-
-        .download-button {
-          background: linear-gradient(135deg, #00FF00, #00CC00);
-          color: white;
-        }
-
-        .download-button:hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(0, 255, 0, 0.4);
-        }
-
-        .primary-button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .gesture-hints {
-          text-align: center;
-          margin-top: 1rem;
-          padding: 1rem;
-          background: rgba(255, 255, 0, 0.05);
-          border-radius: 10px;
-          font-size: 0.9rem;
-          color: #FFFF00;
-        }
-
-        .gesture-hints .desktop-hint {
-          display: block;
-        }
-
-        .gesture-hints .mobile-hint {
-          display: none;
-        }
-
-        @media (max-width: 768px) {
-          .gesture-hints .desktop-hint {
-            display: none;
-          }
-          
-          .gesture-hints .mobile-hint {
-            display: block;
-          }
-        }
-
-        .error-message {
-          background: rgba(255, 0, 0, 0.1);
-          color: #ff6666;
-          padding: 1rem;
-          border-radius: 10px;
-          margin-top: 1rem;
-          border: 1px solid rgba(255, 0, 0, 0.3);
-          text-align: center;
-        }
-
-        #roadmap ul {
-          list-style: none;
-          padding-left: 0;
-        }
-
-        #roadmap li {
-          padding: 1.5rem;
-          margin: 1rem 0;
-          background: rgba(255, 255, 255, 0.03);
-          border-left: 4px solid #FFFF00;
-          border-radius: 10px;
-          transition: all 0.3s ease;
-        }
-
-        #roadmap li:hover {
-          transform: translateX(10px);
-          background: rgba(255, 255, 0, 0.05);
-        }
-
-        .community-memes {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 2rem;
-          margin-top: 2rem;
-        }
-
-        .meme-card {
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 15px;
-          overflow: hidden;
-          transition: transform 0.3s ease;
-          border: 1px solid rgba(255, 255, 0, 0.1);
-        }
-
-        .meme-card:hover {
-          transform: translateY(-5px);
-          border-color: rgba(255, 255, 0, 0.3);
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        }
-
-        .meme-card img {
-          width: 100%;
-          height: 200px;
-          object-fit: cover;
-        }
-
-        .meme-info {
-          padding: 1rem;
-        }
-
-        .meme-card .creator {
-          text-align: center;
-          color: #FFFF00;
-          margin: 0.5rem 0;
-          font-weight: 500;
-        }
-
-        .meme-stats {
-          display: flex;
-          justify-content: center;
-          gap: 1.5rem;
-          margin: 0.5rem 0;
-          color: #999;
-          font-size: 0.9rem;
-        }
-
-        .share-buttons {
-          display: flex;
-          gap: 0.5rem;
-          margin-top: 0.75rem;
-        }
-
-        .share-btn {
-          flex: 1;
-          padding: 0.5rem;
-          border: none;
-          border-radius: 8px;
-          font-size: 0.85rem;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          font-weight: 500;
-        }
-
-        .share-btn.twitter {
-          background: #1DA1F2;
-          color: white;
-        }
-
-        .share-btn.twitter:hover {
-          background: #1a8cd8;
-          transform: translateY(-1px);
-        }
-
-        .share-btn.telegram {
-          background: #0088cc;
-          color: white;
-        }
-
-        .share-btn.telegram:hover {
-          background: #0077b3;
-          transform: translateY(-1px);
-        }
-
-        .loading-memes {
-          grid-column: 1 / -1;
-          text-align: center;
-          padding: 3rem;
-          color: #FFFF00;
-        }
-
-        .meme-card.placeholder {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 250px;
-        }
-
-        .placeholder-content {
-          padding: 2rem;
-          text-align: center;
-        }
-
-        .placeholder-content p {
-          color: #666;
-          font-size: 1.1rem;
-        }
-
-        .social-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-          gap: 2rem;
-          margin-top: 2rem;
-        }
-
-        .social-card {
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 15px;
-          padding: 2rem;
-          border: 1px solid rgba(255, 255, 0, 0.1);
-        }
-
-        .social-card h3 {
-          color: #FFFF00;
-          margin-bottom: 1.5rem;
-          text-align: center;
-        }
-
-        .twitter-embed {
-          border-radius: 10px;
-          overflow: hidden;
-        }
-
-        .community-links {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .community-button {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 1.2rem;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 15px;
-          text-decoration: none;
-          color: white;
-          transition: all 0.3s ease;
-        }
-
-        .community-button:hover {
-          transform: translateX(5px);
-          background: rgba(255, 255, 255, 0.05);
-          border-color: #FFFF00;
-        }
-
-        .community-button .icon {
-          font-size: 2rem;
-          min-width: 50px;
-          text-align: center;
-        }
-
-        .community-button strong {
-          display: block;
-          margin-bottom: 0.3rem;
-        }
-
-        .community-button p {
-          margin: 0;
-          font-size: 0.9rem;
-          color: #999;
-        }
-
-        .community-button.telegram:hover {
-          border-color: #0088cc;
-        }
-
-        .community-button.tiktok:hover {
-          border-color: #ff0050;
-        }
-
-        .community-button.twitter:hover {
-          border-color: #1da1f2;
-        }
-
-        footer {
-          text-align: center;
-          padding: 3rem;
-          background: rgba(0, 0, 0, 0.5);
-          margin-top: 6rem;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        footer p {
-          color: #666;
-        }
-
-        .reveal {
-          opacity: 0;
-          transform: translateY(30px);
-          animation: revealAnimation 0.6s ease forwards;
-        }
-
-        @keyframes revealAnimation {
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @media (max-width: 768px) {
-          .desktop-social-buttons {
-            display: none;
-          }
-
-          .mobile-top-buttons {
-            display: flex;
-          }
-
-          .mobile-social-icons {
-            display: flex;
-            justify-content: center;
-          }
-
-          header {
-            margin-top: 80px;
-            padding-top: 3rem;
-          }
-
-          .pumper-float img {
-            width: 250px;
-            height: 250px;
-          }
-
-          h1 {
-            font-size: 3rem;
-          }
-
-          h2 {
-            font-size: 2rem;
-          }
-
-          .nav-container {
-            gap: 1rem;
-            padding: 0.5rem;
-          }
-
-          .main-nav a {
-            padding: 0.4rem 1rem;
-            font-size: 0.85rem;
-          }
-
-          section {
-            padding: 2rem;
-            margin: 2rem auto;
-          }
-
-          .token-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-          }
-
-          .token-card {
-            padding: 1.5rem;
-          }
-
-          .token-card .price {
-            font-size: 1.4rem;
-          }
-
-          .token-card .value {
-            font-size: 1.1rem;
-          }
-
-          .x-handle-input-group {
-            flex-direction: column;
-          }
-
-          .x-handle-input-group input,
-          .x-handle-input-group button {
-            width: 100%;
-          }
-
-          .overlay-element img {
-            width: 80px;
-          }
-
-          .action-buttons {
-            flex-direction: column;
-          }
-
-          .action-buttons button {
-            width: 100%;
-          }
-
-          .social-grid,
-          .community-memes {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .mobile-top-buttons {
-            right: 5px;
-            top: 5px;
-          }
-
-          .social-button {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.8rem;
-          }
-
-          h1 {
-            font-size: 2.5rem;
-          }
-
-          .pumper-float img {
-            width: 200px;
-            height: 200px;
-          }
-
-          .token-grid {
-            grid-template-columns: 1fr;
-          }
-
-          section {
-            padding: 1.5rem;
-          }
-
-          .overlay-element img {
-            width: 60px;
-          }
-        }
-      `}</style>
-    </>
-  );
-}
