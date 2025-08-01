@@ -17,6 +17,7 @@ export default function Home() {
   const [showXForm, setShowXForm] = useState(false);
   const [communityMemes, setCommunityMemes] = useState([]);
   const [isLoadingMemes, setIsLoadingMemes] = useState(true);
+  const [likedMemes, setLikedMemes] = useState([]);
   const [expandedSections, setExpandedSections] = useState({
     vision: false,
     about: false
@@ -53,6 +54,11 @@ export default function Home() {
   // Fetch community memes from Supabase
   useEffect(() => {
     fetchCommunityMemes();
+    // Load liked memes from localStorage
+    const stored = localStorage.getItem('likedMemes');
+    if (stored) {
+      setLikedMemes(JSON.parse(stored));
+    }
   }, []);
 
   const fetchCommunityMemes = async () => {
@@ -61,7 +67,8 @@ export default function Home() {
       const { data, error } = await supabase
         .from('memes')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('likes_count', { ascending: false })
+        .order('shares_count', { ascending: false })
         .limit(6);
 
       if (error) throw error;
@@ -656,15 +663,92 @@ export default function Home() {
     }
   };
 
-  // Share functions
-  const shareOnTwitter = (memeId) => {
+  // Like/Unlike functionality
+  const handleLike = async (memeId) => {
+    const isLiked = likedMemes.includes(memeId);
+    
+    try {
+      // Get current meme data
+      const meme = communityMemes.find(m => m.id === memeId);
+      if (!meme) return;
+      
+      // Update likes count
+      const newLikesCount = isLiked ? meme.likes_count - 1 : meme.likes_count + 1;
+      
+      // Update in database
+      const { error } = await supabase
+        .from('memes')
+        .update({ likes_count: newLikesCount })
+        .eq('id', memeId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      if (isLiked) {
+        setLikedMemes(prev => {
+          const updated = prev.filter(id => id !== memeId);
+          localStorage.setItem('likedMemes', JSON.stringify(updated));
+          return updated;
+        });
+      } else {
+        setLikedMemes(prev => {
+          const updated = [...prev, memeId];
+          localStorage.setItem('likedMemes', JSON.stringify(updated));
+          return updated;
+        });
+      }
+      
+      // Refresh memes to show updated counts
+      fetchCommunityMemes();
+      
+    } catch (error) {
+      console.error('Error updating like:', error);
+    }
+  };
+
+  // Share functions with tracking
+  const shareOnTwitter = async (memeId) => {
+    // Update share count
+    try {
+      const meme = communityMemes.find(m => m.id === memeId);
+      if (meme) {
+        await supabase
+          .from('memes')
+          .update({ shares_count: meme.shares_count + 1 })
+          .eq('id', memeId);
+        
+        // Refresh to show updated count
+        fetchCommunityMemes();
+      }
+    } catch (error) {
+      console.error('Error updating share count:', error);
+    }
+    
+    // Open Twitter share
     const memeUrl = `${window.location.origin}/meme/${memeId}`;
     const text = `Check out my $PUMPIT meme! 🚀\n\nJoin the movement: `;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(memeUrl)}&hashtags=PUMPIT,Solana,PumpItOnSol`;
     window.open(twitterUrl, '_blank');
   };
 
-  const shareOnTelegram = (imageUrl) => {
+  const shareOnTelegram = async (memeId, imageUrl) => {
+    // Update share count
+    try {
+      const meme = communityMemes.find(m => m.id === memeId);
+      if (meme) {
+        await supabase
+          .from('memes')
+          .update({ shares_count: meme.shares_count + 1 })
+          .eq('id', memeId);
+        
+        // Refresh to show updated count
+        fetchCommunityMemes();
+      }
+    } catch (error) {
+      console.error('Error updating share count:', error);
+    }
+    
+    // Open Telegram share
     const text = `Check out my $PUMPIT meme! 🚀\n\nJoin us at @Pumpetcto`;
     const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(imageUrl)}&text=${encodeURIComponent(text)}`;
     window.open(telegramUrl, '_blank');
@@ -1077,7 +1161,7 @@ export default function Home() {
           </section>
 
           <section id="community" className="reveal">
-            <h2>🔥 Latest Community Memes</h2>
+            <h2>🔥 Top Community Memes</h2>
             <div className="community-memes">
               {isLoadingMemes ? (
                 <div className="loading-memes">
@@ -1090,7 +1174,12 @@ export default function Home() {
                     <div className="meme-info">
                       <p className="creator">by {meme.creator_x_handle}</p>
                       <div className="meme-stats">
-                        <span>❤️ {meme.likes_count}</span>
+                        <button 
+                          onClick={() => handleLike(meme.id)}
+                          className={`like-button ${likedMemes.includes(meme.id) ? 'liked' : ''}`}
+                        >
+                          ❤️ {meme.likes_count}
+                        </button>
                         <span>🔄 {meme.shares_count}</span>
                       </div>
                       <div className="share-buttons">
@@ -1101,7 +1190,7 @@ export default function Home() {
                           🐦 Share
                         </button>
                         <button 
-                          onClick={() => shareOnTelegram(meme.image_url)}
+                          onClick={() => shareOnTelegram(meme.id, meme.image_url)}
                           className="share-btn telegram"
                         >
                           💬 Share
@@ -1969,10 +2058,8 @@ export default function Home() {
 
         .meme-card img {
           width: 100%;
-          height: auto;
-          object-fit: contain;
-          max-height: 400px;
-          background: #000;
+          height: 200px;
+          object-fit: cover;
         }
 
         .meme-info {
@@ -1993,6 +2080,35 @@ export default function Home() {
           margin: 0.5rem 0;
           color: #999;
           font-size: 0.9rem;
+          align-items: center;
+        }
+
+        .like-button {
+          background: none;
+          border: none;
+          color: #999;
+          cursor: pointer;
+          font-size: 0.9rem;
+          padding: 0.5rem;
+          border-radius: 20px;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+        }
+
+        .like-button:hover {
+          background: rgba(255, 255, 0, 0.1);
+          color: #FFFF00;
+          transform: scale(1.1);
+        }
+
+        .like-button.liked {
+          color: #FFFF00;
+        }
+
+        .like-button.liked:hover {
+          transform: scale(1.15);
         }
 
         .share-buttons {
