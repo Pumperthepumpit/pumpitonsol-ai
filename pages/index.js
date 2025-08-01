@@ -14,6 +14,7 @@ export default function Home() {
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   const [walletAddress, setWalletAddress] = useState(null);
   const [xHandle, setXHandle] = useState('');
+  const [xHandleInput, setXHandleInput] = useState('');
   const [showXForm, setShowXForm] = useState(false);
   const [communityMemes, setCommunityMemes] = useState([]);
   const [isLoadingMemes, setIsLoadingMemes] = useState(true);
@@ -455,17 +456,15 @@ export default function Home() {
     e.preventDefault();
     e.stopPropagation();
     
-    // Get the current value from the form
-    const formData = new FormData(e.target);
-    const inputValue = formData.get('xhandle') || '';
-    
     // Require at least 2 characters
-    if (inputValue && inputValue.trim().length >= 2) {
+    if (xHandleInput && xHandleInput.trim().length >= 2) {
       // Add @ if user didn't include it
-      const formattedHandle = inputValue.startsWith('@') ? inputValue : `@${inputValue}`;
+      const formattedHandle = xHandleInput.startsWith('@') ? xHandleInput : `@${xHandleInput}`;
       setXHandle(formattedHandle);
+      setXHandleInput('');
       setShowXForm(false);
     }
+    return false;
   };
 
   const generateMeme = async () => {
@@ -1069,20 +1068,28 @@ export default function Home() {
             </p>
             
             {showXForm && (
-              <div className="x-form-modal">
-                <form onSubmit={handleXHandleSubmit} className="x-form">
+              <div className="x-form-modal" onClick={(e) => e.stopPropagation()}>
+                <form onSubmit={handleXHandleSubmit} className="x-form" onClick={(e) => e.stopPropagation()}>
                   <h3>Enter your X handle to continue</h3>
                   <input
                     type="text"
-                    name="xhandle"
                     placeholder="@yourhandle"
-                    defaultValue=""
+                    value={xHandleInput}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      setXHandleInput(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && xHandleInput.trim().length < 2) {
+                        e.preventDefault();
+                      }
+                    }}
                     required
                     minLength="2"
                     autoComplete="off"
                     autoFocus
                   />
-                  <button type="submit">Continue</button>
+                  <button type="submit" disabled={xHandleInput.trim().length < 2}>Continue</button>
                 </form>
               </div>
             )}
@@ -1094,14 +1101,22 @@ export default function Home() {
                   <div className="x-handle-input-group">
                     <input
                       type="text"
-                      name="xhandle"
                       placeholder="@yourhandle"
-                      defaultValue=""
+                      value={xHandleInput}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setXHandleInput(e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && xHandleInput.trim().length < 2) {
+                          e.preventDefault();
+                        }
+                      }}
                       required
                       minLength="2"
                       autoComplete="off"
                     />
-                    <button type="submit">Set Handle</button>
+                    <button type="submit" disabled={xHandleInput.trim().length < 2}>Set Handle</button>
                   </div>
                 </form>
               </div>
