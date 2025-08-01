@@ -1830,6 +1830,11 @@ export default function Home() {
           box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
         }
 
+        .x-form button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         .x-handle-section {
           background: rgba(255, 255, 0, 0.05);
           padding: 2rem;
@@ -1884,16 +1889,9 @@ export default function Home() {
           box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
         }
 
-        .x-handle-input-group button:disabled,
-        .x-form button:disabled {
+        .x-handle-input-group button:disabled {
           opacity: 0.5;
           cursor: not-allowed;
-        }
-
-        .x-handle-input-group button:disabled:hover,
-        .x-form button:disabled:hover {
-          transform: none;
-          box-shadow: none;
         }
 
         .meme-upload {
