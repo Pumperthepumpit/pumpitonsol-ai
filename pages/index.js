@@ -582,21 +582,30 @@ export default function Home() {
       const displayedImg = container.querySelector('.preview-image');
       const displayedImgRect = displayedImg.getBoundingClientRect();
       
+      // Calculate the offset between container center and image center
+      const containerCenterX = containerRect.width / 2;
+      const containerCenterY = containerRect.height / 2;
+      const imageCenterX = displayedImgRect.left - containerRect.left + displayedImgRect.width / 2;
+      const imageCenterY = displayedImgRect.top - containerRect.top + displayedImgRect.height / 2;
+      const offsetX = imageCenterX - containerCenterX;
+      const offsetY = imageCenterY - containerCenterY;
+      
       // Calculate scale factors
       const scaleX = img.width / displayedImgRect.width;
       const scaleY = img.height / displayedImgRect.height;
       
       // Debug logging
-      console.log('Image dimensions:', { 
-        original: { w: img.width, h: img.height },
-        displayed: { w: displayedImgRect.width, h: displayedImgRect.height },
+      console.log('Debug info:', { 
+        container: { w: containerRect.width, h: containerRect.height },
+        image: { w: displayedImgRect.width, h: displayedImgRect.height },
+        offset: { x: offsetX, y: offsetY },
         scaleX, scaleY,
-        lipImageSize: { w: lipImage.width, h: lipImage.height }
+        lipPosition,
+        lipScale
       });
       
       // Calculate base scale to match 120px display size
       const baseDisplaySize = 120; // This matches the CSS width
-      // Simple approach: just scale based on what we see
       const lipBaseScale = (baseDisplaySize * scaleX) / lipImage.width;
       const exclamationBaseScale = (baseDisplaySize * scaleX) / exclamationImage.width;
       
@@ -609,9 +618,9 @@ export default function Home() {
       
       // Draw lips
       ctx.save();
-      // Use displayedImgRect for position calculations
-      const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x) * scaleX;
-      const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
+      // Adjust position to account for container/image offset
+      const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x + offsetX) * scaleX;
+      const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y + offsetY) * scaleY;
       ctx.translate(lipCenterX, lipCenterY);
       ctx.rotate(lipRotation * Math.PI / 180);
       // Divide by 2 to fix the double size issue
@@ -626,9 +635,9 @@ export default function Home() {
       
       // Draw exclamation
       ctx.save();
-      // Use displayedImgRect for position calculations
-      const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x) * scaleX;
-      const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
+      // Adjust position to account for container/image offset
+      const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x + offsetX) * scaleX;
+      const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y + offsetY) * scaleY;
       ctx.translate(exclamationCenterX, exclamationCenterY);
       ctx.rotate(exclamationRotation * Math.PI / 180);
       // Divide by 2 to fix the double size issue
