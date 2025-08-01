@@ -14,7 +14,6 @@ export default function Home() {
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   const [walletAddress, setWalletAddress] = useState(null);
   const [xHandle, setXHandle] = useState('');
-  const [xHandleInput, setXHandleInput] = useState('');
   const [showXForm, setShowXForm] = useState(false);
   const [communityMemes, setCommunityMemes] = useState([]);
   const [isLoadingMemes, setIsLoadingMemes] = useState(true);
@@ -456,15 +455,16 @@ export default function Home() {
     e.preventDefault();
     e.stopPropagation();
     
-    // Require at least 2 characters
-    if (xHandleInput && xHandleInput.trim().length >= 2) {
+    const formData = new FormData(e.target);
+    const inputValue = formData.get('xhandle');
+    
+    // Require at least 2 characters for a valid handle
+    if (inputValue && inputValue.trim().length >= 2) {
       // Add @ if user didn't include it
-      const formattedHandle = xHandleInput.startsWith('@') ? xHandleInput : `@${xHandleInput}`;
+      const formattedHandle = inputValue.startsWith('@') ? inputValue : `@${inputValue}`;
       setXHandle(formattedHandle);
-      setXHandleInput('');
       setShowXForm(false);
     }
-    return false;
   };
 
   const generateMeme = async () => {
@@ -839,6 +839,14 @@ export default function Home() {
     return `translate(${exclamationPosition.x}px, ${exclamationPosition.y}px) scale(${exclamationScale}) rotate(${exclamationRotation}deg)`;
   };
 
+  // Close modal handler
+  const handleModalClose = (e) => {
+    // Only close if clicking the modal background, not the form
+    if (e.target.classList.contains('x-form-modal')) {
+      setShowXForm(false);
+    }
+  };
+
   return (
     <>
       <Head>
@@ -1068,28 +1076,19 @@ export default function Home() {
             </p>
             
             {showXForm && (
-              <div className="x-form-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="x-form-modal" onClick={handleModalClose}>
                 <form onSubmit={handleXHandleSubmit} className="x-form" onClick={(e) => e.stopPropagation()}>
                   <h3>Enter your X handle to continue</h3>
                   <input
                     type="text"
+                    name="xhandle"
                     placeholder="@yourhandle"
-                    value={xHandleInput}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      setXHandleInput(e.target.value);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && xHandleInput.trim().length < 2) {
-                        e.preventDefault();
-                      }
-                    }}
                     required
                     minLength="2"
                     autoComplete="off"
                     autoFocus
                   />
-                  <button type="submit" disabled={xHandleInput.trim().length < 2}>Continue</button>
+                  <button type="submit">Continue</button>
                 </form>
               </div>
             )}
@@ -1101,22 +1100,13 @@ export default function Home() {
                   <div className="x-handle-input-group">
                     <input
                       type="text"
+                      name="xhandle"
                       placeholder="@yourhandle"
-                      value={xHandleInput}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        setXHandleInput(e.target.value);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && xHandleInput.trim().length < 2) {
-                          e.preventDefault();
-                        }
-                      }}
                       required
                       minLength="2"
                       autoComplete="off"
                     />
-                    <button type="submit" disabled={xHandleInput.trim().length < 2}>Set Handle</button>
+                    <button type="submit">Set Handle</button>
                   </div>
                 </form>
               </div>
@@ -1128,7 +1118,12 @@ export default function Home() {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                onClick={() => !selectedFile && document.getElementById('memeImage').click()}
+                onClick={(e) => {
+                  // Only trigger file input if clicking on the empty upload area
+                  if (!selectedFile && e.target.classList.contains('modern-upload-zone')) {
+                    document.getElementById('memeImage').click();
+                  }
+                }}
               >
                 <input 
                   type="file" 
@@ -1139,7 +1134,7 @@ export default function Home() {
                 />
                 
                 {!selectedFile ? (
-                  <div className="upload-content">
+                  <div className="upload-content" onClick={() => document.getElementById('memeImage').click()}>
                     <div className="upload-icon">📸</div>
                     <h3>Drop your image here</h3>
                     <p>or click to browse</p>
@@ -1849,14 +1844,9 @@ export default function Home() {
           font-size: 1rem;
         }
 
-        .x-form button:hover:not(:disabled) {
+        .x-form button:hover {
           transform: scale(1.05);
           box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
-        }
-
-        .x-form button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
         }
 
         .x-handle-section {
@@ -1908,14 +1898,9 @@ export default function Home() {
           white-space: nowrap;
         }
 
-        .x-handle-input-group button:hover:not(:disabled) {
+        .x-handle-input-group button:hover {
           transform: scale(1.05);
           box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
-        }
-
-        .x-handle-input-group button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
         }
 
         .meme-upload {
@@ -1956,6 +1941,7 @@ export default function Home() {
         .upload-content {
           text-align: center;
           padding: 3rem;
+          cursor: pointer;
         }
 
         .upload-icon {
