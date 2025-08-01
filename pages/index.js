@@ -574,72 +574,101 @@ export default function Home() {
         loadImage('/meme-assets/exclamation.png')
       ]);
       
-      // Get current positions and transforms
-      const container = containerRef.current;
-      const containerRect = container.getBoundingClientRect();
-      
-      // Get the displayed image size
-      const displayedImg = container.querySelector('.preview-image');
+      // Get the displayed image element and its actual rendered size
+      const displayedImg = containerRef.current.querySelector('.preview-image');
       const displayedImgRect = displayedImg.getBoundingClientRect();
       
-      // Calculate scale factors
-      const scaleX = img.width / displayedImgRect.width;
-      const scaleY = img.height / displayedImgRect.height;
+      // Get the actual rendered positions of the overlay elements
+      const lipElement = lipRef.current;
+      const exclamationElement = exclamationRef.current;
       
-      // Debug logging
-      console.log('Image dimensions:', { 
-        original: { w: img.width, h: img.height },
-        displayed: { w: displayedImgRect.width, h: displayedImgRect.height },
-        scaleX, scaleY,
-        lipImageSize: { w: lipImage.width, h: lipImage.height }
-      });
-      
-      // Calculate base scale to match 120px display size
-      const baseDisplaySize = 120; // This matches the CSS width
-      // Simple approach: just scale based on what we see
-      const lipBaseScale = (baseDisplaySize * scaleX) / lipImage.width;
-      const exclamationBaseScale = (baseDisplaySize * scaleX) / exclamationImage.width;
-      
-      console.log('Scale calculations:', {
-        baseDisplaySize,
-        lipBaseScale,
-        lipScale,
-        finalScale: lipBaseScale * lipScale
-      });
-      
-      // Draw lips
-      ctx.save();
-      // Use displayedImgRect for position calculations
-      const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x) * scaleX;
-      const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
-      ctx.translate(lipCenterX, lipCenterY);
-      ctx.rotate(lipRotation * Math.PI / 180);
-      // Divide by 2 to fix the double size issue
-      const finalLipScale = (lipBaseScale * lipScale) / 2;
-      ctx.scale(finalLipScale, finalLipScale);
-      ctx.drawImage(
-        lipImage,
-        -lipImage.width / 2,
-        -lipImage.height / 2
-      );
-      ctx.restore();
-      
-      // Draw exclamation
-      ctx.save();
-      // Use displayedImgRect for position calculations
-      const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x) * scaleX;
-      const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
-      ctx.translate(exclamationCenterX, exclamationCenterY);
-      ctx.rotate(exclamationRotation * Math.PI / 180);
-      // Divide by 2 to fix the double size issue
-      const finalExclamationScale = (exclamationBaseScale * exclamationScale) / 2;
-      ctx.scale(finalExclamationScale, finalExclamationScale);
-      ctx.drawImage(
-        exclamationImage,
-        -exclamationImage.width / 2,
-        -exclamationImage.height / 2
-      );
-      ctx.restore();
+      if (lipElement && exclamationElement) {
+        const lipRect = lipElement.getBoundingClientRect();
+        const exclamationRect = exclamationElement.getBoundingClientRect();
+        
+        // Calculate the scale factor between displayed and original image
+        const scaleX = img.width / displayedImgRect.width;
+        const scaleY = img.height / displayedImgRect.height;
+        
+        // Get the actual rendered size of the overlay images
+        const lipImgElement = lipElement.querySelector('img');
+        const exclamationImgElement = exclamationElement.querySelector('img');
+        const lipImgRect = lipImgElement.getBoundingClientRect();
+        const exclamationImgRect = exclamationImgElement.getBoundingClientRect();
+        
+        // Draw lips
+        ctx.save();
+        
+        // Calculate center position relative to the displayed image
+        const lipCenterX = (lipRect.left + lipRect.width / 2 - displayedImgRect.left) * scaleX;
+        const lipCenterY = (lipRect.top + lipRect.height / 2 - displayedImgRect.top) * scaleY;
+        
+        // Calculate the actual scale of the lips as rendered
+        const lipActualScale = lipImgRect.width / lipImage.width;
+        const lipCanvasScale = lipActualScale * scaleX;
+        
+        ctx.translate(lipCenterX, lipCenterY);
+        ctx.rotate(lipRotation * Math.PI / 180);
+        ctx.scale(lipCanvasScale, lipCanvasScale);
+        ctx.drawImage(
+          lipImage,
+          -lipImage.width / 2,
+          -lipImage.height / 2
+        );
+        ctx.restore();
+        
+        // Draw exclamation
+        ctx.save();
+        
+        // Calculate center position relative to the displayed image
+        const exclamationCenterX = (exclamationRect.left + exclamationRect.width / 2 - displayedImgRect.left) * scaleX;
+        const exclamationCenterY = (exclamationRect.top + exclamationRect.height / 2 - displayedImgRect.top) * scaleY;
+        
+        // Calculate the actual scale of the exclamation as rendered
+        const exclamationActualScale = exclamationImgRect.width / exclamationImage.width;
+        const exclamationCanvasScale = exclamationActualScale * scaleX;
+        
+        ctx.translate(exclamationCenterX, exclamationCenterY);
+        ctx.rotate(exclamationRotation * Math.PI / 180);
+        ctx.scale(exclamationCanvasScale, exclamationCanvasScale);
+        ctx.drawImage(
+          exclamationImage,
+          -exclamationImage.width / 2,
+          -exclamationImage.height / 2
+        );
+        ctx.restore();
+        
+      } else {
+        // Fallback to calculated positions if refs aren't available
+        console.warn('Overlay refs not found, using calculated positions');
+        
+        const scaleX = img.width / displayedImgRect.width;
+        const scaleY = img.height / displayedImgRect.height;
+        
+        // Use the original calculation as fallback
+        const baseDisplaySize = 120;
+        const lipBaseScale = (baseDisplaySize * scaleX) / lipImage.width;
+        const exclamationBaseScale = (baseDisplaySize * scaleX) / exclamationImage.width;
+        
+        // Draw with original calculations
+        ctx.save();
+        const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x) * scaleX;
+        const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
+        ctx.translate(lipCenterX, lipCenterY);
+        ctx.rotate(lipRotation * Math.PI / 180);
+        ctx.scale(lipBaseScale * lipScale, lipBaseScale * lipScale);
+        ctx.drawImage(lipImage, -lipImage.width / 2, -lipImage.height / 2);
+        ctx.restore();
+        
+        ctx.save();
+        const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x) * scaleX;
+        const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
+        ctx.translate(exclamationCenterX, exclamationCenterY);
+        ctx.rotate(exclamationRotation * Math.PI / 180);
+        ctx.scale(exclamationBaseScale * exclamationScale, exclamationBaseScale * exclamationScale);
+        ctx.drawImage(exclamationImage, -exclamationImage.width / 2, -exclamationImage.height / 2);
+        ctx.restore();
+      }
       
       // Convert to blob
       const blob = await new Promise(resolve => {
