@@ -1,10 +1,3 @@
-header {
-          text-align: center;
-          padding: 5rem 1rem 3rem;
-          position: relative;
-          overflow: hidden;
-          margin-top: 80px;
-        }import Head from 'next/head';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
