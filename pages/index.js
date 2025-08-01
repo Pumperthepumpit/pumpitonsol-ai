@@ -708,6 +708,7 @@ export default function Home() {
 
   // Share functions with tracking
   const shareOnTwitter = async (memeId) => {
+    alert('Share button clicked for meme: ' + memeId);
     console.log('Sharing meme:', memeId);
     
     // Update share count
