@@ -1398,7 +1398,242 @@ export default function Home() {
         }
 
         .main-nav a:hover {
-          background: rgba(255, 255, 0, 0.1
+          background: rgba(255, 255, 0, 0.1);
+          transform: translateY(-2px);
+        }
+
+        section {
+          margin: 4rem auto;
+          padding: 3rem;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 20px;
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        h2 {
+          font-size: 2.5rem;
+          margin-bottom: 2rem;
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          font-weight: 800;
+        }
+
+        .expandable-content {
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+
+        .preview-text {
+          margin-bottom: 1rem;
+          line-height: 1.8;
+        }
+
+        .full-content {
+          animation: fadeIn 0.5s ease;
+          line-height: 1.8;
+        }
+
+        .full-content ul {
+          margin: 1rem 0 1rem 2rem;
+        }
+
+        .full-content li {
+          margin: 0.5rem 0;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .read-more-btn {
+          background: none;
+          border: 2px solid #FFFF00;
+          color: #FFFF00;
+          padding: 0.6rem 1.5rem;
+          border-radius: 25px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-weight: 600;
+          margin-top: 1rem;
+        }
+
+        .read-more-btn:hover {
+          background: #FFFF00;
+          color: black;
+          transform: scale(1.05);
+        }
+
+        .token-stats {
+          background: rgba(255, 255, 0, 0.05);
+          padding: 2rem;
+          border-radius: 15px;
+          margin-top: 2rem;
+          border: 1px solid rgba(255, 255, 0, 0.2);
+        }
+
+        .token-stats h3 {
+          color: #FFFF00;
+          margin-bottom: 1rem;
+        }
+
+        .token-stats p {
+          margin: 0.75rem 0;
+          font-family: 'Courier New', monospace;
+          word-break: break-all;
+          opacity: 0.9;
+        }
+
+        .token-info-section {
+          background: linear-gradient(135deg, rgba(255, 255, 0, 0.03), rgba(255, 215, 0, 0.03));
+          border: 1px solid rgba(255, 255, 0, 0.1);
+        }
+
+        .token-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1.5rem;
+          margin: 2rem 0;
+        }
+
+        .token-card {
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 0, 0.2);
+          border-radius: 15px;
+          padding: 2rem;
+          text-align: center;
+          transition: all 0.3s ease;
+        }
+
+        .token-card:hover {
+          transform: translateY(-5px);
+          border-color: #FFFF00;
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.2);
+        }
+
+        .token-card h4 {
+          color: #FFFF00;
+          margin-bottom: 1rem;
+          font-size: 0.9rem;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .token-card .price {
+          font-size: 1.8rem;
+          font-weight: bold;
+          color: #ffffff;
+          margin: 0.5rem 0;
+        }
+
+        .token-card .value {
+          font-size: 1.4rem;
+          font-weight: bold;
+          color: #ffffff;
+        }
+
+        .price-change {
+          font-size: 1rem;
+          font-weight: 600;
+        }
+
+        .price-change.positive {
+          color: #00ff00;
+        }
+
+        .price-change.negative {
+          color: #ff3333;
+        }
+
+        .loading {
+          color: #666;
+          font-style: italic;
+        }
+
+        .buy-section {
+          text-align: center;
+          margin-top: 3rem;
+        }
+
+        .buy-button-large {
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          padding: 1.2rem 3rem;
+          font-size: 1.2rem;
+          font-weight: bold;
+          border-radius: 50px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.3);
+        }
+
+        .buy-button-large:hover {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 15px 40px rgba(255, 255, 0, 0.5);
+        }
+
+        .buy-info {
+          color: #999;
+          margin-top: 1rem;
+          font-size: 0.9rem;
+        }
+
+        .token-link {
+          display: inline-block;
+          margin-top: 1rem;
+          color: #FFFF00;
+          text-decoration: none;
+          font-weight: 600;
+          transition: all 0.3s ease;
+        }
+
+        .token-link:hover {
+          color: #FFD700;
+          text-decoration: underline;
+        }
+
+        .x-form-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.9);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2000;
+          backdrop-filter: blur(10px);
+        }
+
+        .x-form {
+          background: rgba(20, 20, 20, 0.95);
+          padding: 3rem;
+          border-radius: 20px;
+          border: 1px solid rgba(255, 255, 0, 0.3);
+          text-align: center;
+          max-width: 400px;
+          width: 90%;
+        }
+
+        .x-form h3 {
+          color: #FFFF00;
+          margin-bottom: 2rem;
+          font-size: 1.5rem;
+        }
+
+        .x-form input {
+          width: 100%;
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 0, 0.3);
+          border-radius: 10px;
+          color: white;
           font-size: 1rem;
         }
 
@@ -2052,348 +2287,3 @@ export default function Home() {
     </>
   );
 }
-          text-decoration: none;
-          transition: all 0.3s ease;
-          backdrop-filter: blur(10px);
-          font-size: 0.9rem;
-          white-space: nowrap;
-          cursor: pointer;
-          font-weight: 500;
-        }
-
-        .social-button:hover {
-          background: rgba(255, 255, 255, 0.1);
-          transform: translateY(-2px);
-          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .social-button.buy-button {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          font-weight: bold;
-          border: none;
-        }
-
-        .social-button.buy-button:hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.5);
-        }
-
-        .social-button.wallet-button {
-          background: rgba(255, 255, 0, 0.1);
-          border-color: rgba(255, 255, 0, 0.3);
-        }
-
-        header {
-          text-align: center;
-          padding: 5rem 1rem 3rem;
-          position: relative;
-          overflow: hidden;
-          margin-top: 80px;
-        }
-
-        .header-content {
-          position: relative;
-          z-index: 2;
-        }
-
-        .pumper-float {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          opacity: 0.1;
-          animation: float 6s ease-in-out infinite;
-          pointer-events: none;
-          filter: blur(1px);
-          z-index: 0;
-        }
-
-        .pumper-float img {
-          width: 400px;
-          height: 400px;
-        }
-
-        @keyframes float {
-          0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
-          50% { transform: translate(-50%, -50%) translateY(-20px); }
-        }
-
-        h1 {
-          font-size: 4rem;
-          font-weight: 900;
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          margin-bottom: 1rem;
-          letter-spacing: -2px;
-        }
-
-        .main-nav {
-          position: sticky;
-          top: 0;
-          z-index: 99;
-          background: rgba(0, 0, 0, 0.8);
-          backdrop-filter: blur(20px);
-          padding: 1rem 0;
-          margin: 0 0 3rem 0;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .nav-container {
-          display: flex;
-          justify-content: center;
-          gap: 2rem;
-          flex-wrap: wrap;
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 0 1rem;
-        }
-
-        .main-nav a {
-          color: #ffffff;
-          text-decoration: none;
-          padding: 0.5rem 1.5rem;
-          transition: all 0.3s ease;
-          border-radius: 25px;
-          font-weight: 500;
-          font-size: 0.95rem;
-        }
-
-        .main-nav a:hover {
-          background: rgba(255, 255, 0, 0.1);
-          transform: translateY(-2px);
-        }
-
-        section {
-          margin: 4rem auto;
-          padding: 3rem;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 20px;
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        h2 {
-          font-size: 2.5rem;
-          margin-bottom: 2rem;
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          font-weight: 800;
-        }
-
-        .expandable-content {
-          position: relative;
-          overflow: hidden;
-          transition: all 0.3s ease;
-        }
-
-        .preview-text {
-          margin-bottom: 1rem;
-          line-height: 1.8;
-        }
-
-        .full-content {
-          animation: fadeIn 0.5s ease;
-          line-height: 1.8;
-        }
-
-        .full-content ul {
-          margin: 1rem 0 1rem 2rem;
-        }
-
-        .full-content li {
-          margin: 0.5rem 0;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .read-more-btn {
-          background: none;
-          border: 2px solid #FFFF00;
-          color: #FFFF00;
-          padding: 0.6rem 1.5rem;
-          border-radius: 25px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-weight: 600;
-          margin-top: 1rem;
-        }
-
-        .read-more-btn:hover {
-          background: #FFFF00;
-          color: black;
-          transform: scale(1.05);
-        }
-
-        .token-stats {
-          background: rgba(255, 255, 0, 0.05);
-          padding: 2rem;
-          border-radius: 15px;
-          margin-top: 2rem;
-          border: 1px solid rgba(255, 255, 0, 0.2);
-        }
-
-        .token-stats h3 {
-          color: #FFFF00;
-          margin-bottom: 1rem;
-        }
-
-        .token-stats p {
-          margin: 0.75rem 0;
-          font-family: 'Courier New', monospace;
-          word-break: break-all;
-          opacity: 0.9;
-        }
-
-        .token-info-section {
-          background: linear-gradient(135deg, rgba(255, 255, 0, 0.03), rgba(255, 215, 0, 0.03));
-          border: 1px solid rgba(255, 255, 0, 0.1);
-        }
-
-        .token-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1.5rem;
-          margin: 2rem 0;
-        }
-
-        .token-card {
-          background: rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 0, 0.2);
-          border-radius: 15px;
-          padding: 2rem;
-          text-align: center;
-          transition: all 0.3s ease;
-        }
-
-        .token-card:hover {
-          transform: translateY(-5px);
-          border-color: #FFFF00;
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.2);
-        }
-
-        .token-card h4 {
-          color: #FFFF00;
-          margin-bottom: 1rem;
-          font-size: 0.9rem;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-
-        .token-card .price {
-          font-size: 1.8rem;
-          font-weight: bold;
-          color: #ffffff;
-          margin: 0.5rem 0;
-        }
-
-        .token-card .value {
-          font-size: 1.4rem;
-          font-weight: bold;
-          color: #ffffff;
-        }
-
-        .price-change {
-          font-size: 1rem;
-          font-weight: 600;
-        }
-
-        .price-change.positive {
-          color: #00ff00;
-        }
-
-        .price-change.negative {
-          color: #ff3333;
-        }
-
-        .loading {
-          color: #666;
-          font-style: italic;
-        }
-
-        .buy-section {
-          text-align: center;
-          margin-top: 3rem;
-        }
-
-        .buy-button-large {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          padding: 1.2rem 3rem;
-          font-size: 1.2rem;
-          font-weight: bold;
-          border-radius: 50px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.3);
-        }
-
-        .buy-button-large:hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 15px 40px rgba(255, 255, 0, 0.5);
-        }
-
-        .buy-info {
-          color: #999;
-          margin-top: 1rem;
-          font-size: 0.9rem;
-        }
-
-        .token-link {
-          display: inline-block;
-          margin-top: 1rem;
-          color: #FFFF00;
-          text-decoration: none;
-          font-weight: 600;
-          transition: all 0.3s ease;
-        }
-
-        .token-link:hover {
-          color: #FFD700;
-          text-decoration: underline;
-        }
-
-        .x-form-modal {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.9);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 2000;
-          backdrop-filter: blur(10px);
-        }
-
-        .x-form {
-          background: rgba(20, 20, 20, 0.95);
-          padding: 3rem;
-          border-radius: 20px;
-          border: 1px solid rgba(255, 255, 0, 0.3);
-          text-align: center;
-          max-width: 400px;
-          width: 90%;
-        }
-
-        .x-form h3 {
-          color: #FFFF00;
-          margin-bottom: 2rem;
-          font-size: 1.5rem;
-        }
-
-        .x-form input {
-          width: 100%;
-          padding: 1rem;
-          margin-bottom: 1.5rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 0, 0.3);
-          border-radius: 10px;
-          color: white;
