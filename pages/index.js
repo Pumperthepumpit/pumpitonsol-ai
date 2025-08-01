@@ -18,6 +18,7 @@ export default function Home() {
   const [communityMemes, setCommunityMemes] = useState([]);
   const [isLoadingMemes, setIsLoadingMemes] = useState(true);
   const [likedMemes, setLikedMemes] = useState([]);
+  const [shareAnimatingId, setShareAnimatingId] = useState(null);
   const [expandedSections, setExpandedSections] = useState({
     vision: false,
     about: false
@@ -708,17 +709,15 @@ export default function Home() {
 
   // Share functions with tracking
   const shareOnTwitter = async (memeId) => {
-    alert('Share button clicked for meme: ' + memeId);
-    console.log('Sharing meme:', memeId);
+    // Trigger animation
+    setShareAnimatingId(memeId);
+    setTimeout(() => setShareAnimatingId(null), 600);
     
-    // Update share count
+    // Update share count FIRST
     try {
       const meme = communityMemes.find(m => m.id === memeId);
-      console.log('Found meme:', meme);
-      
       if (meme) {
         const newShareCount = (meme.shares_count || 0) + 1;
-        console.log('Updating shares to:', newShareCount);
         
         const { data, error } = await supabase
           .from('memes')
@@ -727,20 +726,19 @@ export default function Home() {
           .select();
         
         if (error) {
-          console.error('Supabase error:', error);
-          throw error;
+          console.error('Error updating share count:', error);
+        } else {
+          // Update local state immediately to show the change
+          setCommunityMemes(prev => prev.map(m => 
+            m.id === memeId ? { ...m, shares_count: newShareCount } : m
+          ));
         }
-        
-        console.log('Update result:', data);
-        
-        // Refresh to show updated count
-        await fetchCommunityMemes();
       }
     } catch (error) {
       console.error('Error updating share count:', error);
     }
     
-    // Open Twitter share
+    // Then open Twitter share dialog
     const memeUrl = `${window.location.origin}/meme/${memeId}`;
     const text = `Check out my $PUMPIT meme! 🚀\n\nJoin the movement: `;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(memeUrl)}&hashtags=PUMPIT,Solana,PumpItOnSol`;
@@ -748,25 +746,36 @@ export default function Home() {
   };
 
   const shareOnTelegram = async (memeId, imageUrl) => {
-    // Update share count
+    // Trigger animation
+    setShareAnimatingId(memeId);
+    setTimeout(() => setShareAnimatingId(null), 600);
+    
+    // Update share count FIRST
     try {
       const meme = communityMemes.find(m => m.id === memeId);
       if (meme) {
-        const { error } = await supabase
+        const newShareCount = (meme.shares_count || 0) + 1;
+        
+        const { data, error } = await supabase
           .from('memes')
-          .update({ shares_count: (meme.shares_count || 0) + 1 })
-          .eq('id', memeId);
+          .update({ shares_count: newShareCount })
+          .eq('id', memeId)
+          .select();
         
-        if (error) throw error;
-        
-        // Refresh to show updated count
-        await fetchCommunityMemes();
+        if (error) {
+          console.error('Error updating share count:', error);
+        } else {
+          // Update local state immediately to show the change
+          setCommunityMemes(prev => prev.map(m => 
+            m.id === memeId ? { ...m, shares_count: newShareCount } : m
+          ));
+        }
       }
     } catch (error) {
       console.error('Error updating share count:', error);
     }
     
-    // Open Telegram share
+    // Then open Telegram share dialog
     const text = `Check out my $PUMPIT meme! 🚀\n\nJoin us at @Pumpetcto`;
     const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(imageUrl)}&text=${encodeURIComponent(text)}`;
     window.open(telegramUrl, '_blank');
@@ -1195,27 +1204,26 @@ export default function Home() {
                         <button 
                           onClick={() => handleLike(meme.id)}
                           className={`like-button ${likedMemes.includes(meme.id) ? 'liked' : ''}`}
+                          type="button"
                         >
                           ❤️ {meme.likes_count}
                         </button>
-                        <span>🔄 {meme.shares_count}</span>
+                        <span className={`share-counter ${meme.id === shareAnimatingId ? 'animating' : ''}`}>
+                          🔄 {meme.shares_count}
+                        </span>
                       </div>
                       <div className="share-buttons">
                         <button 
-                          onClick={() => {
-                            console.log('Twitter share clicked');
-                            shareOnTwitter(meme.id);
-                          }}
+                          onClick={() => shareOnTwitter(meme.id)}
                           className="share-btn twitter"
+                          type="button"
                         >
                           🐦 Share
                         </button>
                         <button 
-                          onClick={() => {
-                            console.log('Telegram share clicked');
-                            shareOnTelegram(meme.id, meme.image_url);
-                          }}
+                          onClick={() => shareOnTelegram(meme.id, meme.image_url)}
                           className="share-btn telegram"
+                          type="button"
                         >
                           💬 Share
                         </button>
@@ -2118,9 +2126,11 @@ export default function Home() {
           padding: 0.5rem;
           border-radius: 20px;
           transition: all 0.2s ease;
-          display: flex;
+          display: inline-flex;
           align-items: center;
           gap: 0.3rem;
+          -webkit-tap-highlight-color: transparent;
+          outline: none;
         }
 
         .like-button:hover {
@@ -2129,12 +2139,38 @@ export default function Home() {
           transform: scale(1.1);
         }
 
+        .like-button:active {
+          transform: scale(0.95);
+        }
+
         .like-button.liked {
           color: #FFFF00;
         }
 
         .like-button.liked:hover {
           transform: scale(1.15);
+        }
+
+        .share-counter {
+          color: #999;
+          padding: 0.5rem;
+          border-radius: 20px;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
+        }
+
+        .share-counter.animating {
+          animation: shareAnimation 0.6s ease;
+          color: #FFFF00;
+        }
+
+        @keyframes shareAnimation {
+          0% { transform: scale(1) rotate(0deg); }
+          25% { transform: scale(1.3) rotate(180deg); }
+          50% { transform: scale(1.3) rotate(360deg); }
+          100% { transform: scale(1) rotate(360deg); }
         }
 
         .share-buttons {
@@ -2152,6 +2188,12 @@ export default function Home() {
           cursor: pointer;
           transition: all 0.2s ease;
           font-weight: 500;
+          outline: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .share-btn:active {
+          transform: scale(0.95);
         }
 
         .share-btn.twitter {
