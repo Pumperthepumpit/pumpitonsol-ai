@@ -1,4 +1,9 @@
-import Head from 'next/head';
+header {
+          text-align: center;
+          padding: 5rem 1rem 3rem;
+          position: relative;
+          overflow: hidden;
+          margin-topimport Head from 'next/head';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -811,13 +816,13 @@ export default function Home() {
 
       <div className="desktop-social-buttons">
         <a href="https://x.com/pumpitonsol" target="_blank" rel="noopener noreferrer" className="social-button">
-          🐦 X
+          𝕏
         </a>
         <a href="https://www.tiktok.com/@pumper.the.pumpit" target="_blank" rel="noopener noreferrer" className="social-button">
-          🎵 TikTok
+          ♪ TikTok
         </a>
         <a href="https://t.me/Pumpetcto" target="_blank" rel="noopener noreferrer" className="social-button">
-          💬 Telegram
+          TG
         </a>
         {walletAddress ? (
           <button className="social-button wallet-button">
@@ -861,16 +866,16 @@ export default function Home() {
           </div>
           <div className="header-content">
             <h1>$PUMPIT</h1>
-            <p>Solana's most recognized meme</p>
+            <p>Making Solana smile, one meme at a time</p>
             <div className="mobile-social-icons">
               <a href="https://x.com/pumpitonsol" target="_blank" rel="noopener noreferrer" title="X/Twitter">
-                🐦
+                𝕏
               </a>
               <a href="https://www.tiktok.com/@pumper.the.pumpit" target="_blank" rel="noopener noreferrer" title="TikTok">
-                🎵
+                ♪
               </a>
               <a href="https://t.me/Pumpetcto" target="_blank" rel="noopener noreferrer" title="Telegram">
-                💬
+                TG
               </a>
             </div>
           </div>
@@ -1218,14 +1223,14 @@ export default function Home() {
                           className="share-btn twitter"
                           type="button"
                         >
-                          🐦 Share
+                          𝕏 Share
                         </button>
                         <button 
                           onClick={() => shareOnTelegram(meme.id, meme.image_url)}
                           className="share-btn telegram"
                           type="button"
                         >
-                          💬 Share
+                          TG Share
                         </button>
                       </div>
                     </div>
@@ -1257,7 +1262,7 @@ export default function Home() {
             <h2>🌐 Join the $PUMPIT Community</h2>
             <div className="social-grid">
               <div className="social-card">
-                <h3>🐦 Latest from X/Twitter</h3>
+                <h3>𝕏 Latest from X/Twitter</h3>
                 <div className="twitter-embed">
                   <a 
                     className="twitter-timeline" 
@@ -1272,7 +1277,7 @@ export default function Home() {
               </div>
               
               <div className="social-card">
-                <h3>💬 Community Updates</h3>
+                <h3>TG Community Updates</h3>
                 <div className="community-links">
                   <a 
                     href="https://t.me/Pumpetcto" 
@@ -1280,7 +1285,7 @@ export default function Home() {
                     rel="noopener noreferrer"
                     className="community-button telegram"
                   >
-                    <span className="icon">💬</span>
+                    <span className="icon">TG</span>
                     <div>
                       <strong>Telegram Community</strong>
                       <p>Join our active Telegram group</p>
@@ -1293,7 +1298,7 @@ export default function Home() {
                     rel="noopener noreferrer"
                     className="community-button tiktok"
                   >
-                    <span className="icon">🎵</span>
+                    <span className="icon">♪</span>
                     <div>
                       <strong>TikTok Videos</strong>
                       <p>Watch Pumper's latest content</p>
@@ -1306,7 +1311,7 @@ export default function Home() {
                     rel="noopener noreferrer"
                     className="community-button twitter"
                   >
-                    <span className="icon">🐦</span>
+                    <span className="icon">𝕏</span>
                     <div>
                       <strong>X / Twitter</strong>
                       <p>Follow for real-time updates</p>
@@ -1393,15 +1398,27 @@ export default function Home() {
           gap: 1rem;
           margin-top: 1rem;
           font-size: 1.5rem;
+          justify-content: center;
         }
 
         .mobile-social-icons a {
           text-decoration: none;
           transition: transform 0.3s ease;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 50%;
+          width: 50px;
+          height: 50px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.3rem;
         }
 
         .mobile-social-icons a:hover {
           transform: scale(1.2);
+          background: rgba(255, 255, 255, 0.1);
+          border-color: #FFFF00;
         }
 
         .social-button {
@@ -1460,10 +1477,10 @@ export default function Home() {
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          opacity: 0.1;
+          opacity: 0.2;
           animation: float 6s ease-in-out infinite;
           pointer-events: none;
-          filter: blur(1px);
+          filter: blur(1px) drop-shadow(0 0 40px rgba(255, 255, 0, 0.4));
           z-index: 0;
         }
 
