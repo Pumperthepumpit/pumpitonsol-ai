@@ -1202,13 +1202,19 @@ export default function Home() {
                       </div>
                       <div className="share-buttons">
                         <button 
-                          onClick={() => shareOnTwitter(meme.id)}
+                          onClick={() => {
+                            console.log('Twitter share clicked');
+                            shareOnTwitter(meme.id);
+                          }}
                           className="share-btn twitter"
                         >
                           🐦 Share
                         </button>
                         <button 
-                          onClick={() => shareOnTelegram(meme.id, meme.image_url)}
+                          onClick={() => {
+                            console.log('Telegram share clicked');
+                            shareOnTelegram(meme.id, meme.image_url);
+                          }}
                           className="share-btn telegram"
                         >
                           💬 Share
