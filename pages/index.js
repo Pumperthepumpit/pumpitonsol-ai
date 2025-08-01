@@ -453,7 +453,11 @@ export default function Home() {
 
   const handleXHandleSubmit = (e) => {
     e.preventDefault();
-    if (xHandle && xHandle.trim()) {
+    // Require at least 2 characters for a valid handle
+    if (xHandle && xHandle.trim().length >= 2) {
+      // Add @ if user didn't include it
+      const formattedHandle = xHandle.startsWith('@') ? xHandle : `@${xHandle}`;
+      setXHandle(formattedHandle);
       setShowXForm(false);
     }
   };
@@ -1068,8 +1072,9 @@ export default function Home() {
                     value={xHandle}
                     onChange={(e) => setXHandle(e.target.value)}
                     required
+                    minLength="2"
                   />
-                  <button type="submit">Continue</button>
+                  <button type="submit" disabled={xHandle.trim().length < 2}>Continue</button>
                 </form>
               </div>
             )}
@@ -1085,8 +1090,9 @@ export default function Home() {
                       value={xHandle}
                       onChange={(e) => setXHandle(e.target.value)}
                       required
+                      minLength="2"
                     />
-                    <button type="submit">Set Handle</button>
+                    <button type="submit" disabled={xHandle.trim().length < 2}>Set Handle</button>
                   </div>
                 </form>
               </div>
@@ -1819,7 +1825,7 @@ export default function Home() {
           font-size: 1rem;
         }
 
-        .x-form button:hover {
+        .x-form button:hover:not(:disabled) {
           transform: scale(1.05);
           box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
         }
@@ -1873,9 +1879,21 @@ export default function Home() {
           white-space: nowrap;
         }
 
-        .x-handle-input-group button:hover {
+        .x-handle-input-group button:hover:not(:disabled) {
           transform: scale(1.05);
           box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
+        }
+
+        .x-handle-input-group button:disabled,
+        .x-form button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .x-handle-input-group button:disabled:hover,
+        .x-form button:disabled:hover {
+          transform: none;
+          box-shadow: none;
         }
 
         .meme-upload {
