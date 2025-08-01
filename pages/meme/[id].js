@@ -8,10 +8,16 @@ export default function MemePage() {
   const { id } = router.query;
   const [meme, setMeme] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [likedMemes, setLikedMemes] = useState([]);
 
   useEffect(() => {
     if (id) {
       fetchMeme();
+    }
+    // Load liked memes from localStorage
+    const stored = localStorage.getItem('likedMemes');
+    if (stored) {
+      setLikedMemes(JSON.parse(stored));
     }
   }, [id]);
 
@@ -32,15 +38,79 @@ export default function MemePage() {
     }
   };
 
-  const shareOnTwitter = () => {
-    const text = `Check out my $PUMPIT meme! 🚀\n\nJoin the movement: `;
+  const handleLike = async () => {
+    if (!meme) return;
+    
+    const isLiked = likedMemes.includes(meme.id);
+    
+    try {
+      const newLikesCount = isLiked ? meme.likes_count - 1 : meme.likes_count + 1;
+      
+      const { error } = await supabase
+        .from('memes')
+        .update({ likes_count: newLikesCount })
+        .eq('id', meme.id);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setMeme({ ...meme, likes_count: newLikesCount });
+      
+      if (isLiked) {
+        const updated = likedMemes.filter(id => id !== meme.id);
+        setLikedMemes(updated);
+        localStorage.setItem('likedMemes', JSON.stringify(updated));
+      } else {
+        const updated = [...likedMemes, meme.id];
+        setLikedMemes(updated);
+        localStorage.setItem('likedMemes', JSON.stringify(updated));
+      }
+    } catch (error) {
+      console.error('Error updating like:', error);
+    }
+  };
+
+  const shareOnTwitter = async () => {
+    // Update share count
+    if (meme) {
+      try {
+        const newShareCount = (meme.shares_count || 0) + 1;
+        await supabase
+          .from('memes')
+          .update({ shares_count: newShareCount })
+          .eq('id', meme.id);
+        
+        setMeme({ ...meme, shares_count: newShareCount });
+      } catch (error) {
+        console.error('Error updating share count:', error);
+      }
+    }
+    
+    const creatorHandle = meme.creator_x_handle || 'anonymous';
+    const text = `Sharing meme created by ${creatorHandle} 🚀\n\nJoin the movement: letspumpit.com`;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}&hashtags=PUMPIT,Solana,PumpItOnSol`;
     window.open(twitterUrl, '_blank');
   };
 
-  const shareOnTelegram = () => {
-    const text = `Check out my $PUMPIT meme! 🚀\n\nJoin us at @Pumpetcto`;
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`;
+  const shareOnTelegram = async () => {
+    // Update share count
+    if (meme) {
+      try {
+        const newShareCount = (meme.shares_count || 0) + 1;
+        await supabase
+          .from('memes')
+          .update({ shares_count: newShareCount })
+          .eq('id', meme.id);
+        
+        setMeme({ ...meme, shares_count: newShareCount });
+      } catch (error) {
+        console.error('Error updating share count:', error);
+      }
+    }
+    
+    const creatorHandle = meme.creator_x_handle || 'anonymous';
+    const text = `Sharing meme created by ${creatorHandle} 🚀\n\nVisit: letspumpit.com\nJoin us at @Pumpetcto`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(meme.image_url)}&text=${encodeURIComponent(text)}`;
     window.open(telegramUrl, '_blank');
   };
 
@@ -61,23 +131,35 @@ export default function MemePage() {
     );
   }
 
+  // Build the full URL for meta tags
+  const siteUrl = 'https://letspumpit.com';
+  const fullImageUrl = meme.image_url.startsWith('http') ? meme.image_url : `${siteUrl}${meme.image_url}`;
+  const pageUrl = `${siteUrl}/meme/${id}`;
+
   return (
     <>
       <Head>
         <title>$PUMPIT Meme by {meme.creator_x_handle}</title>
-        <meta name="description" content={`Check out this $PUMPIT meme created by ${meme.creator_x_handle}!`} />
+        <meta name="description" content={`Check out this $PUMPIT meme created by ${meme.creator_x_handle}! Join the movement on Solana.`} />
         
         {/* Open Graph for social media previews */}
         <meta property="og:title" content={`$PUMPIT Meme by ${meme.creator_x_handle}`} />
-        <meta property="og:description" content="Join the $PUMPIT movement on Solana!" />
-        <meta property="og:image" content={meme.image_url} />
+        <meta property="og:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
+        <meta property="og:image" content={fullImageUrl} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta property="og:type" content="website" />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:site_name" content="PumpItOnSol" />
         
-        {/* Twitter Card */}
+        {/* Twitter Card - MUST have these specific tags */}
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@pumpitonsol" />
+        <meta name="twitter:creator" content={`@${meme.creator_x_handle}`} />
         <meta name="twitter:title" content={`$PUMPIT Meme by ${meme.creator_x_handle}`} />
-        <meta name="twitter:description" content="Join the $PUMPIT movement on Solana!" />
-        <meta name="twitter:image" content={meme.image_url} />
+        <meta name="twitter:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
+        <meta name="twitter:image" content={fullImageUrl} />
+        <meta name="twitter:image:alt" content={`$PUMPIT meme created by ${meme.creator_x_handle}`} />
       </Head>
 
       <div className="meme-page">
@@ -97,18 +179,23 @@ export default function MemePage() {
             <div className="meme-details">
               <h1>Created by {meme.creator_x_handle}</h1>
               <div className="meme-stats">
-                <span>❤️ {meme.likes_count || 0} likes</span>
-                <span>🔄 {meme.shares_count || 0} shares</span>
+                <button 
+                  onClick={handleLike}
+                  className={`like-button ${likedMemes.includes(meme.id) ? 'liked' : ''}`}
+                >
+                  ❤️ {meme.likes_count || 0}
+                </button>
+                <span className="share-count">🔄 {meme.shares_count || 0} shares</span>
               </div>
               
               <div className="share-section">
                 <h3>Share this meme:</h3>
                 <div className="share-buttons">
                   <button onClick={shareOnTwitter} className="share-btn twitter">
-                    🐦 Share on X
+                    𝕏 Share on X
                   </button>
                   <button onClick={shareOnTelegram} className="share-btn telegram">
-                    💬 Share on Telegram
+                    TG Share on Telegram
                   </button>
                 </div>
               </div>
@@ -240,7 +327,38 @@ export default function MemePage() {
           display: flex;
           gap: 2rem;
           font-size: 1.2rem;
+          align-items: center;
+        }
+
+        .like-button {
+          background: none;
+          border: none;
           color: #999;
+          cursor: pointer;
+          font-size: 1.2rem;
+          padding: 0.5rem 1rem;
+          border-radius: 30px;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .like-button:hover {
+          background: rgba(255, 255, 0, 0.1);
+          color: #FFFF00;
+          transform: scale(1.1);
+        }
+
+        .like-button.liked {
+          color: #FFFF00;
+        }
+
+        .share-count {
+          color: #999;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
         }
 
         .share-section {
