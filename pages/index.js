@@ -453,10 +453,16 @@ export default function Home() {
 
   const handleXHandleSubmit = (e) => {
     e.preventDefault();
-    // Require at least 2 characters for a valid handle
-    if (xHandle && xHandle.trim().length >= 2) {
+    e.stopPropagation();
+    
+    // Get the current value from the form
+    const formData = new FormData(e.target);
+    const inputValue = formData.get('xhandle') || '';
+    
+    // Require at least 2 characters
+    if (inputValue && inputValue.trim().length >= 2) {
       // Add @ if user didn't include it
-      const formattedHandle = xHandle.startsWith('@') ? xHandle : `@${xHandle}`;
+      const formattedHandle = inputValue.startsWith('@') ? inputValue : `@${inputValue}`;
       setXHandle(formattedHandle);
       setShowXForm(false);
     }
@@ -1068,13 +1074,15 @@ export default function Home() {
                   <h3>Enter your X handle to continue</h3>
                   <input
                     type="text"
+                    name="xhandle"
                     placeholder="@yourhandle"
-                    value={xHandle}
-                    onChange={(e) => setXHandle(e.target.value)}
+                    defaultValue=""
                     required
                     minLength="2"
+                    autoComplete="off"
+                    autoFocus
                   />
-                  <button type="submit" disabled={xHandle.trim().length < 2}>Continue</button>
+                  <button type="submit">Continue</button>
                 </form>
               </div>
             )}
@@ -1086,13 +1094,14 @@ export default function Home() {
                   <div className="x-handle-input-group">
                     <input
                       type="text"
+                      name="xhandle"
                       placeholder="@yourhandle"
-                      value={xHandle}
-                      onChange={(e) => setXHandle(e.target.value)}
+                      defaultValue=""
                       required
                       minLength="2"
+                      autoComplete="off"
                     />
-                    <button type="submit" disabled={xHandle.trim().length < 2}>Set Handle</button>
+                    <button type="submit">Set Handle</button>
                   </div>
                 </form>
               </div>
