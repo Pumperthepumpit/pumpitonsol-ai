@@ -1460,6 +1460,7 @@ export default function Home() {
           position: relative;
           overflow: hidden;
           margin-top: 80px;
+          background: transparent;
         }
 
         .header-content {
@@ -1472,16 +1473,16 @@ export default function Home() {
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          opacity: 0.2;
+          opacity: 0.15;
           animation: float 6s ease-in-out infinite;
           pointer-events: none;
-          filter: blur(1px) drop-shadow(0 0 40px rgba(255, 255, 0, 0.4));
+          filter: blur(2px) drop-shadow(0 0 60px rgba(255, 255, 0, 0.6));
           z-index: 0;
         }
 
         .pumper-float img {
-          width: 400px;
-          height: 400px;
+          width: 250px;
+          height: 250px;
         }
 
         @keyframes float {
