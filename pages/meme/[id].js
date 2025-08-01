@@ -221,3 +221,128 @@ export default function MemePage() {
         .meme-display img {
           width: 100%;
           height: auto;
+          border-radius: 20px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .meme-details {
+          display: flex;
+          flex-direction: column;
+          gap: 2rem;
+        }
+
+        .meme-details h1 {
+          font-size: 2.5rem;
+          color: #FFFF00;
+        }
+
+        .meme-stats {
+          display: flex;
+          gap: 2rem;
+          font-size: 1.2rem;
+          color: #999;
+        }
+
+        .share-section {
+          background: rgba(255, 255, 255, 0.05);
+          padding: 2rem;
+          border-radius: 15px;
+          border: 1px solid rgba(255, 255, 0, 0.2);
+        }
+
+        .share-section h3 {
+          margin-bottom: 1rem;
+          color: #FFFF00;
+        }
+
+        .share-buttons {
+          display: flex;
+          gap: 1rem;
+          flex-wrap: wrap;
+        }
+
+        .share-btn {
+          padding: 1rem 2rem;
+          border: none;
+          border-radius: 50px;
+          font-size: 1rem;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          color: white;
+        }
+
+        .share-btn.twitter {
+          background: #1DA1F2;
+        }
+
+        .share-btn.twitter:hover {
+          background: #1a8cd8;
+          transform: translateY(-2px);
+        }
+
+        .share-btn.telegram {
+          background: #0088cc;
+        }
+
+        .share-btn.telegram:hover {
+          background: #0077b3;
+          transform: translateY(-2px);
+        }
+
+        .cta-section {
+          background: rgba(255, 255, 0, 0.05);
+          padding: 2rem;
+          border-radius: 15px;
+          border: 1px solid rgba(255, 255, 0, 0.2);
+          text-align: center;
+        }
+
+        .cta-section h2 {
+          margin-bottom: 1.5rem;
+          color: #FFFF00;
+        }
+
+        .create-button {
+          display: inline-block;
+          padding: 1rem 3rem;
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          text-decoration: none;
+          border-radius: 50px;
+          font-weight: bold;
+          font-size: 1.1rem;
+          transition: all 0.3s ease;
+        }
+
+        .create-button:hover {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.5);
+        }
+
+        @media (max-width: 768px) {
+          .meme-display {
+            grid-template-columns: 1fr;
+          }
+
+          .mini-header {
+            flex-direction: column;
+            gap: 1rem;
+          }
+
+          .meme-details h1 {
+            font-size: 1.8rem;
+          }
+
+          .share-buttons {
+            flex-direction: column;
+          }
+
+          .share-btn {
+            width: 100%;
+          }
+        }
+      `}</style>
+    </>
+  );
+}
