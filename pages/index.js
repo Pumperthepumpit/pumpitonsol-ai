@@ -214,7 +214,7 @@ export default function Home() {
     const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
     const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
     
-    // Handle rotation
+    // Handle rotation with increased sensitivity
     if (dragging.includes('-rotate')) {
       const element = dragging.replace('-rotate', '');
       const rect = element === 'lips' ? lipRef.current?.getBoundingClientRect() : exclamationRef.current?.getBoundingClientRect();
@@ -223,11 +223,12 @@ export default function Home() {
         const centerY = rect.top + rect.height / 2;
         const angle = Math.atan2(clientY - centerY, clientX - centerX) * 180 / Math.PI;
         const deltaAngle = angle - dragStart.angle;
+        const rotationSensitivity = 1.5; // Make rotation more sensitive
         
         if (element === 'lips') {
-          setLipRotation(startPos.rotation + deltaAngle);
+          setLipRotation(startPos.rotation + (deltaAngle * rotationSensitivity));
         } else {
-          setExclamationRotation(startPos.rotation + deltaAngle);
+          setExclamationRotation(startPos.rotation + (deltaAngle * rotationSensitivity));
         }
       }
       return;
@@ -308,13 +309,16 @@ export default function Home() {
         touch2.clientX - touch1.clientX
       ) * 180 / Math.PI;
       
-      // Apply scale
+      // Apply scale with increased sensitivity
       const scaleDelta = distance / gestureStart.distance;
-      const newScale = Math.max(0.3, Math.min(3, gestureStart.scale * scaleDelta));
+      const sensitivityMultiplier = 1.5; // Make pinch more sensitive
+      const adjustedDelta = 1 + (scaleDelta - 1) * sensitivityMultiplier;
+      const newScale = Math.max(0.3, Math.min(3, gestureStart.scale * adjustedDelta));
       
-      // Apply rotation
+      // Apply rotation with increased sensitivity
       const rotationDelta = angle - gestureStart.angle;
-      const newRotation = gestureStart.rotation + rotationDelta;
+      const rotationSensitivity = 1.5; // Make rotation more sensitive
+      const newRotation = gestureStart.rotation + (rotationDelta * rotationSensitivity);
       
       if (gestureStart.element === 'lips') {
         setLipScale(newScale);
@@ -1934,6 +1938,17 @@ export default function Home() {
           left: 50%;
           top: 50%;
           z-index: 10;
+        }
+
+        /* Bigger invisible touch target for mobile */
+        .overlay-element::before {
+          content: '';
+          position: absolute;
+          width: 150%;
+          height: 150%;
+          top: -25%;
+          left: -25%;
+          z-index: -1;
         }
 
         .overlay-element:active {
