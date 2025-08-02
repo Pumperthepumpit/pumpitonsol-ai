@@ -608,18 +608,18 @@ export default function Home() {
       });
       
       // Scale compensation factors
-      // When scale increases, overlays appear to shift down and toward center
-      // These factors compensate for that visual shift
-      const lipScaleCompensationY = -(lipScale - 1) * 30; // Negative to move up
-      const lipScaleCompensationX = -(lipScale - 1) * 15; // Adjust horizontal drift
+      // When scale increases, overlays appear to shift toward center horizontally
+      // This compensates for that visual shift
+      const lipScaleCompensationY = 0; // No vertical compensation needed
+      const lipScaleCompensationX = lipPosition.x * (lipScale - 1) * 0.5; // Compensate based on distance from center
       
-      const exclamationScaleCompensationY = -(exclamationScale - 1) * 30;
-      const exclamationScaleCompensationX = -(exclamationScale - 1) * 15;
+      const exclamationScaleCompensationY = 0; // No vertical compensation needed
+      const exclamationScaleCompensationX = exclamationPosition.x * (exclamationScale - 1) * 0.5;
       
       // Draw lips
       ctx.save();
       // Apply scale compensation to position
-      const lipAdjustedX = lipPosition.x + (lipPosition.x > 0 ? lipScaleCompensationX : -lipScaleCompensationX);
+      const lipAdjustedX = lipPosition.x - lipScaleCompensationX; // Subtract to counteract the drift
       const lipAdjustedY = lipPosition.y + lipScaleCompensationY;
       
       const lipCenterX = (displayedImgRect.width / 2 + lipAdjustedX) * scaleX;
@@ -639,7 +639,7 @@ export default function Home() {
       // Draw exclamation
       ctx.save();
       // Apply scale compensation to position
-      const exclamationAdjustedX = exclamationPosition.x + (exclamationPosition.x > 0 ? exclamationScaleCompensationX : -exclamationScaleCompensationX);
+      const exclamationAdjustedX = exclamationPosition.x - exclamationScaleCompensationX; // Subtract to counteract the drift
       const exclamationAdjustedY = exclamationPosition.y + exclamationScaleCompensationY;
       
       const exclamationCenterX = (displayedImgRect.width / 2 + exclamationAdjustedX) * scaleX;
