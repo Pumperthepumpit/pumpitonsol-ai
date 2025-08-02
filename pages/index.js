@@ -1944,10 +1944,10 @@ export default function Home() {
         .overlay-element::before {
           content: '';
           position: absolute;
-          width: 150%;
-          height: 150%;
-          top: -25%;
-          left: -25%;
+          width: 200%;
+          height: 200%;
+          top: -50%;
+          left: -50%;
           z-index: -1;
         }
 
