@@ -358,7 +358,7 @@ export default function Home() {
         document.body.style.cursor = '';
       };
     }
-  }, [dragging, dragStart, startPos, lipRotation, exclamationRotation]);
+  }, [dragging]);
 
   // Handle wheel for scaling
   const handleWheel = (e, element) => {
