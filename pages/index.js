@@ -611,10 +611,10 @@ export default function Home() {
       // When scale increases, overlays appear to shift down and toward center
       // These factors compensate for that visual shift
       const lipScaleCompensationY = -(lipScale - 1) * 30; // Negative to move up
-      const lipScaleCompensationX = -(lipScale - 1) * 45; // Fine-tuned to prevent center drift
+      const lipScaleCompensationX = -(lipScale - 1) * 40; // Horizontal drift compensation
       
       const exclamationScaleCompensationY = -(exclamationScale - 1) * 30;
-      const exclamationScaleCompensationX = -(exclamationScale - 1) * 45;
+      const exclamationScaleCompensationX = -(exclamationScale - 1) * 40;
       
       // Draw lips
       ctx.save();
