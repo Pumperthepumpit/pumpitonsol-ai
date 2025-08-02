@@ -552,7 +552,7 @@ export default function Home() {
     }
   };
 
-  const downloadMeme = async () => {
+  const downloadMeme = async (shouldDownload = true) => {
     if (!selectedFile || !showOverlays) return;
     
     try {
@@ -601,13 +601,15 @@ export default function Home() {
 
       if (dbError) throw dbError;
 
-      // Download locally
-      const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `pumpit-meme-${Date.now()}.png`;
-      a.click();
-      URL.revokeObjectURL(downloadUrl);
+      // Download locally only if shouldDownload is true
+      if (shouldDownload) {
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `pumpit-meme-${Date.now()}.png`;
+        a.click();
+        URL.revokeObjectURL(downloadUrl);
+      }
       
       setGeneratedMeme(publicUrl);
       
@@ -1126,12 +1128,20 @@ export default function Home() {
                       {isProcessing ? '🎨 Processing...' : '✨ Generate Meme'}
                     </button>
                   ) : (
-                    <button 
-                      onClick={downloadMeme}
-                      className="download-button"
-                    >
-                      💾 Download Meme
-                    </button>
+                    <>
+                      <button 
+                        onClick={() => downloadMeme(false)}
+                        className="complete-button"
+                      >
+                        ✅ Complete
+                      </button>
+                      <button 
+                        onClick={() => downloadMeme(true)}
+                        className="download-button"
+                      >
+                        💾 Download Meme
+                      </button>
+                    </>
                   )}
                 </div>
               )}
@@ -1903,6 +1913,7 @@ export default function Home() {
           align-items: center;
           justify-content: center;
           overflow: visible;
+          touch-action: none;
         }
 
         .preview-image {
@@ -1953,7 +1964,7 @@ export default function Home() {
           flex-wrap: wrap;
         }
 
-        .primary-button, .secondary-button, .download-button {
+        .primary-button, .secondary-button, .download-button, .complete-button {
           padding: 1rem 2rem;
           border-radius: 50px;
           font-weight: bold;
@@ -1982,6 +1993,16 @@ export default function Home() {
         .secondary-button:hover {
           background: rgba(255, 255, 255, 0.2);
           transform: translateY(-2px);
+        }
+
+        .complete-button {
+          background: linear-gradient(135deg, #00BFFF, #0080FF);
+          color: white;
+        }
+
+        .complete-button:hover {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(0, 191, 255, 0.4);
         }
 
         .download-button {
