@@ -607,52 +607,55 @@ export default function Home() {
         finalScale: lipBaseScale * lipScale
       });
       
-      // Scale compensation factors
-      // When scale increases, overlays appear to shift toward center horizontally
-      // This compensates for that visual shift
-      const lipScaleCompensationY = -(lipScale - 1) * 30; // Restore original vertical compensation
-      const lipScaleCompensationX = lipPosition.x * (lipScale - 1) * 1.0; // Increased horizontal compensation
-      
-      const exclamationScaleCompensationY = -(exclamationScale - 1) * 30; // Restore original vertical compensation
-      const exclamationScaleCompensationX = exclamationPosition.x * (exclamationScale - 1) * 1.0;
-      
-      // Draw lips
+      // Draw lips with proper transformation order (matches CSS)
       ctx.save();
-      // Apply scale compensation to position
-      const lipAdjustedX = lipPosition.x - lipScaleCompensationX; // Subtract to counteract the drift
-      const lipAdjustedY = lipPosition.y + lipScaleCompensationY;
       
-      const lipCenterX = (displayedImgRect.width / 2 + lipAdjustedX) * scaleX;
-      const lipCenterY = (displayedImgRect.height / 2 + lipAdjustedY) * scaleY;
+      // Calculate final scaled dimensions
+      const finalLipScale = (lipBaseScale * lipScale) / 2;
+      const scaledLipWidth = lipImage.width * finalLipScale;
+      const scaledLipHeight = lipImage.height * finalLipScale;
+      
+      // Calculate center position in canvas coordinates
+      const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x) * scaleX;
+      const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
+      
+      // Translate to center, rotate, then offset for drawing
       ctx.translate(lipCenterX, lipCenterY);
       ctx.rotate(lipRotation * Math.PI / 180);
-      // Divide by 2 to fix the double size issue
-      const finalLipScale = (lipBaseScale * lipScale) / 2;
-      ctx.scale(finalLipScale, finalLipScale);
+      
+      // Draw centered at origin (which is now the rotated center)
       ctx.drawImage(
         lipImage,
-        -lipImage.width / 2,
-        -lipImage.height / 2
+        -scaledLipWidth / 2,
+        -scaledLipHeight / 2,
+        scaledLipWidth,
+        scaledLipHeight
       );
       ctx.restore();
       
-      // Draw exclamation
+      // Draw exclamation with proper transformation order (matches CSS)
       ctx.save();
-      // Apply scale compensation to position
-      const exclamationAdjustedX = exclamationPosition.x - exclamationScaleCompensationX; // Subtract to counteract the drift
-      const exclamationAdjustedY = exclamationPosition.y + exclamationScaleCompensationY;
       
-      const exclamationCenterX = (displayedImgRect.width / 2 + exclamationAdjustedX) * scaleX;
-      const exclamationCenterY = (displayedImgRect.height / 2 + exclamationAdjustedY) * scaleY;
+      // Calculate final scaled dimensions
+      const finalExclamationScale = (exclamationBaseScale * exclamationScale) / 2;
+      const scaledExclamationWidth = exclamationImage.width * finalExclamationScale;
+      const scaledExclamationHeight = exclamationImage.height * finalExclamationScale;
+      
+      // Calculate center position in canvas coordinates
+      const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x) * scaleX;
+      const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
+      
+      // Translate to center, rotate, then offset for drawing
       ctx.translate(exclamationCenterX, exclamationCenterY);
       ctx.rotate(exclamationRotation * Math.PI / 180);
-      // Divide by 2 to fix the double size issue
-      const finalExclamationScale = (exclamationBaseScale * exclamationScale) / 2;
-      ctx.scale(finalExclamationScale, finalExclamationScale);
+      
+      // Draw centered at origin (which is now the rotated center)
       ctx.drawImage(
         exclamationImage,
-        -exclamationImage.width / 2,
-        -exclamationImage.height / 2
+        -scaledExclamationWidth / 2,
+        -scaledExclamationHeight / 2,
+        scaledExclamationWidth,
+        scaledExclamationHeight
       );
       ctx.restore();
       
