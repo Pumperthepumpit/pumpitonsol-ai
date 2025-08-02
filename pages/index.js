@@ -602,8 +602,8 @@ export default function Home() {
       // Draw lips with scale compensation
       ctx.save();
       
-      // Size calculation - match preview
-      const lipSizeInCanvas = baseDisplaySize * lipScale * scaleX;
+      // Size calculation - divide by 2 to match preview
+      const lipSizeInCanvas = (baseDisplaySize * lipScale * scaleX) / 2;
       
       // Position WITH SCALE COMPENSATION
       // When scaled in preview, position might be stored differently
@@ -629,8 +629,8 @@ export default function Home() {
       // Draw exclamation with scale compensation
       ctx.save();
       
-      // Size calculation - match preview
-      const exclamationSizeInCanvas = baseDisplaySize * exclamationScale * scaleX;
+      // Size calculation - divide by 2 to match preview
+      const exclamationSizeInCanvas = (baseDisplaySize * exclamationScale * scaleX) / 2;
       
       // Position WITH SCALE COMPENSATION
       const compensatedExclamationX = exclamationPosition.x / exclamationScale;
