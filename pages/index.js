@@ -586,78 +586,62 @@ export default function Home() {
       const scaleX = img.width / displayedImgRect.width;
       const scaleY = img.height / displayedImgRect.height;
       
-      // Calculate base scale to match the preview display
-      // The overlays are 120x120, displayed at 120px CSS, but we need to match the visual size
+      // Simple approach - just match what we see in preview
+      // The preview shows overlays at 120px CSS base size
+      // We need to scale that to canvas pixels
       const baseDisplaySize = 120;
-      const canvasToDisplayRatio = scaleX; // This is how much bigger the canvas is than display
-      
-      // The base scale should make the overlay appear the same size as in CSS
-      // Since CSS shows at 120px and images are 120px, we need to account for device pixel ratio
-      const lipBaseScale = 1.0; // 1:1 since images are already 120x120
-      const exclamationBaseScale = 1.0;
       
       // Debug logging
-      console.log('Transform calculations:', {
-        lipPosition,
+      console.log('Simple scaling:', {
         lipScale,
-        exclamationPosition, 
         exclamationScale,
-        canvasToDisplayRatio,
-        displaySize: { w: displayedImgRect.width, h: displayedImgRect.height },
-        canvasSize: { w: img.width, h: img.height }
+        scaleX,
+        scaleY
       });
       
-      // Draw lips to match preview exactly
+      // Draw lips - simple and direct
       ctx.save();
       
-      // Calculate position on canvas
+      // Position on canvas
       const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x) * scaleX;
       const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
       
-      // Translate to center
       ctx.translate(lipCenterX, lipCenterY);
-      
-      // Apply rotation
       ctx.rotate(lipRotation * Math.PI / 180);
       
-      // Apply scale - this should match the visual scale from preview
-      const finalLipScale = lipBaseScale * lipScale * canvasToDisplayRatio;
+      // Draw at the size that matches preview
+      // Just the base size times the user's scale
+      const lipSize = baseDisplaySize * lipScale;
       
-      // Draw at the scaled size
-      const scaledLipSize = baseDisplaySize * lipScale * canvasToDisplayRatio;
       ctx.drawImage(
         lipImage,
-        -scaledLipSize / 2,
-        -scaledLipSize / 2,
-        scaledLipSize,
-        scaledLipSize
+        -lipSize / 2,
+        -lipSize / 2,
+        lipSize,
+        lipSize
       );
       ctx.restore();
       
-      // Draw exclamation to match preview exactly  
+      // Draw exclamation - simple and direct
       ctx.save();
       
-      // Calculate position on canvas
+      // Position on canvas
       const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x) * scaleX;
       const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
       
-      // Translate to center
       ctx.translate(exclamationCenterX, exclamationCenterY);
-      
-      // Apply rotation
       ctx.rotate(exclamationRotation * Math.PI / 180);
       
-      // Apply scale - this should match the visual scale from preview
-      const finalExclamationScale = exclamationBaseScale * exclamationScale * canvasToDisplayRatio;
+      // Draw at the size that matches preview
+      // Just the base size times the user's scale
+      const exclamationSize = baseDisplaySize * exclamationScale;
       
-      // Draw at the scaled size
-      const scaledExclamationSize = baseDisplaySize * exclamationScale * canvasToDisplayRatio;
       ctx.drawImage(
         exclamationImage,
-        -scaledExclamationSize / 2,
-        -scaledExclamationSize / 2,
-        scaledExclamationSize,
-        scaledExclamationSize
+        -exclamationSize / 2,
+        -exclamationSize / 2,
+        exclamationSize,
+        exclamationSize
       );
       ctx.restore();
       
