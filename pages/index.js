@@ -587,72 +587,77 @@ export default function Home() {
       const scaleY = img.height / displayedImgRect.height;
       
       // Calculate base scale to match the preview display
-      // Since images are now 120x120 and CSS shows them at 120px, we start with scale 1.0
-      const lipBaseScale = scaleX; // Simple 1:1 ratio adjusted for canvas resolution
-      const exclamationBaseScale = scaleX; // Simple 1:1 ratio adjusted for canvas resolution
+      // The overlays are 120x120, displayed at 120px CSS, but we need to match the visual size
+      const baseDisplaySize = 120;
+      const canvasToDisplayRatio = scaleX; // This is how much bigger the canvas is than display
+      
+      // The base scale should make the overlay appear the same size as in CSS
+      // Since CSS shows at 120px and images are 120px, we need to account for device pixel ratio
+      const lipBaseScale = 1.0; // 1:1 since images are already 120x120
+      const exclamationBaseScale = 1.0;
       
       // Debug logging
       console.log('Transform calculations:', {
         lipPosition,
         lipScale,
-        exclamationPosition,
+        exclamationPosition, 
         exclamationScale,
-        baseScales: { lipBaseScale, exclamationBaseScale },
-        scaleX,
-        scaleY
+        canvasToDisplayRatio,
+        displaySize: { w: displayedImgRect.width, h: displayedImgRect.height },
+        canvasSize: { w: img.width, h: img.height }
       });
       
-      // Draw lips with proper center-point scaling
+      // Draw lips to match preview exactly
       ctx.save();
       
-      // Calculate where the center of the overlay should be on the canvas
+      // Calculate position on canvas
       const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x) * scaleX;
       const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
       
-      // Translate to the center point
+      // Translate to center
       ctx.translate(lipCenterX, lipCenterY);
       
       // Apply rotation
       ctx.rotate(lipRotation * Math.PI / 180);
       
-      // Apply scale (no more divide by 2 needed!)
-      const finalLipScale = lipBaseScale * lipScale;
-      ctx.scale(finalLipScale, finalLipScale);
+      // Apply scale - this should match the visual scale from preview
+      const finalLipScale = lipBaseScale * lipScale * canvasToDisplayRatio;
       
-      // Draw the image centered
+      // Draw at the scaled size
+      const scaledLipSize = baseDisplaySize * lipScale * canvasToDisplayRatio;
       ctx.drawImage(
         lipImage,
-        -60, // Half of 120px
-        -60, // Half of 120px
-        120, // Actual size
-        120  // Actual size
+        -scaledLipSize / 2,
+        -scaledLipSize / 2,
+        scaledLipSize,
+        scaledLipSize
       );
       ctx.restore();
       
-      // Draw exclamation with proper center-point scaling
+      // Draw exclamation to match preview exactly  
       ctx.save();
       
-      // Calculate where the center of the overlay should be on the canvas
+      // Calculate position on canvas
       const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x) * scaleX;
       const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
       
-      // Translate to the center point
+      // Translate to center
       ctx.translate(exclamationCenterX, exclamationCenterY);
       
       // Apply rotation
       ctx.rotate(exclamationRotation * Math.PI / 180);
       
-      // Apply scale (no more divide by 2 needed!)
-      const finalExclamationScale = exclamationBaseScale * exclamationScale;
-      ctx.scale(finalExclamationScale, finalExclamationScale);
+      // Apply scale - this should match the visual scale from preview
+      const finalExclamationScale = exclamationBaseScale * exclamationScale * canvasToDisplayRatio;
       
-      // Draw the image centered
+      // Draw at the scaled size
+      const scaledExclamationSize = baseDisplaySize * exclamationScale * canvasToDisplayRatio;
       ctx.drawImage(
         exclamationImage,
-        -60, // Half of 120px
-        -60, // Half of 120px
-        120, // Actual size
-        120  // Actual size
+        -scaledExclamationSize / 2,
+        -scaledExclamationSize / 2,
+        scaledExclamationSize,
+        scaledExclamationSize
       );
       ctx.restore();
       
