@@ -618,8 +618,8 @@ export default function Home() {
       
       // Draw lips
       ctx.save();
-      // Apply scale compensation to position
-      const lipAdjustedX = lipPosition.x + (lipPosition.x > 0 ? lipScaleCompensationX : -lipScaleCompensationX);
+      // Apply scale compensation to position - FIXED: proper direction to push AWAY from center
+      const lipAdjustedX = lipPosition.x + (lipPosition.x > 0 ? -lipScaleCompensationX : lipScaleCompensationX);
       const lipAdjustedY = lipPosition.y + lipScaleCompensationY;
       
       const lipCenterX = (displayedImgRect.width / 2 + lipAdjustedX) * scaleX;
@@ -638,8 +638,8 @@ export default function Home() {
       
       // Draw exclamation
       ctx.save();
-      // Apply scale compensation to position
-      const exclamationAdjustedX = exclamationPosition.x + (exclamationPosition.x > 0 ? exclamationScaleCompensationX : -exclamationScaleCompensationX);
+      // Apply scale compensation to position - FIXED: proper direction to push AWAY from center
+      const exclamationAdjustedX = exclamationPosition.x + (exclamationPosition.x > 0 ? -exclamationScaleCompensationX : exclamationScaleCompensationX);
       const exclamationAdjustedY = exclamationPosition.y + exclamationScaleCompensationY;
       
       const exclamationCenterX = (displayedImgRect.width / 2 + exclamationAdjustedX) * scaleX;
