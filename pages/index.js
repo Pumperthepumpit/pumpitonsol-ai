@@ -611,15 +611,15 @@ export default function Home() {
       // When scale increases, overlays appear to shift down and toward center
       // These factors compensate for that visual shift
       const lipScaleCompensationY = -(lipScale - 1) * 30; // Negative to move up
-      const lipScaleCompensationX = -(lipScale - 1) * 40; // Horizontal drift compensation
+      const lipScaleCompensationX = -(lipScale - 1) * 15; // Adjust horizontal drift
       
       const exclamationScaleCompensationY = -(exclamationScale - 1) * 30;
-      const exclamationScaleCompensationX = -(exclamationScale - 1) * 40;
+      const exclamationScaleCompensationX = -(exclamationScale - 1) * 15;
       
       // Draw lips
       ctx.save();
-      // Apply scale compensation to position - FIXED: proper direction to push AWAY from center
-      const lipAdjustedX = lipPosition.x + (lipPosition.x > 0 ? -lipScaleCompensationX : lipScaleCompensationX);
+      // Apply scale compensation to position
+      const lipAdjustedX = lipPosition.x + (lipPosition.x > 0 ? lipScaleCompensationX : -lipScaleCompensationX);
       const lipAdjustedY = lipPosition.y + lipScaleCompensationY;
       
       const lipCenterX = (displayedImgRect.width / 2 + lipAdjustedX) * scaleX;
@@ -638,8 +638,8 @@ export default function Home() {
       
       // Draw exclamation
       ctx.save();
-      // Apply scale compensation to position - FIXED: proper direction to push AWAY from center
-      const exclamationAdjustedX = exclamationPosition.x + (exclamationPosition.x > 0 ? -exclamationScaleCompensationX : exclamationScaleCompensationX);
+      // Apply scale compensation to position
+      const exclamationAdjustedX = exclamationPosition.x + (exclamationPosition.x > 0 ? exclamationScaleCompensationX : -exclamationScaleCompensationX);
       const exclamationAdjustedY = exclamationPosition.y + exclamationScaleCompensationY;
       
       const exclamationCenterX = (displayedImgRect.width / 2 + exclamationAdjustedX) * scaleX;
