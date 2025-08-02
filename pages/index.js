@@ -586,62 +586,68 @@ export default function Home() {
       const scaleX = img.width / displayedImgRect.width;
       const scaleY = img.height / displayedImgRect.height;
       
-      // Simple approach - just match what we see in preview
-      // The preview shows overlays at 120px CSS base size
-      // We need to scale that to canvas pixels
+      // Match preview sizing
       const baseDisplaySize = 120;
       
       // Debug logging
-      console.log('Simple scaling:', {
+      console.log('Android scaling debug:', {
         lipScale,
         exclamationScale,
         scaleX,
-        scaleY
+        scaleY,
+        lipPosition,
+        exclamationPosition
       });
       
-      // Draw lips - simple and direct
+      // Draw lips with scale compensation
       ctx.save();
       
-      // Position on canvas
-      const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x) * scaleX;
-      const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
+      // Size calculation - match preview
+      const lipSizeInCanvas = baseDisplaySize * lipScale * scaleX;
+      
+      // Position WITH SCALE COMPENSATION
+      // When scaled in preview, position might be stored differently
+      // Try compensating by dividing position by scale
+      const compensatedLipX = lipPosition.x / lipScale;
+      const compensatedLipY = lipPosition.y / lipScale;
+      
+      const lipCenterX = (displayedImgRect.width / 2 + compensatedLipX) * scaleX;
+      const lipCenterY = (displayedImgRect.height / 2 + compensatedLipY) * scaleY;
       
       ctx.translate(lipCenterX, lipCenterY);
       ctx.rotate(lipRotation * Math.PI / 180);
       
-      // Draw at the size that matches preview
-      // Just the base size times the user's scale
-      const lipSize = baseDisplaySize * lipScale;
-      
       ctx.drawImage(
         lipImage,
-        -lipSize / 2,
-        -lipSize / 2,
-        lipSize,
-        lipSize
+        -lipSizeInCanvas / 2,
+        -lipSizeInCanvas / 2,
+        lipSizeInCanvas,
+        lipSizeInCanvas
       );
       ctx.restore();
       
-      // Draw exclamation - simple and direct
+      // Draw exclamation with scale compensation
       ctx.save();
       
-      // Position on canvas
-      const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x) * scaleX;
-      const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
+      // Size calculation - match preview
+      const exclamationSizeInCanvas = baseDisplaySize * exclamationScale * scaleX;
+      
+      // Position WITH SCALE COMPENSATION
+      const compensatedExclamationX = exclamationPosition.x / exclamationScale;
+      const compensatedExclamationY = exclamationPosition.y / exclamationScale;
+      
+      const exclamationCenterX = (displayedImgRect.width / 2 + compensatedExclamationX) * scaleX;
+      const exclamationCenterY = (displayedImgRect.height / 2 + compensatedExclamationY) * scaleY;
       
       ctx.translate(exclamationCenterX, exclamationCenterY);
       ctx.rotate(exclamationRotation * Math.PI / 180);
       
-      // Draw at the size that matches preview
-      // Just the base size times the user's scale
-      const exclamationSize = baseDisplaySize * exclamationScale;
-      
       ctx.drawImage(
         exclamationImage,
-        -exclamationSize / 2,
-        -exclamationSize / 2,
-        exclamationSize,
-        exclamationSize
+        -exclamationSizeInCanvas / 2,
+        -exclamationSizeInCanvas / 2,
+        exclamationSizeInCanvas,
+        exclamationSizeInCanvas
       );
       ctx.restore();
       
