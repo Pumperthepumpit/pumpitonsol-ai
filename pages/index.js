@@ -1,6 +1,36 @@
-﻿import Head from 'next/head';
+﻿// More accurate approach using percentages
+      const baseDisplaySize = 120;
+      
+      // Debug logging
+      console.log('Percentage-based approach:', {
+        lipScale,
+        lipPosition,
+        displayedSize: { w: displayedImgRect.width, h: displayedImgRect.height },
+        canvasSize: { w: img.width, h: img.height }
+      });
+      
+      // Calculate where the overlays are as a percentage of the displayed image
+      const lipPercentX = lipPosition.x / displayedImgRect.width;
+      const lipPercentY = lipPosition.y / displayedImgRect.height;
+      
+      const exclamationPercentX = exclamationPosition.x / displayedImgRect.width;
+      const exclamationPercentY = exclamationPosition.y / displayedImgRect.height;
+      
+      // Draw lips
+      ctx.save();
+      
+      // Position on canvas using percentages
+      const lipCanvasX = (img.width / 2) + (lipPercentX * img.width);
+      const lipCanvasY = (img.height / 2) + (lipPercentY * img.height);
+      
+      ctx.translate(lipCanvasX, lipCanvasY);
+      ctx.rotate(lipRotation * Math.PI / 180);
+      
+      // Size: scale the 120px base to canvas proportionally
+      const sizeRatio = img.width / displayedImgRect.width;import Head from 'next/head';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import html2canvas from 'html2canvas';
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -555,100 +585,24 @@ export default function Home() {
     if (!selectedFile || !showOverlays) return;
     
     try {
-      // Create canvas
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      // Use html2canvas to capture the preview exactly as shown
+      const previewContainer = containerRef.current;
       
-      // Load base image
-      const img = new Image();
-      img.src = preview;
-      await new Promise(resolve => img.onload = resolve);
-      
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      
-      // Load overlay images
-      const [lipImage, exclamationImage] = await Promise.all([
-        loadImage('/meme-assets/lips.png'),
-        loadImage('/meme-assets/exclamation.png')
-      ]);
-      
-      // Get current positions and transforms
-      const container = containerRef.current;
-      const containerRect = container.getBoundingClientRect();
-      
-      // Get the displayed image size
-      const displayedImg = container.querySelector('.preview-image');
-      const displayedImgRect = displayedImg.getBoundingClientRect();
-      
-      // Calculate scale factors
-      const scaleX = img.width / displayedImgRect.width;
-      const scaleY = img.height / displayedImgRect.height;
-      
-      // Match preview sizing
-      const baseDisplaySize = 120;
-      
-      // Debug logging
-      console.log('Scaling debug:', {
-        lipScale,
-        exclamationScale,
-        scaleX,
-        scaleY,
-        lipPosition,
-        exclamationPosition
+      // Configure html2canvas options for better quality
+      const canvas = await html2canvas(previewContainer, {
+        backgroundColor: null,
+        scale: 2, // Higher quality
+        logging: false,
+        useCORS: true, // Handle cross-origin images
+        allowTaint: true
       });
-      
-      // Draw lips
-      ctx.save();
-      
-      // Size calculation - divide by 2 to match preview (KEEP THIS!)
-      const lipSizeInCanvas = (baseDisplaySize * lipScale * scaleX) / 2;
-      
-      // Position WITHOUT compensation - just use the position directly
-      const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x) * scaleX;
-      const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
-      
-      ctx.translate(lipCenterX, lipCenterY);
-      ctx.rotate(lipRotation * Math.PI / 180);
-      
-      ctx.drawImage(
-        lipImage,
-        -lipSizeInCanvas / 2,
-        -lipSizeInCanvas / 2,
-        lipSizeInCanvas,
-        lipSizeInCanvas
-      );
-      ctx.restore();
-      
-      // Draw exclamation
-      ctx.save();
-      
-      // Size calculation - divide by 2 to match preview (KEEP THIS!)
-      const exclamationSizeInCanvas = (baseDisplaySize * exclamationScale * scaleX) / 2;
-      
-      // Position WITHOUT compensation - just use the position directly
-      const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x) * scaleX;
-      const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
-      
-      ctx.translate(exclamationCenterX, exclamationCenterY);
-      ctx.rotate(exclamationRotation * Math.PI / 180);
-      
-      ctx.drawImage(
-        exclamationImage,
-        -exclamationSizeInCanvas / 2,
-        -exclamationSizeInCanvas / 2,
-        exclamationSizeInCanvas,
-        exclamationSizeInCanvas
-      );
-      ctx.restore();
       
       // Convert to blob
       const blob = await new Promise(resolve => {
-        canvas.toBlob(resolve, 'image/png');
+        canvas.toBlob(resolve, 'image/png', 1.0);
       });
 
-      // Upload to Supabase Storage
+      // Upload to Supabase Storage (same as before)
       const fileName = `meme-${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('memes')
@@ -658,12 +612,12 @@ export default function Home() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
+      // Get public URL (same as before)
       const { data: { publicUrl } } = supabase.storage
         .from('memes')
         .getPublicUrl(fileName);
 
-      // Save to database
+      // Save to database (same as before)
       const { data: memeData, error: dbError } = await supabase
         .from('memes')
         .insert({
@@ -676,19 +630,20 @@ export default function Home() {
 
       if (dbError) throw dbError;
 
-      // Download locally
+      // Download locally (same as before)
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
       a.download = `pumpit-meme-${Date.now()}.png`;
       a.click();
+      URL.revokeObjectURL(downloadUrl);
       
       setGeneratedMeme(publicUrl);
       
-      // Refresh community memes
+      // Refresh community memes (same as before)
       fetchCommunityMemes();
       
-      // Show share options
+      // Show share options (same as before)
       setTimeout(() => {
         if (confirm('Meme created! Share it on X/Twitter?')) {
           shareOnTwitter(memeData.id);
