@@ -591,7 +591,9 @@ export default function Home() {
         original: { w: img.width, h: img.height },
         displayed: { w: displayedImgRect.width, h: displayedImgRect.height },
         scaleX, scaleY,
-        lipImageSize: { w: lipImage.width, h: lipImage.height }
+        lipImageSize: { w: lipImage.width, h: lipImage.height },
+        lipPosition,
+        lipScale
       });
       
       // Calculate base scale to match 120px display size
@@ -607,55 +609,51 @@ export default function Home() {
         finalScale: lipBaseScale * lipScale
       });
       
-      // Draw lips with proper transformation order (matches CSS)
+      // Scale compensation factors - RESTORED with better values
+      // When scale increases, overlays shift toward center and down
+      const lipScaleCompensationY = -(lipScale - 1) * 30 * scaleY; // Scale the compensation too
+      const lipScaleCompensationX = -(lipPosition.x * (lipScale - 1)); // Negative to push away from center
+      
+      const exclamationScaleCompensationY = -(exclamationScale - 1) * 30 * scaleY;
+      const exclamationScaleCompensationX = -(exclamationPosition.x * (exclamationScale - 1));
+      
+      // Draw lips
       ctx.save();
+      // Apply scale compensation to position
+      const lipAdjustedX = lipPosition.x + lipScaleCompensationX;
+      const lipAdjustedY = lipPosition.y + lipScaleCompensationY;
       
-      // Calculate final scaled dimensions
-      const finalLipScale = (lipBaseScale * lipScale) / 2;
-      const scaledLipWidth = lipImage.width * finalLipScale;
-      const scaledLipHeight = lipImage.height * finalLipScale;
-      
-      // Calculate center position in canvas coordinates
-      const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x) * scaleX;
-      const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
-      
-      // Translate to center, rotate, then offset for drawing
+      const lipCenterX = (displayedImgRect.width / 2 + lipAdjustedX) * scaleX;
+      const lipCenterY = (displayedImgRect.height / 2 + lipAdjustedY) * scaleY;
       ctx.translate(lipCenterX, lipCenterY);
       ctx.rotate(lipRotation * Math.PI / 180);
-      
-      // Draw centered at origin (which is now the rotated center)
+      // Divide by 2 to fix the double size issue
+      const finalLipScale = (lipBaseScale * lipScale) / 2;
+      ctx.scale(finalLipScale, finalLipScale);
       ctx.drawImage(
         lipImage,
-        -scaledLipWidth / 2,
-        -scaledLipHeight / 2,
-        scaledLipWidth,
-        scaledLipHeight
+        -lipImage.width / 2,
+        -lipImage.height / 2
       );
       ctx.restore();
       
-      // Draw exclamation with proper transformation order (matches CSS)
+      // Draw exclamation
       ctx.save();
+      // Apply scale compensation to position
+      const exclamationAdjustedX = exclamationPosition.x + exclamationScaleCompensationX;
+      const exclamationAdjustedY = exclamationPosition.y + exclamationScaleCompensationY;
       
-      // Calculate final scaled dimensions
-      const finalExclamationScale = (exclamationBaseScale * exclamationScale) / 2;
-      const scaledExclamationWidth = exclamationImage.width * finalExclamationScale;
-      const scaledExclamationHeight = exclamationImage.height * finalExclamationScale;
-      
-      // Calculate center position in canvas coordinates
-      const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x) * scaleX;
-      const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
-      
-      // Translate to center, rotate, then offset for drawing
+      const exclamationCenterX = (displayedImgRect.width / 2 + exclamationAdjustedX) * scaleX;
+      const exclamationCenterY = (displayedImgRect.height / 2 + exclamationAdjustedY) * scaleY;
       ctx.translate(exclamationCenterX, exclamationCenterY);
       ctx.rotate(exclamationRotation * Math.PI / 180);
-      
-      // Draw centered at origin (which is now the rotated center)
+      // Divide by 2 to fix the double size issue
+      const finalExclamationScale = (exclamationBaseScale * exclamationScale) / 2;
+      ctx.scale(finalExclamationScale, finalExclamationScale);
       ctx.drawImage(
         exclamationImage,
-        -scaledExclamationWidth / 2,
-        -scaledExclamationHeight / 2,
-        scaledExclamationWidth,
-        scaledExclamationHeight
+        -exclamationImage.width / 2,
+        -exclamationImage.height / 2
       );
       ctx.restore();
       
