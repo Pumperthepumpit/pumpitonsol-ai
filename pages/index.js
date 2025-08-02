@@ -611,10 +611,10 @@ export default function Home() {
       // When scale increases, overlays appear to shift toward center horizontally
       // This compensates for that visual shift
       const lipScaleCompensationY = 0; // No vertical compensation needed
-      const lipScaleCompensationX = lipPosition.x * (lipScale - 1) * 0.5; // Compensate based on distance from center
+      const lipScaleCompensationX = lipPosition.x * (lipScale - 1) * 1.0; // Increased compensation factor
       
       const exclamationScaleCompensationY = 0; // No vertical compensation needed
-      const exclamationScaleCompensationX = exclamationPosition.x * (exclamationScale - 1) * 0.5;
+      const exclamationScaleCompensationX = exclamationPosition.x * (exclamationScale - 1) * 1.0;
       
       // Draw lips
       ctx.save();
