@@ -590,7 +590,7 @@ export default function Home() {
       const baseDisplaySize = 120;
       
       // Debug logging
-      console.log('Android scaling debug:', {
+      console.log('Scaling debug:', {
         lipScale,
         exclamationScale,
         scaleX,
@@ -599,20 +599,15 @@ export default function Home() {
         exclamationPosition
       });
       
-      // Draw lips with scale compensation
+      // Draw lips
       ctx.save();
       
-      // Size calculation - divide by 2 to match preview
+      // Size calculation - divide by 2 to match preview (KEEP THIS!)
       const lipSizeInCanvas = (baseDisplaySize * lipScale * scaleX) / 2;
       
-      // Position WITH SCALE COMPENSATION
-      // When scaled in preview, position might be stored differently
-      // Try compensating by dividing position by scale
-      const compensatedLipX = lipPosition.x / lipScale;
-      const compensatedLipY = lipPosition.y / lipScale;
-      
-      const lipCenterX = (displayedImgRect.width / 2 + compensatedLipX) * scaleX;
-      const lipCenterY = (displayedImgRect.height / 2 + compensatedLipY) * scaleY;
+      // Position WITHOUT compensation - just use the position directly
+      const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x) * scaleX;
+      const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
       
       ctx.translate(lipCenterX, lipCenterY);
       ctx.rotate(lipRotation * Math.PI / 180);
@@ -626,18 +621,15 @@ export default function Home() {
       );
       ctx.restore();
       
-      // Draw exclamation with scale compensation
+      // Draw exclamation
       ctx.save();
       
-      // Size calculation - divide by 2 to match preview
+      // Size calculation - divide by 2 to match preview (KEEP THIS!)
       const exclamationSizeInCanvas = (baseDisplaySize * exclamationScale * scaleX) / 2;
       
-      // Position WITH SCALE COMPENSATION
-      const compensatedExclamationX = exclamationPosition.x / exclamationScale;
-      const compensatedExclamationY = exclamationPosition.y / exclamationScale;
-      
-      const exclamationCenterX = (displayedImgRect.width / 2 + compensatedExclamationX) * scaleX;
-      const exclamationCenterY = (displayedImgRect.height / 2 + compensatedExclamationY) * scaleY;
+      // Position WITHOUT compensation - just use the position directly
+      const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x) * scaleX;
+      const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
       
       ctx.translate(exclamationCenterX, exclamationCenterY);
       ctx.rotate(exclamationRotation * Math.PI / 180);
