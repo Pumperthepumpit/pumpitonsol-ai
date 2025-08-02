@@ -358,7 +358,7 @@ export default function Home() {
         document.body.style.cursor = '';
       };
     }
-  }, [dragging]);
+  }, [dragging, dragStart, startPos]);
 
   // Handle wheel for scaling
   const handleWheel = (e, element) => {
@@ -573,7 +573,7 @@ export default function Home() {
         canvas.toBlob(resolve, 'image/png', 1.0);
       });
 
-      // Upload to Supabase Storage (same as before)
+      // Upload to Supabase Storage
       const fileName = `meme-${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('memes')
@@ -583,12 +583,12 @@ export default function Home() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL (same as before)
+      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('memes')
         .getPublicUrl(fileName);
 
-      // Save to database (same as before)
+      // Save to database
       const { data: memeData, error: dbError } = await supabase
         .from('memes')
         .insert({
@@ -601,7 +601,7 @@ export default function Home() {
 
       if (dbError) throw dbError;
 
-      // Download locally (same as before)
+      // Download locally
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
@@ -611,10 +611,10 @@ export default function Home() {
       
       setGeneratedMeme(publicUrl);
       
-      // Refresh community memes (same as before)
+      // Refresh community memes
       fetchCommunityMemes();
       
-      // Show share options (same as before)
+      // Show share options
       setTimeout(() => {
         if (confirm('Meme created! Share it on X/Twitter?')) {
           shareOnTwitter(memeData.id);
@@ -747,6 +747,8 @@ export default function Home() {
     const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(imageUrl)}&text=${encodeURIComponent(text)}`;
     window.open(telegramUrl, '_blank');
   };
+
+  // Helper function to load images - REMOVED (not needed with html2canvas)
 
   // Get transform style as string
   const getLipTransform = () => {
@@ -1603,27 +1605,27 @@ export default function Home() {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 1.5rem;
-          margin-bottom: 2rem;
+          margin: 2rem 0;
         }
 
         .token-card {
-          background: rgba(0, 0, 0, 0.5);
-          padding: 1.5rem;
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 0, 0.2);
           border-radius: 15px;
+          padding: 2rem;
           text-align: center;
-          border: 1px solid rgba(255, 255, 255, 0.1);
           transition: all 0.3s ease;
         }
 
         .token-card:hover {
           transform: translateY(-5px);
-          border-color: rgba(255, 255, 0, 0.5);
-          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+          border-color: #FFFF00;
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.2);
         }
 
         .token-card h4 {
-          color: #FFD700;
-          margin-bottom: 0.5rem;
+          color: #FFFF00;
+          margin-bottom: 1rem;
           font-size: 0.9rem;
           text-transform: uppercase;
           letter-spacing: 1px;
@@ -1632,17 +1634,19 @@ export default function Home() {
         .token-card .price {
           font-size: 1.8rem;
           font-weight: bold;
-          color: #FFFF00;
+          color: #ffffff;
+          margin: 0.5rem 0;
         }
 
         .token-card .value {
-          font-size: 1.5rem;
-          font-weight: 600;
+          font-size: 1.4rem;
+          font-weight: bold;
+          color: #ffffff;
         }
 
         .price-change {
-          font-size: 0.9rem;
-          margin-top: 0.5rem;
+          font-size: 1rem;
+          font-weight: 600;
         }
 
         .price-change.positive {
@@ -1650,45 +1654,40 @@ export default function Home() {
         }
 
         .price-change.negative {
-          color: #ff4444;
+          color: #ff3333;
         }
 
         .loading {
-          opacity: 0.6;
-          animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { opacity: 0.6; }
-          50% { opacity: 1; }
+          color: #666;
+          font-style: italic;
         }
 
         .buy-section {
           text-align: center;
-          margin-top: 2rem;
+          margin-top: 3rem;
         }
 
         .buy-button-large {
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
           border: none;
-          padding: 1rem 3rem;
+          padding: 1.2rem 3rem;
           font-size: 1.2rem;
           font-weight: bold;
           border-radius: 50px;
           cursor: pointer;
           transition: all 0.3s ease;
-          box-shadow: 0 5px 15px rgba(255, 255, 0, 0.3);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.3);
         }
 
         .buy-button-large:hover {
-          transform: translateY(-3px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.5);
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 15px 40px rgba(255, 255, 0, 0.5);
         }
 
         .buy-info {
+          color: #999;
           margin-top: 1rem;
-          opacity: 0.8;
           font-size: 0.9rem;
         }
 
@@ -1697,78 +1696,82 @@ export default function Home() {
           margin-top: 1rem;
           color: #FFFF00;
           text-decoration: none;
-          border: 1px solid #FFFF00;
-          padding: 0.5rem 1.5rem;
-          border-radius: 25px;
+          font-weight: 600;
           transition: all 0.3s ease;
         }
 
         .token-link:hover {
-          background: #FFFF00;
-          color: black;
+          color: #FFD700;
+          text-decoration: underline;
         }
 
-        /* Meme Generator Styles */
         .x-form-modal {
           position: fixed;
           top: 0;
           left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.8);
-          backdrop-filter: blur(10px);
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.9);
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 9999;
+          z-index: 2000;
+          backdrop-filter: blur(10px);
         }
 
         .x-form {
-          background: #1a1a1a;
-          padding: 2rem;
+          background: rgba(20, 20, 20, 0.95);
+          padding: 3rem;
           border-radius: 20px;
-          border: 2px solid #FFFF00;
+          border: 1px solid rgba(255, 255, 0, 0.3);
+          text-align: center;
           max-width: 400px;
           width: 90%;
         }
 
         .x-form h3 {
           color: #FFFF00;
-          margin-bottom: 1.5rem;
-          text-align: center;
+          margin-bottom: 2rem;
+          font-size: 1.5rem;
         }
 
         .x-form input {
           width: 100%;
           padding: 1rem;
+          margin-bottom: 1.5rem;
           background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          border: 1px solid rgba(255, 255, 0, 0.3);
           border-radius: 10px;
           color: white;
-          font-size: 1.1rem;
-          margin-bottom: 1rem;
+          font-size: 1rem;
+        }
+
+        .x-form input:focus {
+          outline: none;
+          border-color: #FFFF00;
+          box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.2);
         }
 
         .x-form button {
-          width: 100%;
-          padding: 1rem;
-          background: #FFFF00;
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
           border: none;
-          border-radius: 10px;
+          padding: 1rem 2.5rem;
+          border-radius: 50px;
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
+          font-size: 1rem;
         }
 
         .x-form button:hover {
           transform: scale(1.05);
-          box-shadow: 0 5px 15px rgba(255, 255, 0, 0.5);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
         }
 
         .x-handle-section {
           background: rgba(255, 255, 0, 0.05);
-          padding: 1.5rem;
+          padding: 2rem;
           border-radius: 15px;
           margin-bottom: 2rem;
           border: 1px solid rgba(255, 255, 0, 0.2);
@@ -1777,7 +1780,7 @@ export default function Home() {
         .x-handle-inline-form label {
           display: block;
           margin-bottom: 1rem;
-          color: #FFD700;
+          color: #FFFF00;
           font-weight: 600;
         }
 
@@ -1789,20 +1792,26 @@ export default function Home() {
 
         .x-handle-input-group input {
           flex: 1;
-          padding: 0.8rem;
+          padding: 0.8rem 1rem;
           background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          border: 1px solid rgba(255, 255, 0, 0.3);
           border-radius: 10px;
           color: white;
           font-size: 1rem;
         }
 
+        .x-handle-input-group input:focus {
+          outline: none;
+          border-color: #FFFF00;
+          box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.2);
+        }
+
         .x-handle-input-group button {
-          padding: 0.8rem 1.5rem;
-          background: #FFFF00;
+          padding: 0.8rem 2rem;
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
           border: none;
-          border-radius: 10px;
+          border-radius: 50px;
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
@@ -1811,7 +1820,7 @@ export default function Home() {
 
         .x-handle-input-group button:hover {
           transform: scale(1.05);
-          box-shadow: 0 5px 15px rgba(255, 255, 0, 0.5);
+          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
         }
 
         .meme-upload {
@@ -1819,118 +1828,121 @@ export default function Home() {
         }
 
         .modern-upload-zone {
-          border: 3px dashed rgba(255, 255, 0, 0.3);
+          width: 100%;
+          min-height: 500px;
+          border: 2px dashed rgba(255, 255, 0, 0.3);
           border-radius: 20px;
-          padding: 3rem;
-          text-align: center;
-          transition: all 0.3s ease;
-          cursor: pointer;
-          background: rgba(255, 255, 0, 0.02);
-          position: relative;
-          overflow: hidden;
-          min-height: 400px;
           display: flex;
           align-items: center;
           justify-content: center;
+          transition: all 0.3s ease;
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.02);
         }
 
         .modern-upload-zone:hover {
           border-color: rgba(255, 255, 0, 0.5);
           background: rgba(255, 255, 0, 0.05);
-          transform: scale(1.02);
         }
 
         .modern-upload-zone.drag-over {
           border-color: #FFFF00;
           background: rgba(255, 255, 0, 0.1);
-          transform: scale(1.05);
+          transform: scale(1.02);
         }
 
         .modern-upload-zone.has-file {
-          border-style: solid;
           cursor: default;
-          padding: 0;
-        }
-
-        .modern-upload-zone.has-file:hover {
-          transform: none;
+          border-style: solid;
         }
 
         .upload-content {
-          pointer-events: none;
+          text-align: center;
+          padding: 3rem;
+          cursor: pointer;
         }
 
         .upload-icon {
           font-size: 4rem;
           margin-bottom: 1rem;
-          animation: bounce 2s infinite;
+          animation: pulse 2s ease-in-out infinite;
         }
 
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.1); opacity: 1; }
         }
 
         .upload-content h3 {
-          color: #FFFF00;
-          margin-bottom: 0.5rem;
           font-size: 1.5rem;
+          margin-bottom: 0.5rem;
+          color: #FFFF00;
         }
 
         .upload-content p {
-          color: rgba(255, 255, 255, 0.7);
+          color: #999;
           margin-bottom: 1rem;
         }
 
         .supported-formats {
-          font-size: 0.9rem;
-          opacity: 0.6;
+          font-size: 0.85rem;
+          color: #666;
+          background: rgba(255, 255, 255, 0.05);
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          display: inline-block;
         }
 
         .preview-container {
           position: relative;
           width: 100%;
           height: 100%;
-          min-height: 400px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #000;
-          overflow: hidden;
+          overflow: visible;
         }
 
         .preview-image {
           max-width: 100%;
-          max-height: 600px;
-          width: auto;
-          height: auto;
-          display: block;
+          max-height: 500px;
+          border-radius: 10px;
+          user-select: none;
+          -webkit-user-drag: none;
         }
 
         .overlay-element {
           position: absolute;
           cursor: grab;
-          transition: opacity 0.2s ease;
-          transform-origin: center;
-          user-select: none;
           touch-action: none;
+          user-select: none;
+          transition: filter 0.2s ease;
+          transform-origin: center;
+          left: 50%;
+          top: 50%;
+          z-index: 10;
         }
 
-        .overlay-element:hover {
-          opacity: 0.9;
+        .overlay-element:active {
+          cursor: grabbing;
         }
 
         .overlay-element.dragging {
+          filter: drop-shadow(0 10px 30px rgba(255, 255, 0, 0.5));
           cursor: grabbing;
-          opacity: 0.8;
+          z-index: 20;
         }
 
         .overlay-element img {
-          width: 100px;
+          width: 120px;
           height: auto;
-          display: block;
           pointer-events: none;
+          display: block;
+          transform: translate(-50%, -50%);
           user-select: none;
+          -webkit-user-drag: none;
         }
 
         .action-buttons {
@@ -1943,12 +1955,12 @@ export default function Home() {
 
         .primary-button, .secondary-button, .download-button {
           padding: 1rem 2rem;
-          border: none;
           border-radius: 50px;
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
-          font-size: 1.1rem;
+          border: none;
+          font-size: 1rem;
         }
 
         .primary-button {
@@ -1958,7 +1970,28 @@ export default function Home() {
 
         .primary-button:hover:not(:disabled) {
           transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.5);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
+        }
+
+        .secondary-button {
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .secondary-button:hover {
+          background: rgba(255, 255, 255, 0.2);
+          transform: translateY(-2px);
+        }
+
+        .download-button {
+          background: linear-gradient(135deg, #00FF00, #00CC00);
+          color: white;
+        }
+
+        .download-button:hover {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(0, 255, 0, 0.4);
         }
 
         .primary-button:disabled {
@@ -1966,150 +1999,190 @@ export default function Home() {
           cursor: not-allowed;
         }
 
-        .secondary-button {
-          background: rgba(255, 255, 255, 0.1);
-          color: white;
-          border: 2px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .secondary-button:hover {
-          background: rgba(255, 255, 255, 0.2);
-          border-color: rgba(255, 255, 255, 0.3);
-          transform: translateY(-2px);
-        }
-
-        .download-button {
-          background: linear-gradient(135deg, #00ff00, #00cc00);
-          color: black;
-        }
-
-        .download-button:hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(0, 255, 0, 0.5);
-        }
-
         .gesture-hints {
           text-align: center;
           margin-top: 1rem;
+          padding: 1rem;
+          background: rgba(255, 255, 0, 0.05);
+          border-radius: 10px;
           font-size: 0.9rem;
-          opacity: 0.7;
+          color: #FFFF00;
         }
 
-        .desktop-hint {
+        .gesture-hints .desktop-hint {
           display: block;
         }
 
-        .mobile-hint {
+        .gesture-hints .mobile-hint {
           display: none;
+        }
+
+        @media (max-width: 768px) {
+          .gesture-hints .desktop-hint {
+            display: none;
+          }
+          
+          .gesture-hints .mobile-hint {
+            display: block;
+          }
         }
 
         .error-message {
           background: rgba(255, 0, 0, 0.1);
-          border: 1px solid rgba(255, 0, 0, 0.3);
+          color: #ff6666;
           padding: 1rem;
           border-radius: 10px;
           margin-top: 1rem;
+          border: 1px solid rgba(255, 0, 0, 0.3);
           text-align: center;
-          color: #ff6666;
         }
 
-        /* Community Memes Section */
+        #roadmap ul {
+          list-style: none;
+          padding-left: 0;
+        }
+
+        #roadmap li {
+          padding: 1.5rem;
+          margin: 1rem 0;
+          background: rgba(255, 255, 255, 0.03);
+          border-left: 4px solid #FFFF00;
+          border-radius: 10px;
+          transition: all 0.3s ease;
+        }
+
+        #roadmap li:hover {
+          transform: translateX(10px);
+          background: rgba(255, 255, 0, 0.05);
+        }
+
         .community-memes {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
           gap: 2rem;
           margin-top: 2rem;
         }
 
         .meme-card {
-          background: rgba(0, 0, 0, 0.5);
+          background: rgba(255, 255, 255, 0.03);
           border-radius: 15px;
           overflow: hidden;
-          transition: all 0.3s ease;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          transition: transform 0.3s ease;
+          border: 1px solid rgba(255, 255, 0, 0.1);
         }
 
         .meme-card:hover {
           transform: translateY(-5px);
-          box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
           border-color: rgba(255, 255, 0, 0.3);
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
         .meme-card img {
           width: 100%;
-          height: 300px;
-          object-fit: cover;
-          display: block;
+          height: auto;
+          object-fit: contain;
+          max-height: 400px;
+          background: #000;
         }
 
         .meme-info {
-          padding: 1.5rem;
+          padding: 1rem;
         }
 
-        .creator {
-          color: #FFD700;
-          font-weight: 600;
-          margin-bottom: 0.5rem;
+        .meme-card .creator {
+          text-align: center;
+          color: #FFFF00;
+          margin: 0.5rem 0;
+          font-weight: 500;
         }
 
         .meme-stats {
           display: flex;
+          justify-content: center;
           gap: 1.5rem;
+          margin: 0.5rem 0;
+          color: #999;
+          font-size: 0.9rem;
           align-items: center;
-          margin-bottom: 1rem;
         }
 
         .like-button {
           background: none;
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          color: white;
-          padding: 0.5rem 1rem;
-          border-radius: 25px;
+          border: none;
+          color: #999;
           cursor: pointer;
-          transition: all 0.3s ease;
           font-size: 0.9rem;
-          display: flex;
+          padding: 0.5rem;
+          border-radius: 20px;
+          transition: all 0.2s ease;
+          display: inline-flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.3rem;
+          -webkit-tap-highlight-color: transparent;
+          outline: none;
         }
 
         .like-button:hover {
+          background: rgba(255, 255, 0, 0.1);
+          color: #FFFF00;
           transform: scale(1.1);
-          border-color: #ff69b4;
+        }
+
+        .like-button:active {
+          transform: scale(0.95);
         }
 
         .like-button.liked {
-          background: rgba(255, 105, 180, 0.2);
-          border-color: #ff69b4;
-          color: #ff69b4;
+          color: #FFFF00;
+        }
+
+        .like-button.liked:hover {
+          transform: scale(1.15);
         }
 
         .share-counter {
-          font-size: 0.9rem;
-          opacity: 0.8;
-          transition: all 0.3s ease;
+          color: #999;
+          padding: 0.5rem;
+          border-radius: 20px;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
         }
 
         .share-counter.animating {
-          transform: scale(1.3);
+          animation: shareAnimation 0.6s ease;
           color: #FFFF00;
-          font-weight: bold;
+        }
+
+        @keyframes shareAnimation {
+          0% { transform: scale(1) rotate(0deg); }
+          25% { transform: scale(1.3) rotate(180deg); }
+          50% { transform: scale(1.3) rotate(360deg); }
+          100% { transform: scale(1) rotate(360deg); }
         }
 
         .share-buttons {
           display: flex;
           gap: 0.5rem;
+          margin-top: 0.75rem;
         }
 
         .share-btn {
           flex: 1;
-          padding: 0.6rem;
+          padding: 0.5rem;
           border: none;
           border-radius: 8px;
+          font-size: 0.85rem;
           cursor: pointer;
-          transition: all 0.3s ease;
-          font-weight: 600;
-          font-size: 0.9rem;
+          transition: all 0.2s ease;
+          font-weight: 500;
+          outline: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .share-btn:active {
+          transform: scale(0.95);
         }
 
         .share-btn.twitter {
@@ -2119,7 +2192,7 @@ export default function Home() {
 
         .share-btn.twitter:hover {
           background: #1a8cd8;
-          transform: translateY(-2px);
+          transform: translateY(-1px);
         }
 
         .share-btn.telegram {
@@ -2129,48 +2202,51 @@ export default function Home() {
 
         .share-btn.telegram:hover {
           background: #0077b3;
-          transform: translateY(-2px);
+          transform: translateY(-1px);
         }
 
         .loading-memes {
+          grid-column: 1 / -1;
           text-align: center;
           padding: 3rem;
-          opacity: 0.6;
+          color: #FFFF00;
         }
 
         .meme-card.placeholder {
           display: flex;
           align-items: center;
           justify-content: center;
-          min-height: 400px;
-          background: rgba(255, 255, 0, 0.03);
-          border: 2px dashed rgba(255, 255, 0, 0.2);
+          min-height: 250px;
         }
 
         .placeholder-content {
+          padding: 2rem;
           text-align: center;
-          opacity: 0.6;
         }
 
-        /* Social Section */
+        .placeholder-content p {
+          color: #666;
+          font-size: 1.1rem;
+        }
+
         .social-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
           gap: 2rem;
           margin-top: 2rem;
         }
 
         .social-card {
-          background: rgba(0, 0, 0, 0.5);
-          padding: 2rem;
+          background: rgba(255, 255, 255, 0.03);
           border-radius: 15px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 2rem;
+          border: 1px solid rgba(255, 255, 0, 0.1);
         }
 
         .social-card h3 {
-          color: #FFD700;
+          color: #FFFF00;
           margin-bottom: 1.5rem;
-          font-size: 1.3rem;
+          text-align: center;
         }
 
         .twitter-embed {
@@ -2188,96 +2264,75 @@ export default function Home() {
           display: flex;
           align-items: center;
           gap: 1rem;
-          padding: 1rem;
-          background: rgba(255, 255, 255, 0.05);
+          padding: 1.2rem;
+          background: rgba(255, 255, 255, 0.03);
           border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
+          border-radius: 15px;
           text-decoration: none;
           color: white;
           transition: all 0.3s ease;
         }
 
         .community-button:hover {
-          background: rgba(255, 255, 255, 0.1);
           transform: translateX(5px);
-          border-color: rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.05);
+          border-color: #FFFF00;
         }
 
         .community-button .icon {
           font-size: 2rem;
-          width: 50px;
-          height: 50px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
-        }
-
-        .community-button.telegram .icon {
-          background: rgba(0, 136, 204, 0.2);
-        }
-
-        .community-button.tiktok .icon {
-          background: rgba(255, 0, 80, 0.2);
-        }
-
-        .community-button.twitter .icon {
-          background: rgba(29, 161, 242, 0.2);
+          min-width: 50px;
+          text-align: center;
         }
 
         .community-button strong {
           display: block;
-          margin-bottom: 0.25rem;
+          margin-bottom: 0.3rem;
         }
 
         .community-button p {
-          font-size: 0.9rem;
-          opacity: 0.8;
           margin: 0;
+          font-size: 0.9rem;
+          color: #999;
         }
 
-        /* Roadmap */
-        #roadmap ul {
-          list-style: none;
-          padding: 0;
+        .community-button.telegram:hover {
+          border-color: #0088cc;
         }
 
-        #roadmap li {
-          padding: 1rem 0;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          font-size: 1.1rem;
-          line-height: 1.6;
+        .community-button.tiktok:hover {
+          border-color: #ff0050;
         }
 
-        #roadmap li:last-child {
-          border-bottom: none;
+        .community-button.twitter:hover {
+          border-color: #1da1f2;
         }
 
-        /* Footer */
         footer {
           text-align: center;
-          padding: 3rem 1rem;
-          margin-top: 4rem;
+          padding: 3rem;
+          background: rgba(0, 0, 0, 0.5);
+          margin-top: 6rem;
           border-top: 1px solid rgba(255, 255, 255, 0.1);
-          opacity: 0.6;
         }
 
-        /* Reveal Animation */
+        footer p {
+          color: #666;
+        }
+
         .reveal {
           opacity: 0;
           transform: translateY(30px);
-          animation: revealUp 0.8s ease forwards;
+          animation: revealAnimation 0.6s ease forwards;
         }
 
-        @keyframes revealUp {
+        @keyframes revealAnimation {
           to {
             opacity: 1;
             transform: translateY(0);
           }
         }
 
-        /* Mobile Responsive */
         @media (max-width: 768px) {
           .desktop-social-buttons {
             display: none;
@@ -2289,6 +2344,17 @@ export default function Home() {
 
           .mobile-social-icons {
             display: flex;
+            justify-content: center;
+          }
+
+          header {
+            margin-top: 80px;
+            padding-top: 3rem;
+          }
+
+          .pumper-float img {
+            width: 250px;
+            height: 250px;
           }
 
           h1 {
@@ -2299,18 +2365,9 @@ export default function Home() {
             font-size: 2rem;
           }
 
-          header {
-            margin-top: 60px;
-            padding: 3rem 1rem 2rem;
-          }
-
-          section {
-            padding: 2rem 1.5rem;
-            margin: 2rem auto;
-          }
-
           .nav-container {
             gap: 1rem;
+            padding: 0.5rem;
           }
 
           .main-nav a {
@@ -2318,47 +2375,39 @@ export default function Home() {
             font-size: 0.85rem;
           }
 
-          .pumper-float img {
-            width: 200px;
-            height: 200px;
+          section {
+            padding: 2rem;
+            margin: 2rem auto;
           }
 
           .token-grid {
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 1rem;
           }
 
           .token-card {
-            padding: 1rem;
+            padding: 1.5rem;
           }
 
           .token-card .price {
-            font-size: 1.3rem;
+            font-size: 1.4rem;
           }
 
           .token-card .value {
-            font-size: 1.2rem;
-          }
-
-          .community-memes {
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-          }
-
-          .social-grid {
-            grid-template-columns: 1fr;
+            font-size: 1.1rem;
           }
 
           .x-handle-input-group {
             flex-direction: column;
           }
 
-          .x-handle-input-group input {
+          .x-handle-input-group input,
+          .x-handle-input-group button {
             width: 100%;
           }
 
-          .x-handle-input-group button {
-            width: 100%;
+          .overlay-element img {
+            width: 80px;
           }
 
           .action-buttons {
@@ -2369,31 +2418,42 @@ export default function Home() {
             width: 100%;
           }
 
-          .desktop-hint {
-            display: none;
-          }
-
-          .mobile-hint {
-            display: block;
-          }
-
-          .overlay-element img {
-            width: 80px;
+          .social-grid,
+          .community-memes {
+            grid-template-columns: 1fr;
           }
         }
 
         @media (max-width: 480px) {
+          .mobile-top-buttons {
+            right: 5px;
+            top: 5px;
+          }
+
+          .social-button {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+          }
+
           h1 {
             font-size: 2.5rem;
           }
 
-          .buy-button-large {
-            padding: 0.8rem 2rem;
-            font-size: 1rem;
+          .pumper-float img {
+            width: 200px;
+            height: 200px;
+          }
+
+          .token-grid {
+            grid-template-columns: 1fr;
           }
 
           section {
-            padding: 1.5rem 1rem;
+            padding: 1.5rem;
+          }
+
+          .overlay-element img {
+            width: 60px;
           }
         }
       `}</style>
