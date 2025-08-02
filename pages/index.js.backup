@@ -1,4 +1,10 @@
-﻿import Head from 'next/head';
+header {
+          text-align: center;
+          padding: 5rem 1rem 3rem;
+          position: relative;
+          overflow: hidden;
+          margin-top: 80px;
+        }import Head from 'next/head';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -65,42 +71,16 @@ export default function Home() {
   const fetchCommunityMemes = async () => {
     try {
       setIsLoadingMemes(true);
-      
-      // First, get the top meme by combined score
-      const { data: allMemes, error: allError } = await supabase
+      const { data, error } = await supabase
         .from('memes')
         .select('*')
-        .order('likes_count', { ascending: false, nullsFirst: false });
-      
-      if (allError) throw allError;
-      
-      // Calculate combined scores and sort
-      const memesWithScores = (allMemes || []).map(meme => ({
-        ...meme,
-        combinedScore: (meme.likes_count || 0) + (meme.shares_count || 0)
-      })).sort((a, b) => b.combinedScore - a.combinedScore);
-      
-      // Get the top meme
-      const topMeme = memesWithScores[0];
-      
-      // Get the 5 most recent memes (excluding the top meme if it's also recent)
-      const { data: recentMemes, error: recentError } = await supabase
-        .from('memes')
-        .select('*')
-        .order('created_at', { ascending: false })
+        .order('likes_count', { ascending: false, nullsFirst: false })
+        .order('shares_count', { ascending: false, nullsFirst: false })
         .limit(6);
+
+      if (error) throw error;
       
-      if (recentError) throw recentError;
-      
-      // Filter out the top meme from recent if it's there, and take only 5
-      const filteredRecent = (recentMemes || [])
-        .filter(meme => !topMeme || meme.id !== topMeme.id)
-        .slice(0, 5);
-      
-      // Combine: top meme + 5 most recent
-      const finalMemes = topMeme ? [topMeme, ...filteredRecent] : filteredRecent;
-      
-      setCommunityMemes(finalMemes);
+      setCommunityMemes(data || []);
     } catch (error) {
       console.error('Error fetching memes:', error);
     } finally {
@@ -453,16 +433,7 @@ export default function Home() {
 
   const handleXHandleSubmit = (e) => {
     e.preventDefault();
-    e.stopPropagation();
-    
-    const formData = new FormData(e.target);
-    const inputValue = formData.get('xhandle');
-    
-    // Require at least 2 characters for a valid handle
-    if (inputValue && inputValue.trim().length >= 2) {
-      // Add @ if user didn't include it
-      const formattedHandle = inputValue.startsWith('@') ? inputValue : `@${inputValue}`;
-      setXHandle(formattedHandle);
+    if (xHandle && xHandle.trim()) {
       setShowXForm(false);
     }
   };
@@ -586,73 +557,58 @@ export default function Home() {
       const scaleX = img.width / displayedImgRect.width;
       const scaleY = img.height / displayedImgRect.height;
       
-      // Calculate base scale to match the preview display
-      // Since images are now 120x120 and CSS shows them at 120px, we start with scale 1.0
-      const lipBaseScale = scaleX; // Simple 1:1 ratio adjusted for canvas resolution
-      const exclamationBaseScale = scaleX; // Simple 1:1 ratio adjusted for canvas resolution
-      
       // Debug logging
-      console.log('Transform calculations:', {
-        lipPosition,
-        lipScale,
-        exclamationPosition,
-        exclamationScale,
-        baseScales: { lipBaseScale, exclamationBaseScale },
-        scaleX,
-        scaleY
+      console.log('Image dimensions:', { 
+        original: { w: img.width, h: img.height },
+        displayed: { w: displayedImgRect.width, h: displayedImgRect.height },
+        scaleX, scaleY,
+        lipImageSize: { w: lipImage.width, h: lipImage.height }
       });
       
-      // Draw lips with proper center-point scaling
-      ctx.save();
+      // Calculate base scale to match 120px display size
+      const baseDisplaySize = 120; // This matches the CSS width
+      // Simple approach: just scale based on what we see
+      const lipBaseScale = (baseDisplaySize * scaleX) / lipImage.width;
+      const exclamationBaseScale = (baseDisplaySize * scaleX) / exclamationImage.width;
       
-      // Calculate where the center of the overlay should be on the canvas
+      console.log('Scale calculations:', {
+        baseDisplaySize,
+        lipBaseScale,
+        lipScale,
+        finalScale: lipBaseScale * lipScale
+      });
+      
+      // Draw lips
+      ctx.save();
+      // Use displayedImgRect for position calculations
       const lipCenterX = (displayedImgRect.width / 2 + lipPosition.x) * scaleX;
       const lipCenterY = (displayedImgRect.height / 2 + lipPosition.y) * scaleY;
-      
-      // Translate to the center point
       ctx.translate(lipCenterX, lipCenterY);
-      
-      // Apply rotation
       ctx.rotate(lipRotation * Math.PI / 180);
-      
-      // Apply scale (no more divide by 2 needed!)
-      const finalLipScale = lipBaseScale * lipScale;
+      // Divide by 2 to fix the double size issue
+      const finalLipScale = (lipBaseScale * lipScale) / 2;
       ctx.scale(finalLipScale, finalLipScale);
-      
-      // Draw the image centered
       ctx.drawImage(
         lipImage,
-        -60, // Half of 120px
-        -60, // Half of 120px
-        120, // Actual size
-        120  // Actual size
+        -lipImage.width / 2,
+        -lipImage.height / 2
       );
       ctx.restore();
       
-      // Draw exclamation with proper center-point scaling
+      // Draw exclamation
       ctx.save();
-      
-      // Calculate where the center of the overlay should be on the canvas
+      // Use displayedImgRect for position calculations
       const exclamationCenterX = (displayedImgRect.width / 2 + exclamationPosition.x) * scaleX;
       const exclamationCenterY = (displayedImgRect.height / 2 + exclamationPosition.y) * scaleY;
-      
-      // Translate to the center point
       ctx.translate(exclamationCenterX, exclamationCenterY);
-      
-      // Apply rotation
       ctx.rotate(exclamationRotation * Math.PI / 180);
-      
-      // Apply scale (no more divide by 2 needed!)
-      const finalExclamationScale = exclamationBaseScale * exclamationScale;
+      // Divide by 2 to fix the double size issue
+      const finalExclamationScale = (exclamationBaseScale * exclamationScale) / 2;
       ctx.scale(finalExclamationScale, finalExclamationScale);
-      
-      // Draw the image centered
       ctx.drawImage(
         exclamationImage,
-        -60, // Half of 120px
-        -60, // Half of 120px
-        120, // Actual size
-        120  // Actual size
+        -exclamationImage.width / 2,
+        -exclamationImage.height / 2
       );
       ctx.restore();
       
@@ -759,78 +715,74 @@ export default function Home() {
 
   // Share functions with tracking
   const shareOnTwitter = async (memeId) => {
-    // Find the meme to get creator info
-    const meme = communityMemes.find(m => m.id === memeId);
-    if (!meme) return;
-    
     // Trigger animation
     setShareAnimatingId(memeId);
     setTimeout(() => setShareAnimatingId(null), 600);
     
     // Update share count FIRST
     try {
-      const newShareCount = (meme.shares_count || 0) + 1;
-      
-      const { data, error } = await supabase
-        .from('memes')
-        .update({ shares_count: newShareCount })
-        .eq('id', memeId)
-        .select();
-      
-      if (error) {
-        console.error('Error updating share count:', error);
-      } else {
-        // Update local state immediately to show the change
-        setCommunityMemes(prev => prev.map(m => 
-          m.id === memeId ? { ...m, shares_count: newShareCount } : m
-        ));
+      const meme = communityMemes.find(m => m.id === memeId);
+      if (meme) {
+        const newShareCount = (meme.shares_count || 0) + 1;
+        
+        const { data, error } = await supabase
+          .from('memes')
+          .update({ shares_count: newShareCount })
+          .eq('id', memeId)
+          .select();
+        
+        if (error) {
+          console.error('Error updating share count:', error);
+        } else {
+          // Update local state immediately to show the change
+          setCommunityMemes(prev => prev.map(m => 
+            m.id === memeId ? { ...m, shares_count: newShareCount } : m
+          ));
+        }
       }
     } catch (error) {
       console.error('Error updating share count:', error);
     }
     
-    // Then open Twitter share dialog with new message
+    // Then open Twitter share dialog
     const memeUrl = `${window.location.origin}/meme/${memeId}`;
-    const creatorHandle = meme.creator_x_handle || 'anonymous';
-    const text = `Sharing meme created by ${creatorHandle} 🚀\n\nJoin the movement: letspumpit.com`;
+    const text = `Check out my $PUMPIT meme! 🚀\n\nJoin the movement: `;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(memeUrl)}&hashtags=PUMPIT,Solana,PumpItOnSol`;
     window.open(twitterUrl, '_blank');
   };
 
   const shareOnTelegram = async (memeId, imageUrl) => {
-    // Find the meme to get creator info
-    const meme = communityMemes.find(m => m.id === memeId);
-    if (!meme) return;
-    
     // Trigger animation
     setShareAnimatingId(memeId);
     setTimeout(() => setShareAnimatingId(null), 600);
     
     // Update share count FIRST
     try {
-      const newShareCount = (meme.shares_count || 0) + 1;
-      
-      const { data, error } = await supabase
-        .from('memes')
-        .update({ shares_count: newShareCount })
-        .eq('id', memeId)
-        .select();
-      
-      if (error) {
-        console.error('Error updating share count:', error);
-      } else {
-        // Update local state immediately to show the change
-        setCommunityMemes(prev => prev.map(m => 
-          m.id === memeId ? { ...m, shares_count: newShareCount } : m
-        ));
+      const meme = communityMemes.find(m => m.id === memeId);
+      if (meme) {
+        const newShareCount = (meme.shares_count || 0) + 1;
+        
+        const { data, error } = await supabase
+          .from('memes')
+          .update({ shares_count: newShareCount })
+          .eq('id', memeId)
+          .select();
+        
+        if (error) {
+          console.error('Error updating share count:', error);
+        } else {
+          // Update local state immediately to show the change
+          setCommunityMemes(prev => prev.map(m => 
+            m.id === memeId ? { ...m, shares_count: newShareCount } : m
+          ));
+        }
       }
     } catch (error) {
       console.error('Error updating share count:', error);
     }
     
-    // Then open Telegram share dialog with new message
-    const creatorHandle = meme.creator_x_handle || 'anonymous';
-    const text = `Sharing meme created by ${creatorHandle} 🚀\n\nVisit: letspumpit.com\nJoin us at @Pumpetcto`;
+    // Then open Telegram share dialog
+    const text = `Check out my $PUMPIT meme! 🚀\n\nJoin us at @Pumpetcto`;
     const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(imageUrl)}&text=${encodeURIComponent(text)}`;
     window.open(telegramUrl, '_blank');
   };
@@ -852,14 +804,6 @@ export default function Home() {
 
   const getExclamationTransform = () => {
     return `translate(${exclamationPosition.x}px, ${exclamationPosition.y}px) scale(${exclamationScale}) rotate(${exclamationRotation}deg)`;
-  };
-
-  // Close modal handler
-  const handleModalClose = (e) => {
-    // Only close if clicking the modal background, not the form
-    if (e.target.classList.contains('x-form-modal')) {
-      setShowXForm(false);
-    }
   };
 
   return (
@@ -1091,17 +1035,15 @@ export default function Home() {
             </p>
             
             {showXForm && (
-              <div className="x-form-modal" onClick={handleModalClose}>
-                <form onSubmit={handleXHandleSubmit} className="x-form" onClick={(e) => e.stopPropagation()}>
+              <div className="x-form-modal">
+                <form onSubmit={handleXHandleSubmit} className="x-form">
                   <h3>Enter your X handle to continue</h3>
                   <input
                     type="text"
-                    name="xhandle"
                     placeholder="@yourhandle"
+                    value={xHandle}
+                    onChange={(e) => setXHandle(e.target.value)}
                     required
-                    minLength="2"
-                    autoComplete="off"
-                    autoFocus
                   />
                   <button type="submit">Continue</button>
                 </form>
@@ -1115,11 +1057,10 @@ export default function Home() {
                   <div className="x-handle-input-group">
                     <input
                       type="text"
-                      name="xhandle"
                       placeholder="@yourhandle"
+                      value={xHandle}
+                      onChange={(e) => setXHandle(e.target.value)}
                       required
-                      minLength="2"
-                      autoComplete="off"
                     />
                     <button type="submit">Set Handle</button>
                   </div>
@@ -1133,12 +1074,7 @@ export default function Home() {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                onClick={(e) => {
-                  // Only trigger file input if clicking on the empty upload area
-                  if (!selectedFile && e.target.classList.contains('modern-upload-zone')) {
-                    document.getElementById('memeImage').click();
-                  }
-                }}
+                onClick={() => !selectedFile && document.getElementById('memeImage').click()}
               >
                 <input 
                   type="file" 
@@ -1149,7 +1085,7 @@ export default function Home() {
                 />
                 
                 {!selectedFile ? (
-                  <div className="upload-content" onClick={() => document.getElementById('memeImage').click()}>
+                  <div className="upload-content">
                     <div className="upload-icon">📸</div>
                     <h3>Drop your image here</h3>
                     <p>or click to browse</p>
@@ -1530,7 +1466,6 @@ export default function Home() {
           position: relative;
           overflow: hidden;
           margin-top: 80px;
-          background: transparent;
         }
 
         .header-content {
@@ -1543,16 +1478,16 @@ export default function Home() {
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          opacity: 0.15;
+          opacity: 0.2;
           animation: float 6s ease-in-out infinite;
           pointer-events: none;
-          filter: blur(2px) drop-shadow(0 0 60px rgba(255, 255, 0, 0.6));
+          filter: blur(1px) drop-shadow(0 0 40px rgba(255, 255, 0, 0.4));
           z-index: 0;
         }
 
         .pumper-float img {
-          width: 250px;
-          height: 250px;
+          width: 400px;
+          height: 400px;
         }
 
         @keyframes float {
@@ -1956,7 +1891,6 @@ export default function Home() {
         .upload-content {
           text-align: center;
           padding: 3rem;
-          cursor: pointer;
         }
 
         .upload-icon {
