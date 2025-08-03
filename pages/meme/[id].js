@@ -162,14 +162,14 @@ export default function MemePage({ meme: initialMeme }) {
   return (
     <>
       <Head>
-        <title>$PUMPIT - {meme.creator_x_handle}</title>
-        <meta name="description" content={`$PUMPIT meme by ${meme.creator_x_handle}. Join the movement on Solana!`} />
+        <title>$PUMPIT Meme by {meme.creator_x_handle}</title>
+        <meta name="description" content={`Check out this $PUMPIT meme created by ${meme.creator_x_handle}! Join the movement on Solana.`} />
         
         {/* Twitter Card - These MUST come first for Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@pumpitonsol" />
-        <meta name="twitter:title" content="$PUMPIT" />
-        <meta name="twitter:description" content={`By ${meme.creator_x_handle} • Created on letspumpit.com 🚀`} />
+        <meta name="twitter:title" content={`$PUMPIT Meme by ${meme.creator_x_handle}`} />
+        <meta name="twitter:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
         <meta name="twitter:image" content={fullImageUrl} />
         <meta name="twitter:image:width" content="1200" />
         <meta name="twitter:image:height" content="1200" />
@@ -177,8 +177,8 @@ export default function MemePage({ meme: initialMeme }) {
         {/* Open Graph for other platforms */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:title" content="$PUMPIT" />
-        <meta property="og:description" content={`By ${meme.creator_x_handle} • Created on letspumpit.com 🚀`} />
+        <meta property="og:title" content={`$PUMPIT Meme by ${meme.creator_x_handle}`} />
+        <meta property="og:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
         <meta property="og:image" content={fullImageUrl} />
         <meta property="og:image:secure_url" content={fullImageUrl} />
         <meta property="og:image:type" content="image/png" />
