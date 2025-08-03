@@ -3,40 +3,52 @@ import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 
-export default function MemePage() {
+// Server-side data fetching for meta tags
+export async function getServerSideProps(context) {
+  const { id } = context.params;
+  
+  try {
+    const { data: meme, error } = await supabase
+      .from('memes')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !meme) {
+      return {
+        notFound: true,
+      };
+    }
+
+    return {
+      props: {
+        meme,
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching meme:', error);
+    return {
+      notFound: true,
+    };
+  }
+}
+
+export default function MemePage({ meme: initialMeme }) {
   const router = useRouter();
   const { id } = router.query;
-  const [meme, setMeme] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [meme, setMeme] = useState(initialMeme);
+  const [loading, setLoading] = useState(false);
   const [likedMemes, setLikedMemes] = useState([]);
 
   useEffect(() => {
-    if (id) {
-      fetchMeme();
-    }
     // Load liked memes from localStorage
     const stored = localStorage.getItem('likedMemes');
     if (stored) {
       setLikedMemes(JSON.parse(stored));
     }
-  }, [id]);
+  }, []);
 
-  const fetchMeme = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('memes')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      setMeme(data);
-    } catch (error) {
-      console.error('Error fetching meme:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Remove the client-side fetchMeme function since we're using SSR now
 
   const handleLike = async () => {
     if (!meme) return;
@@ -116,14 +128,6 @@ export default function MemePage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <p>Loading meme...</p>
-      </div>
-    );
-  }
-
   if (!meme) {
     return (
       <div className="error-container">
@@ -137,6 +141,10 @@ export default function MemePage() {
   const siteUrl = 'https://letspumpit.com';
   const fullImageUrl = meme.image_url.startsWith('http') ? meme.image_url : `${siteUrl}${meme.image_url}`;
   const pageUrl = `${siteUrl}/meme/${id}`;
+  
+  // Debug log to check URLs
+  console.log('Image URL:', meme.image_url);
+  console.log('Full Image URL:', fullImageUrl);
 
   return (
     <>
@@ -144,28 +152,22 @@ export default function MemePage() {
         <title>$PUMPIT Meme by {meme.creator_x_handle}</title>
         <meta name="description" content={`Check out this $PUMPIT meme created by ${meme.creator_x_handle}! Join the movement on Solana.`} />
         
-        {/* Open Graph for social media previews */}
+        {/* Twitter Card - These MUST come first for Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@pumpitonsol" />
+        <meta name="twitter:title" content={`$PUMPIT Meme by ${meme.creator_x_handle}`} />
+        <meta name="twitter:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
+        <meta name="twitter:image" content={fullImageUrl} />
+        
+        {/* Open Graph for other platforms */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={pageUrl} />
         <meta property="og:title" content={`$PUMPIT Meme by ${meme.creator_x_handle}`} />
         <meta property="og:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
         <meta property="og:image" content={fullImageUrl} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="1200" />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content={pageUrl} />
         <meta property="og:site_name" content="PumpItOnSol" />
-        
-        {/* Twitter Card - MUST have these specific tags */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@pumpitonsol" />
-        <meta name="twitter:creator" content={meme.creator_x_handle.startsWith('@') ? meme.creator_x_handle : `@${meme.creator_x_handle}`} />
-        <meta name="twitter:title" content={`$PUMPIT Meme by ${meme.creator_x_handle}`} />
-        <meta name="twitter:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
-        <meta name="twitter:image" content={fullImageUrl} />
-        <meta name="twitter:image:alt" content={`$PUMPIT meme created by ${meme.creator_x_handle}`} />
-        
-        {/* Additional meta tags for better compatibility */}
-        <meta property="og:image:type" content="image/png" />
-        <meta property="og:image:alt" content={`$PUMPIT meme created by ${meme.creator_x_handle}`} />
       </Head>
 
       <div className="meme-page">
