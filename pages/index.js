@@ -674,7 +674,7 @@ export default function Home() {
     }
   };
 
-  // Share functions with tracking
+  // Share functions with tracking - FIXED VERSION
   const shareOnTwitter = async (memeId) => {
     // Find the meme to get creator info
     const meme = communityMemes.find(m => m.id === memeId);
@@ -707,11 +707,10 @@ export default function Home() {
     }
     
     // Then open Twitter share dialog with new message
-    const memeUrl = `${window.location.origin}/meme/${memeId}`;
+    const memeUrl = window.location.origin + '/meme/' + memeId;
     const creatorHandle = meme.creator_x_handle || 'anonymous';
-    const text = `Sharing meme created by ${creatorHandle} 🚀 @pumpitonsol\n\nJoin the movement: letspumpit.com`;
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(memeUrl)}&hashtags=PUMPIT,Solana,PumpItOnSol`;
-    window.open(twitterUrl, '_blank');://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(memeUrl)}&hashtags=PUMPIT,Solana,PumpItOnSol`;
+    const text = 'Sharing meme created by ' + creatorHandle + ' 🚀 @pumpitonsol\n\nJoin the movement: letspumpit.com';
+    const twitterUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(memeUrl) + '&hashtags=PUMPIT,Solana,PumpItOnSol';
     window.open(twitterUrl, '_blank');
   };
 
@@ -748,12 +747,10 @@ export default function Home() {
     
     // Then open Telegram share dialog with new message
     const creatorHandle = meme.creator_x_handle || 'anonymous';
-    const text = `Sharing meme created by ${creatorHandle} 🚀\n\nVisit: letspumpit.com\nJoin us at @Pumpetcto`;
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(imageUrl)}&text=${encodeURIComponent(text)}`;
+    const text = 'Sharing meme created by ' + creatorHandle + ' 🚀\n\nVisit: letspumpit.com\nJoin us at @Pumpetcto';
+    const telegramUrl = 'https://t.me/share/url?url=' + encodeURIComponent(imageUrl) + '&text=' + encodeURIComponent(text);
     window.open(telegramUrl, '_blank');
   };
-
-  // Helper function to load images - REMOVED (not needed with html2canvas)
 
   // Get transform style as string
   const getLipTransform = () => {
@@ -770,11 +767,44 @@ export default function Home() {
       setShowShareModal(false);
     }
   };
+
+  // Modal close handler for X form
   const handleModalClose = (e) => {
     // Only close if clicking the modal background, not the form
     if (e.target.classList.contains('x-form-modal')) {
       setShowXForm(false);
     }
+  };
+
+  // Share from modal handlers
+  const handleShareFromModal = (platform) => {
+    if (!currentMemeId) return;
+    
+    if (platform === 'twitter') {
+      shareOnTwitter(currentMemeId);
+    } else if (platform === 'telegram') {
+      const meme = communityMemes.find(m => m.id === currentMemeId);
+      if (meme) {
+        shareOnTelegram(currentMemeId, meme.image_url);
+      }
+    }
+  };
+
+  // Create another meme handler
+  const handleCreateAnother = () => {
+    setShowShareModal(false);
+    setSelectedFile(null);
+    setPreview('/pumper.png');
+    setShowOverlays(false);
+    setGeneratedMeme(null);
+    setCurrentMemeId(null);
+    // Reset overlay positions
+    setLipPosition({ x: 0, y: 0 });
+    setExclamationPosition({ x: 0, y: 0 });
+    setLipScale(1);
+    setExclamationScale(1);
+    setLipRotation(0);
+    setExclamationRotation(0);
   };
 
   return (
