@@ -139,12 +139,25 @@ export default function MemePage({ meme: initialMeme }) {
 
   // Build the full URL for meta tags
   const siteUrl = 'https://letspumpit.com';
-  const fullImageUrl = meme.image_url.startsWith('http') ? meme.image_url : `${siteUrl}${meme.image_url}`;
-  const pageUrl = `${siteUrl}/meme/${id}`;
+  // Ensure we always have a full URL for the image
+  let fullImageUrl = meme.image_url;
   
-  // Debug log to check URLs
-  console.log('Image URL:', meme.image_url);
-  console.log('Full Image URL:', fullImageUrl);
+  // If it's a relative URL or missing protocol, it won't work for Twitter
+  if (!fullImageUrl.startsWith('http://') && !fullImageUrl.startsWith('https://')) {
+    // If it starts with /, prepend our domain
+    if (fullImageUrl.startsWith('/')) {
+      fullImageUrl = `${siteUrl}${fullImageUrl}`;
+    } else {
+      // Otherwise assume it's a Supabase URL that needs https://
+      fullImageUrl = `https://${fullImageUrl}`;
+    }
+  }
+  
+  const pageUrl = `${siteUrl}/meme/${meme.id}`;
+  
+  // Debug log to check URLs (remove after testing)
+  console.log('Original Image URL:', meme.image_url);
+  console.log('Full Image URL for Twitter:', fullImageUrl);
 
   return (
     <>
@@ -158,6 +171,8 @@ export default function MemePage({ meme: initialMeme }) {
         <meta name="twitter:title" content={`$PUMPIT Meme by ${meme.creator_x_handle}`} />
         <meta name="twitter:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
         <meta name="twitter:image" content={fullImageUrl} />
+        <meta name="twitter:image:width" content="1200" />
+        <meta name="twitter:image:height" content="1200" />
         
         {/* Open Graph for other platforms */}
         <meta property="og:type" content="website" />
@@ -165,6 +180,8 @@ export default function MemePage({ meme: initialMeme }) {
         <meta property="og:title" content={`$PUMPIT Meme by ${meme.creator_x_handle}`} />
         <meta property="og:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
         <meta property="og:image" content={fullImageUrl} />
+        <meta property="og:image:secure_url" content={fullImageUrl} />
+        <meta property="og:image:type" content="image/png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="1200" />
         <meta property="og:site_name" content="PumpItOnSol" />
