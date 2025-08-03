@@ -764,7 +764,12 @@ export default function Home() {
     return `translate(${exclamationPosition.x}px, ${exclamationPosition.y}px) scale(${exclamationScale}) rotate(${exclamationRotation}deg)`;
   };
 
-  // Close modal handler
+  // Modal close handler for share modal
+  const handleCloseShareModal = (e) => {
+    if (e.target.classList.contains('share-modal-backdrop')) {
+      setShowShareModal(false);
+    }
+  };
   const handleModalClose = (e) => {
     // Only close if clicking the modal background, not the form
     if (e.target.classList.contains('x-form-modal')) {
@@ -810,7 +815,7 @@ export default function Home() {
 
       {/* Share Success Modal */}
       {showShareModal && (
-        <div className="share-modal-backdrop" onClick={handleCloseModal}>
+        <div className="share-modal-backdrop" onClick={handleCloseShareModal}>
           <div className="share-modal">
             <button className="modal-close" onClick={() => setShowShareModal(false)}>✕</button>
             
