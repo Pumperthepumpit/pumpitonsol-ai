@@ -71,29 +71,13 @@ export default function MemePage() {
   };
 
   const shareOnTwitter = async () => {
-    // Update share count
-    if (meme) {
-      try {
-        const newShareCount = (meme.shares_count || 0) + 1;
-        await supabase
-          .from('memes')
-          .update({ shares_count: newShareCount })
-          .eq('id', meme.id);
-        
-        setMeme({ ...meme, shares_count: newShareCount });
-      } catch (error) {
-        console.error('Error updating share count:', error);
-      }
-    }
-    
+    // Open Twitter FIRST (for iOS fix)
     const creatorHandle = meme.creator_x_handle || 'anonymous';
     const text = `Sharing meme created by ${creatorHandle} 🚀\n\nJoin the movement: letspumpit.com`;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}&hashtags=PUMPIT,Solana,PumpItOnSol`;
-    window.open(twitterUrl, '_blank');
-  };
-
-  const shareOnTelegram = async () => {
-    // Update share count
+    window.open(twitterUrl, '_blank', 'noopener,noreferrer');
+    
+    // Then update share count
     if (meme) {
       try {
         const newShareCount = (meme.shares_count || 0) + 1;
@@ -107,11 +91,29 @@ export default function MemePage() {
         console.error('Error updating share count:', error);
       }
     }
-    
+  };
+
+  const shareOnTelegram = async () => {
+    // Open Telegram FIRST (for iOS fix)
     const creatorHandle = meme.creator_x_handle || 'anonymous';
     const text = `Sharing meme created by ${creatorHandle} 🚀\n\nVisit: letspumpit.com\nJoin us at @Pumpetcto`;
     const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(meme.image_url)}&text=${encodeURIComponent(text)}`;
-    window.open(telegramUrl, '_blank');
+    window.open(telegramUrl, '_blank', 'noopener,noreferrer');
+    
+    // Then update share count
+    if (meme) {
+      try {
+        const newShareCount = (meme.shares_count || 0) + 1;
+        await supabase
+          .from('memes')
+          .update({ shares_count: newShareCount })
+          .eq('id', meme.id);
+        
+        setMeme({ ...meme, shares_count: newShareCount });
+      } catch (error) {
+        console.error('Error updating share count:', error);
+      }
+    }
   };
 
   if (loading) {
@@ -147,7 +149,7 @@ export default function MemePage() {
         <meta property="og:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
         <meta property="og:image" content={fullImageUrl} />
         <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
+        <meta property="og:image:height" content="1200" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:site_name" content="PumpItOnSol" />
@@ -155,11 +157,15 @@ export default function MemePage() {
         {/* Twitter Card - MUST have these specific tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@pumpitonsol" />
-        <meta name="twitter:creator" content={`@${meme.creator_x_handle}`} />
+        <meta name="twitter:creator" content={meme.creator_x_handle.startsWith('@') ? meme.creator_x_handle : `@${meme.creator_x_handle}`} />
         <meta name="twitter:title" content={`$PUMPIT Meme by ${meme.creator_x_handle}`} />
         <meta name="twitter:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
         <meta name="twitter:image" content={fullImageUrl} />
         <meta name="twitter:image:alt" content={`$PUMPIT meme created by ${meme.creator_x_handle}`} />
+        
+        {/* Additional meta tags for better compatibility */}
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:alt" content={`$PUMPIT meme created by ${meme.creator_x_handle}`} />
       </Head>
 
       <div className="meme-page">
