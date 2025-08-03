@@ -960,6 +960,8 @@ export default function Home() {
               <h3>📊 Token Stats</h3>
               <p>Contract Address: B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk</p>
               <p>Total Supply: 1,000,000,000 $PUMPIT</p>
+              <p>🔥 Burned: 29% (286M $PUMPIT)</p>
+              <p>✅ Circulating: 714,268,067 $PUMPIT</p>
               <a 
                 href="https://letsbonk.fun/token/B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk" 
                 target="_blank" 
