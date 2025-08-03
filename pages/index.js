@@ -465,9 +465,8 @@ export default function Home() {
     
     // Require at least 2 characters for a valid handle
     if (inputValue && inputValue.trim().length >= 2) {
-      // Add @ if user didn't include it
-      const formattedHandle = inputValue.startsWith('@') ? inputValue : `@${inputValue}`;
-      setXHandle(formattedHandle);
+      // Just use what the user typed - no automatic @ addition
+      setXHandle(inputValue.trim());
       setShowXForm(false);
     }
   };
