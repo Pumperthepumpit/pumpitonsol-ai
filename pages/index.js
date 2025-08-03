@@ -25,6 +25,8 @@ export default function Home() {
     about: false
   });
   const [jupiterLoaded, setJupiterLoaded] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [currentMemeId, setCurrentMemeId] = useState(null);
   
   // New states for draggable overlays
   const [showOverlays, setShowOverlays] = useState(false);
@@ -619,12 +621,9 @@ export default function Home() {
       // Refresh community memes
       fetchCommunityMemes();
       
-      // Show share options
-      setTimeout(() => {
-        if (confirm('Meme created! Share it on X/Twitter?')) {
-          shareOnTwitter(memeData.id);
-        }
-      }, 500);
+      // Show share modal instead of confirm dialog
+      setCurrentMemeId(memeData.id);
+      setShowShareModal(true);
       
     } catch (error) {
       console.error('Download failed:', error);
@@ -710,8 +709,9 @@ export default function Home() {
     // Then open Twitter share dialog with new message
     const memeUrl = `${window.location.origin}/meme/${memeId}`;
     const creatorHandle = meme.creator_x_handle || 'anonymous';
-    const text = `Sharing meme created by ${creatorHandle} 🚀\n\nJoin the movement: letspumpit.com`;
+    const text = `Sharing meme created by ${creatorHandle} 🚀 @pumpitonsol\n\nJoin the movement: letspumpit.com`;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(memeUrl)}&hashtags=PUMPIT,Solana,PumpItOnSol`;
+    window.open(twitterUrl, '_blank');://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(memeUrl)}&hashtags=PUMPIT,Solana,PumpItOnSol`;
     window.open(twitterUrl, '_blank');
   };
 
@@ -807,6 +807,47 @@ export default function Home() {
           🚀 Buy $PUMPIT
         </button>
       </div>
+
+      {/* Share Success Modal */}
+      {showShareModal && (
+        <div className="share-modal-backdrop" onClick={handleCloseModal}>
+          <div className="share-modal">
+            <button className="modal-close" onClick={() => setShowShareModal(false)}>✕</button>
+            
+            <div className="modal-content">
+              <h2>✅ Success!</h2>
+              <p>Your meme has been created!</p>
+              
+              {generatedMeme && (
+                <div className="modal-meme-preview">
+                  <img src={generatedMeme} alt="Your created meme" />
+                </div>
+              )}
+              
+              <h3>Share your creation:</h3>
+              
+              <div className="modal-share-buttons">
+                <button 
+                  onClick={() => handleShareFromModal('twitter')}
+                  className="modal-share-btn twitter"
+                >
+                  𝕏 Share on X
+                </button>
+                <button 
+                  onClick={() => handleShareFromModal('telegram')}
+                  className="modal-share-btn telegram"
+                >
+                  TG Share on Telegram
+                </button>
+              </div>
+              
+              <button onClick={handleCreateAnother} className="create-another-btn">
+                ✨ Create Another
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mobile-top-buttons">
         {walletAddress ? (
@@ -2059,6 +2100,183 @@ export default function Home() {
           
           .gesture-hints .mobile-hint {
             display: block;
+          }
+        }
+
+        /* Share Modal Styles */
+        .share-modal-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(10px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10000;
+          padding: 1rem;
+        }
+
+        .share-modal {
+          background: rgba(20, 20, 20, 0.98);
+          border: 2px solid #FFFF00;
+          border-radius: 20px;
+          max-width: 500px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          position: relative;
+          animation: modalAppear 0.3s ease;
+        }
+
+        @keyframes modalAppear {
+          from {
+            transform: scale(0.9);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
+        }
+
+        .modal-close {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: none;
+          border: none;
+          color: #FFFF00;
+          font-size: 1.5rem;
+          cursor: pointer;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+          background: rgba(255, 255, 0, 0.1);
+          transform: scale(1.1);
+        }
+
+        .modal-content {
+          padding: 3rem 2rem 2rem;
+          text-align: center;
+        }
+
+        .modal-content h2 {
+          font-size: 2rem;
+          color: #FFFF00;
+          margin-bottom: 0.5rem;
+        }
+
+        .modal-content p {
+          font-size: 1.1rem;
+          color: #ffffff;
+          margin-bottom: 1.5rem;
+        }
+
+        .modal-meme-preview {
+          margin: 1.5rem 0;
+          border-radius: 15px;
+          overflow: hidden;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-meme-preview img {
+          width: 100%;
+          height: auto;
+          display: block;
+          max-height: 300px;
+          object-fit: contain;
+        }
+
+        .modal-content h3 {
+          color: #FFD700;
+          margin: 1.5rem 0 1rem;
+          font-size: 1.2rem;
+        }
+
+        .modal-share-buttons {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          margin-bottom: 1.5rem;
+          flex-wrap: wrap;
+        }
+
+        .modal-share-btn {
+          padding: 1rem 2rem;
+          border: none;
+          border-radius: 50px;
+          font-size: 1rem;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          color: white;
+          min-width: 150px;
+        }
+
+        .modal-share-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-share-btn.twitter {
+          background: #1DA1F2;
+        }
+
+        .modal-share-btn.twitter:hover {
+          background: #1a8cd8;
+        }
+
+        .modal-share-btn.telegram {
+          background: #0088cc;
+        }
+
+        .modal-share-btn.telegram:hover {
+          background: #0077b3;
+        }
+
+        .create-another-btn {
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          padding: 1rem 2.5rem;
+          border-radius: 50px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-size: 1.1rem;
+          margin-top: 0.5rem;
+        }
+
+        .create-another-btn:hover {
+          transform: scale(1.05);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
+        }
+
+        @media (max-width: 768px) {
+          .share-modal {
+            max-width: calc(100vw - 2rem);
+          }
+
+          .modal-content {
+            padding: 2.5rem 1.5rem 1.5rem;
+          }
+
+          .modal-share-buttons {
+            flex-direction: column;
+          }
+
+          .modal-share-btn {
+            width: 100%;
           }
         }
 
