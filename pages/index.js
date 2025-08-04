@@ -55,22 +55,13 @@ export default function Home() {
   const lipRef = useRef(null);
   const exclamationRef = useRef(null);
 
-  // Load Twitter widget
+  // Fetch community memes from Supabase
   useEffect(() => {
-    // Load Twitter widget script
-    if (typeof window !== 'undefined') {
-      const script = document.createElement('script');
-      script.src = 'https://platform.twitter.com/widgets.js';
-      script.async = true;
-      script.charset = 'utf-8';
-      document.body.appendChild(script);
-      
-      script.onload = () => {
-        // Force Twitter widgets to load
-        if (window.twttr && window.twttr.widgets) {
-          window.twttr.widgets.load();
-        }
-      };
+    fetchCommunityMemes();
+    // Load liked memes from localStorage
+    const stored = localStorage.getItem('likedMemes');
+    if (stored) {
+      setLikedMemes(JSON.parse(stored));
     }
   }, []);
 
@@ -84,7 +75,10 @@ export default function Home() {
         .select('*')
         .order('likes_count', { ascending: false, nullsFirst: false });
       
-      if (allError) throw allError;
+      if (allError) {
+        console.error('Error fetching all memes:', allError);
+        throw allError;
+      }
       
       // Calculate combined scores and sort
       const memesWithScores = (allMemes || []).map(meme => ({
@@ -102,7 +96,10 @@ export default function Home() {
         .order('created_at', { ascending: false })
         .limit(6);
       
-      if (recentError) throw recentError;
+      if (recentError) {
+        console.error('Error fetching recent memes:', recentError);
+        throw recentError;
+      }
       
       // Filter out the top meme from recent if it's there, and take only 5
       const filteredRecent = (recentMemes || [])
@@ -112,9 +109,11 @@ export default function Home() {
       // Combine: top meme + 5 most recent
       const finalMemes = topMeme ? [topMeme, ...filteredRecent] : filteredRecent;
       
+      console.log('Fetched memes:', finalMemes.length);
       setCommunityMemes(finalMemes);
     } catch (error) {
       console.error('Error fetching memes:', error);
+      setCommunityMemes([]); // Set empty array instead of leaving it loading
     } finally {
       setIsLoadingMemes(false);
     }
@@ -1332,30 +1331,17 @@ export default function Home() {
             <h2>🌐 Join the $PUMPIT Community</h2>
             <div className="social-grid">
               <div className="social-card">
-                <h3>𝕏 Latest Updates</h3>
-                <div className="twitter-feed-container">
+                <h3>𝕏 Latest from X/Twitter</h3>
+                <div className="twitter-embed">
                   <a 
-                    href="https://twitter.com/pumpitonsol" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="twitter-fallback"
+                    className="twitter-timeline" 
+                    data-height="400"
+                    data-theme="dark"
+                    href="https://twitter.com/pumpitonsol?ref_src=twsrc%5Etfw"
                   >
-                    <div className="tweet-preview">
-                      <p>📱 Follow @pumpitonsol for the latest updates!</p>
-                      <span className="view-twitter">View on 𝕏 →</span>
-                    </div>
+                    Tweets by @pumpitonsol
                   </a>
-                  <div className="twitter-embed">
-                    <a 
-                      className="twitter-timeline" 
-                      data-height="400"
-                      data-theme="dark"
-                      data-chrome="noheader nofooter"
-                      href="https://twitter.com/pumpitonsol?ref_src=twsrc%5Etfw"
-                    >
-                      Loading tweets...
-                    </a>
-                  </div>
+                  <script async src="https://platform.twitter.com/widgets.js" charSet="utf-8"></script>
                 </div>
               </div>
               
@@ -2559,43 +2545,6 @@ export default function Home() {
           color: #FFFF00;
           margin-bottom: 1.5rem;
           text-align: center;
-        }
-
-        .twitter-feed-container {
-          position: relative;
-          min-height: 400px;
-        }
-
-        .twitter-fallback {
-          text-decoration: none;
-          color: white;
-          display: block;
-        }
-
-        .tweet-preview {
-          background: rgba(29, 161, 242, 0.1);
-          border: 1px solid #1DA1F2;
-          border-radius: 15px;
-          padding: 2rem;
-          text-align: center;
-          transition: all 0.3s ease;
-          margin-bottom: 1rem;
-        }
-
-        .tweet-preview:hover {
-          background: rgba(29, 161, 242, 0.2);
-          transform: translateY(-2px);
-        }
-
-        .tweet-preview p {
-          font-size: 1.2rem;
-          margin-bottom: 1rem;
-          color: white;
-        }
-
-        .view-twitter {
-          color: #1DA1F2;
-          font-weight: 600;
         }
 
         .twitter-embed {
