@@ -238,7 +238,7 @@ async function generateMeme(prompt, isPremiumUser) {
   }
 }
 
-// Save meme to Supabase
+// Save meme to Supabase - UPDATED WITH SOURCE TRACKING
 async function saveMemeToSupabase(imageUrl, userId, username) {
   let tempPath = null;
   try {
@@ -267,7 +267,8 @@ async function saveMemeToSupabase(imageUrl, userId, username) {
         creator_x_handle: `@${username || 'telegram_user'}`,
         creator_wallet: null,
         likes_count: 0,
-        shares_count: 0
+        shares_count: 0,
+        source: 'telegram'  // ADDED: Mark as telegram source
       })
       .select()
       .single();
@@ -393,7 +394,7 @@ ${!premium && !isOwner ? '\n🚀 Upgrade for more: /subscribe' : ''}`;
 💰 Buy $PUMPIT:
 CA: B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk
 
-🤖 Create your own: @YourBotUsername`;
+🤖 Create your own: @pumpermemebot`;
     
     try {
       await bot.sendPhoto(PUMPIT_GROUP_ID, imageUrl, { caption: adminCaption });
@@ -598,3 +599,4 @@ bot.on('polling_error', (error) => {
 
 console.log('🚀 Pumper Telegram Bot is running with payment system!');
 console.log('📊 Watching for messages to identify group IDs...');
+console.log('✅ Source tracking enabled - all memes will be marked as "telegram"');

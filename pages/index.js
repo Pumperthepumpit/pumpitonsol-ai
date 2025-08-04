@@ -646,13 +646,14 @@ export default function Home() {
         .from('memes')
         .getPublicUrl(fileName);
 
-      // Save to database
+      // Save to database - UPDATED WITH SOURCE TRACKING
       const { data: memeData, error: dbError } = await supabase
         .from('memes')
         .insert({
           image_url: publicUrl,
           creator_x_handle: xHandle,
-          creator_wallet: walletAddress
+          creator_wallet: walletAddress,
+          source: 'website'  // ADDED: Mark as website source
         })
         .select()
         .single();
@@ -882,6 +883,9 @@ export default function Home() {
         <a href="https://t.me/Pumpetcto" target="_blank" rel="noopener noreferrer" className="social-button">
           TG
         </a>
+        <a href="https://t.me/pumpermemebot" target="_blank" rel="noopener noreferrer" className="social-button telegram-bot">
+          🤖 Telegram Bot
+        </a>
         {walletAddress ? (
           <button className="social-button wallet-button">
             {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
@@ -941,6 +945,9 @@ export default function Home() {
       )}
 
       <div className="mobile-top-buttons">
+        <a href="https://t.me/pumpermemebot" target="_blank" rel="noopener noreferrer" className="social-button telegram-bot">
+          🤖 Bot
+        </a>
         {walletAddress ? (
           <button className="social-button wallet-button">
             {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
@@ -1325,6 +1332,20 @@ export default function Home() {
                 communityMemes.map((meme) => (
                   <div key={meme.id} className="meme-card">
                     <img src={meme.image_url} alt={`Community Meme by ${meme.creator_x_handle}`} />
+                    {meme.source === 'telegram' && (
+                      <a 
+                        href="https://t.me/pumpermemebot" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="telegram-badge"
+                      >
+                        <span>🤖 Made with Telegram Bot!</span>
+                        <div className="tooltip">
+                          Create memes with just text - no image upload needed!<br/>
+                          Try @pumpermemebot on Telegram
+                        </div>
+                      </a>
+                    )}
                     <div className="meme-info">
                       <p className="creator">by {meme.creator_x_handle}</p>
                       <div className="meme-stats">
@@ -1498,42 +1519,6 @@ export default function Home() {
           top: 20px;
           right: 20px;
           display: flex;
-          gap: 0.75rem;
-          z-index: 1000;
-          flex-wrap: wrap;
-          max-width: calc(100vw - 40px);
-        }
-
-        .mobile-top-buttons {
-          display: none;
-          position: fixed;
-          top: 10px;
-          right: 10px;
-          gap: 0.5rem;
-          z-index: 1000;
-          background: rgba(0, 0, 0, 0.8);
-          padding: 0.5rem;
-          border-radius: 30px;
-          backdrop-filter: blur(10px);
-        }
-
-        .mobile-social-icons {
-          display: none;
-          gap: 1rem;
-          margin-top: 1rem;
-          font-size: 1.5rem;
-          justify-content: center;
-        }
-
-        .mobile-social-icons a {
-          text-decoration: none;
-          transition: transform 0.3s ease;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 50%;
-          width: 50px;
-          height: 50px;
-          display: flex;
           align-items: center;
           justify-content: center;
           font-size: 1.3rem;
@@ -1564,6 +1549,18 @@ export default function Home() {
           background: rgba(255, 255, 255, 0.1);
           transform: translateY(-2px);
           box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .social-button.telegram-bot {
+          background: #0088cc;
+          color: white;
+          border: none;
+        }
+
+        .social-button.telegram-bot:hover {
+          background: #0077b3;
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(0, 136, 204, 0.5);
         }
 
         .social-button.buy-button {
@@ -2451,6 +2448,7 @@ export default function Home() {
           overflow: hidden;
           transition: transform 0.3s ease;
           border: 1px solid rgba(255, 255, 0, 0.1);
+          position: relative;
         }
 
         .meme-card:hover {
@@ -2465,6 +2463,63 @@ export default function Home() {
           object-fit: contain;
           max-height: 400px;
           background: #000;
+        }
+
+        /* Telegram Badge Styles */
+        .telegram-badge {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          background: linear-gradient(135deg, #0088cc, #00a8e6);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 25px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.9rem;
+          font-weight: 600;
+          animation: glow 2s ease-in-out infinite;
+          text-decoration: none;
+          transition: all 0.3s ease;
+        }
+
+        .telegram-badge:hover {
+          transform: scale(1.05);
+          box-shadow: 0 5px 20px rgba(0, 136, 204, 0.6);
+        }
+
+        .telegram-badge .tooltip {
+          position: absolute;
+          bottom: -70px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(0, 0, 0, 0.95);
+          color: white;
+          padding: 10px 15px;
+          border-radius: 8px;
+          white-space: nowrap;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.3s ease;
+          font-size: 0.85rem;
+          font-weight: normal;
+          pointer-events: none;
+          width: max-content;
+          max-width: 250px;
+          text-align: center;
+        }
+
+        .telegram-badge:hover .tooltip {
+          opacity: 1;
+          visibility: visible;
+          bottom: -80px;
+        }
+
+        @keyframes glow {
+          0%, 100% { box-shadow: 0 0 20px rgba(0, 136, 204, 0.5); }
+          50% { box-shadow: 0 0 30px rgba(0, 136, 204, 0.8); }
         }
 
         .meme-info {
@@ -2813,6 +2868,16 @@ export default function Home() {
           .community-memes {
             grid-template-columns: 1fr;
           }
+
+          .telegram-badge {
+            font-size: 0.8rem;
+            padding: 6px 12px;
+          }
+
+          .telegram-badge .tooltip {
+            font-size: 0.75rem;
+            max-width: 200px;
+          }
         }
 
         @media (max-width: 480px) {
@@ -2851,3 +2916,39 @@ export default function Home() {
     </>
   );
 }
+          gap: 0.75rem;
+          z-index: 1000;
+          flex-wrap: wrap;
+          max-width: calc(100vw - 40px);
+        }
+
+        .mobile-top-buttons {
+          display: none;
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          gap: 0.5rem;
+          z-index: 1000;
+          background: rgba(0, 0, 0, 0.8);
+          padding: 0.5rem;
+          border-radius: 30px;
+          backdrop-filter: blur(10px);
+        }
+
+        .mobile-social-icons {
+          display: none;
+          gap: 1rem;
+          margin-top: 1rem;
+          font-size: 1.5rem;
+          justify-content: center;
+        }
+
+        .mobile-social-icons a {
+          text-decoration: none;
+          transition: transform 0.3s ease;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 50%;
+          width: 50px;
+          height: 50px;
+          display: flex;
