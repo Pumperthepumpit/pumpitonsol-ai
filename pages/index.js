@@ -65,6 +65,23 @@ export default function Home() {
     }
   }, []);
 
+  // Load Twitter widget separately
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://platform.twitter.com/widgets.js';
+      script.async = true;
+      script.charset = 'utf-8';
+      document.body.appendChild(script);
+      
+      script.onload = () => {
+        if (window.twttr && window.twttr.widgets) {
+          window.twttr.widgets.load();
+        }
+      };
+    }
+  }, []);
+
   const fetchCommunityMemes = async () => {
     try {
       setIsLoadingMemes(true);
