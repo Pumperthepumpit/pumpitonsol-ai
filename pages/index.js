@@ -19,6 +19,8 @@ export default function Home() {
   const [communityMemes, setCommunityMemes] = useState([]);
   const [isLoadingMemes, setIsLoadingMemes] = useState(true);
   const [likedMemes, setLikedMemes] = useState([]);
+  const [sharedMemes, setSharedMemes] = useState([]);
+  const [dailyMemeCount, setDailyMemeCount] = useState(0);
   const [shareAnimatingId, setShareAnimatingId] = useState(null);
   const [expandedSections, setExpandedSections] = useState({
     vision: false,
@@ -58,10 +60,16 @@ export default function Home() {
   // Fetch community memes from Supabase
   useEffect(() => {
     fetchCommunityMemes();
+    fetchDailyMemeCount();
     // Load liked memes from localStorage
     const stored = localStorage.getItem('likedMemes');
     if (stored) {
       setLikedMemes(JSON.parse(stored));
+    }
+    // Load shared memes from localStorage
+    const storedShares = localStorage.getItem('sharedMemes');
+    if (storedShares) {
+      setSharedMemes(JSON.parse(storedShares));
     }
   }, []);
 
@@ -81,6 +89,26 @@ export default function Home() {
       };
     }
   }, []);
+
+  const fetchDailyMemeCount = async () => {
+    try {
+      // Get date 24 hours ago
+      const yesterday = new Date();
+      yesterday.setHours(yesterday.getHours() - 24);
+      
+      const { count, error } = await supabase
+        .from('memes')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', yesterday.toISOString());
+        
+      if (error) throw error;
+      
+      setDailyMemeCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching daily meme count:', error);
+      setDailyMemeCount(0);
+    }
+  };
 
   const fetchCommunityMemes = async () => {
     try {
@@ -646,6 +674,9 @@ export default function Home() {
       // Refresh community memes
       fetchCommunityMemes();
       
+      // Update daily count
+      setDailyMemeCount(prev => prev + 1);
+      
       // Show share modal instead of confirm dialog
       setCurrentMemeId(memeData.id);
       setShowShareModal(true);
@@ -1103,6 +1134,11 @@ export default function Home() {
               Transform any image into a $PUMPIT meme! Just upload, position the overlays, and download!
             </p>
             
+            <div className="daily-counter">
+              <span className="fire-icon">🔥</span>
+              <span className="counter-text">{dailyMemeCount} memes created today!</span>
+            </div>
+            
             {showXForm && (
               <div className="x-form-modal" onClick={handleModalClose}>
                 <form onSubmit={handleXHandleSubmit} className="x-form" onClick={(e) => e.stopPropagation()}>
@@ -1306,17 +1342,19 @@ export default function Home() {
                       <div className="share-buttons">
                         <button 
                           onClick={() => shareOnTwitter(meme.id)}
-                          className="share-btn twitter"
+                          className={`share-btn twitter ${sharedMemes.includes(meme.id) ? 'shared' : ''}`}
                           type="button"
+                          disabled={sharedMemes.includes(meme.id)}
                         >
-                          𝕏 Share
+                          {sharedMemes.includes(meme.id) ? '✓ Shared' : '𝕏 Share'}
                         </button>
                         <button 
                           onClick={() => shareOnTelegram(meme.id, meme.image_url)}
-                          className="share-btn telegram"
+                          className={`share-btn telegram ${sharedMemes.includes(meme.id) ? 'shared' : ''}`}
                           type="button"
+                          disabled={sharedMemes.includes(meme.id)}
                         >
-                          TG Share
+                          {sharedMemes.includes(meme.id) ? '✓ Shared' : 'TG Share'}
                         </button>
                       </div>
                     </div>
@@ -1819,6 +1857,35 @@ export default function Home() {
         .token-link:hover {
           color: #FFD700;
           text-decoration: underline;
+        }
+
+        .daily-counter {
+          text-align: center;
+          margin: 1.5rem 0;
+          padding: 1rem;
+          background: rgba(255, 255, 0, 0.05);
+          border-radius: 50px;
+          border: 1px solid rgba(255, 255, 0, 0.2);
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        .fire-icon {
+          font-size: 1.5rem;
+          animation: flicker 1.5s ease-in-out infinite;
+        }
+
+        @keyframes flicker {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.2); }
+        }
+
+        .counter-text {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #FFFF00;
         }
 
         .x-form-modal {
@@ -2498,6 +2565,15 @@ export default function Home() {
 
         .share-btn:active {
           transform: scale(0.95);
+        }
+
+        .share-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
+        .share-btn.shared {
+          background: #4CAF50 !important;
         }
 
         .share-btn.twitter {
