@@ -646,14 +646,20 @@ export default function Home() {
         .from('memes')
         .getPublicUrl(fileName);
 
-      // Save to database - UPDATED WITH SOURCE TRACKING
+      // Save to database - UPDATED WITH SOURCE TRACKING AND NEW FIELDS
       const { data: memeData, error: dbError } = await supabase
         .from('memes')
         .insert({
           image_url: publicUrl,
           creator_x_handle: xHandle,
           creator_wallet: walletAddress,
-          source: 'website'  // ADDED: Mark as website source
+          likes_count: 0,
+          shares_count: 0,
+          views_count: 0,
+          topic: 'Website Generated Meme',
+          description: `PUMPIT meme created by ${xHandle} using our AI-powered generator`,
+          source: 'website',  // ADDED: Mark as website source
+          from_telegram_bot: false
         })
         .select()
         .single();
@@ -867,9 +873,26 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>PumpItOnSol - AI-Powered Meme Generator</title>
-        <meta name="description" content="Transform any photo into $PUMPIT memes!" />
+        <title>PumpItOnSol - AI-Powered Meme Generator | Solana's #1 Meme Community</title>
+        <meta name="description" content="Create viral $PUMPIT memes with our AI-powered generator. Join Solana's fastest growing memecoin community!" />
+        <meta name="keywords" content="PUMPIT, Solana, meme generator, memecoin, crypto memes, AI memes" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="canonical" href="https://letspumpit.com" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="PumpItOnSol - AI-Powered Meme Generator" />
+        <meta property="og:description" content="Create viral $PUMPIT memes with our AI generator. Join Solana's fastest growing memecoin community!" />
+        <meta property="og:image" content="https://letspumpit.com/pumper.png" />
+        <meta property="og:url" content="https://letspumpit.com" />
+        <meta property="og:type" content="website" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@pumpitonsol" />
+        <meta name="twitter:title" content="PumpItOnSol - AI-Powered Meme Generator" />
+        <meta name="twitter:description" content="Create viral $PUMPIT memes with our AI generator. Join Solana's fastest growing memecoin community!" />
+        <meta name="twitter:image" content="https://letspumpit.com/pumper.png" />
+        
         <script src="https://terminal.jup.ag/main-v2.js" data-preload></script>
       </Head>
 
@@ -994,6 +1017,7 @@ export default function Home() {
             <a href="#about">About</a>
             <a href="#generator">Generate</a>
             <a href="#roadmap">Roadmap</a>
+            <a href="/blog">Blog</a>
             <a href="#social">Social</a>
           </div>
         </nav>
@@ -1315,9 +1339,10 @@ export default function Home() {
             <ul>
               <li>✅ Phase 1: Launch $PUMPIT on Bonk.fun with meme identity + Pumper reveal</li>
               <li>✅ Phase 2: AI meme generator with smooth drag & drop editing</li>
-              <li>📋 Phase 3: Collaborate with top meme communities</li>
-              <li>📋 Phase 4: Community meme automation & viral campaigns</li>
-              <li>📚 Phase 5: Pumper Comic Series - Exclusive stories for $PUMPIT holders!</li>
+              <li>✅ Phase 3: Telegram bot for easy meme creation</li>
+              <li>✅ Phase 4: SEO-optimized blog for daily content</li>
+              <li>📋 Phase 5: Community meme contests & rewards</li>
+              <li>📋 Phase 6: Pumper Comic Series - Exclusive stories for $PUMPIT holders!</li>
             </ul>
           </section>
 
@@ -1331,8 +1356,13 @@ export default function Home() {
               ) : communityMemes.length > 0 ? (
                 communityMemes.map((meme) => (
                   <div key={meme.id} className="meme-card">
-                    <img src={meme.image_url} alt={`Community Meme by ${meme.creator_x_handle}`} />
-                    {meme.source === 'telegram' && (
+                    <a href={`/meme/${meme.id}`} className="meme-link">
+                      <img src={meme.image_url} alt={meme.topic || `Community Meme by ${meme.creator_x_handle}`} />
+                      {meme.topic && (
+                        <div className="meme-topic">{meme.topic}</div>
+                      )}
+                    </a>
+                    {(meme.source === 'telegram' || meme.from_telegram_bot) && (
                       <a 
                         href="https://t.me/pumpermemebot" 
                         target="_blank" 
@@ -1354,11 +1384,16 @@ export default function Home() {
                           className={`like-button ${likedMemes.includes(meme.id) ? 'liked' : ''}`}
                           type="button"
                         >
-                          ❤️ {meme.likes_count}
+                          ❤️ {meme.likes_count || 0}
                         </button>
                         <span className={`share-counter ${meme.id === shareAnimatingId ? 'animating' : ''}`}>
-                          🔄 {meme.shares_count}
+                          🔄 {meme.shares_count || 0}
                         </span>
+                        {meme.views_count > 0 && (
+                          <span className="view-counter">
+                            👀 {meme.views_count}
+                          </span>
+                        )}
                       </div>
                       <div className="share-buttons">
                         <button 
@@ -1462,6 +1497,17 @@ export default function Home() {
                       <p>Follow for real-time updates</p>
                     </div>
                   </a>
+                  
+                  <a 
+                    href="/blog" 
+                    className="community-button blog"
+                  >
+                    <span className="icon">📝</span>
+                    <div>
+                      <strong>PUMPIT Blog</strong>
+                      <p>Daily meme updates & insights</p>
+                    </div>
+                  </a>
                 </div>
               </div>
             </div>
@@ -1469,7 +1515,14 @@ export default function Home() {
         </main>
 
         <footer>
-          <p>© 2025 PumpItOnSol. Powered by smooth gesture controls. 🎨🚀</p>
+          <p>© 2025 PumpItOnSol. Powered by AI & Community. 🎨🚀</p>
+          <div className="footer-links">
+            <a href="/blog">Blog</a>
+            <span> • </span>
+            <a href="https://x.com/pumpitonsol" target="_blank" rel="noopener noreferrer">Twitter</a>
+            <span> • </span>
+            <a href="https://t.me/Pumpetcto" target="_blank" rel="noopener noreferrer">Telegram</a>
+          </div>
         </footer>
       </div>
 
@@ -2493,12 +2546,32 @@ export default function Home() {
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
-        .meme-card img {
+        .meme-link {
+          display: block;
+          position: relative;
+          text-decoration: none;
+        }
+
+        .meme-link img {
           width: 100%;
           height: auto;
           object-fit: contain;
           max-height: 400px;
           background: #000;
+          display: block;
+        }
+
+        .meme-topic {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+          color: #FFFF00;
+          padding: 1.5rem 1rem 1rem;
+          font-weight: 600;
+          font-size: 1.1rem;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
         }
 
         /* Telegram Badge Styles */
@@ -2519,6 +2592,7 @@ export default function Home() {
           animation: glow 2s ease-in-out infinite;
           text-decoration: none;
           transition: all 0.3s ease;
+          z-index: 2;
         }
 
         .telegram-badge:hover {
@@ -2626,6 +2700,15 @@ export default function Home() {
         .share-counter.animating {
           animation: shareAnimation 0.6s ease;
           color: #FFFF00;
+        }
+
+        .view-counter {
+          color: #999;
+          padding: 0.5rem;
+          border-radius: 20px;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
         }
 
         @keyframes shareAnimation {
@@ -2790,6 +2873,10 @@ export default function Home() {
           border-color: #1da1f2;
         }
 
+        .community-button.blog:hover {
+          border-color: #FFD700;
+        }
+
         footer {
           text-align: center;
           padding: 3rem;
@@ -2799,6 +2886,29 @@ export default function Home() {
         }
 
         footer p {
+          color: #666;
+          margin-bottom: 1rem;
+        }
+
+        .footer-links {
+          display: flex;
+          gap: 0.5rem;
+          justify-content: center;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+
+        .footer-links a {
+          color: #999;
+          text-decoration: none;
+          transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+          color: #FFFF00;
+        }
+
+        .footer-links span {
           color: #666;
         }
 
