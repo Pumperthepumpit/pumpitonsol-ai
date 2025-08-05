@@ -39,6 +39,7 @@ export default function MemePage({ meme: initialMeme }) {
   const [meme, setMeme] = useState(initialMeme);
   const [loading, setLoading] = useState(false);
   const [likedMemes, setLikedMemes] = useState([]);
+  const [showCopied, setShowCopied] = useState(false);
 
   useEffect(() => {
     // Load liked memes from localStorage
@@ -46,9 +47,24 @@ export default function MemePage({ meme: initialMeme }) {
     if (stored) {
       setLikedMemes(JSON.parse(stored));
     }
-  }, []);
 
-  // Remove the client-side fetchMeme function since we're using SSR now
+    // Increment view count
+    if (meme) {
+      incrementViewCount();
+    }
+  }, [meme?.id]);
+
+  const incrementViewCount = async () => {
+    try {
+      const newViewCount = (meme.views_count || 0) + 1;
+      await supabase
+        .from('memes')
+        .update({ views_count: newViewCount })
+        .eq('id', meme.id);
+    } catch (error) {
+      console.error('Error updating view count:', error);
+    }
+  };
 
   const handleLike = async () => {
     if (!meme) return;
@@ -83,13 +99,13 @@ export default function MemePage({ meme: initialMeme }) {
   };
 
   const shareOnTwitter = async () => {
-    // Open Twitter FIRST (for iOS fix)
     const creatorHandle = meme.creator_x_handle || 'anonymous';
-    const text = `Sharing meme created by ${creatorHandle} 🚀 @pumpitonsol\n\nJoin the movement: letspumpit.com`;
+    const topic = meme.topic || 'awesome meme';
+    const text = `Check out this ${topic} by ${creatorHandle}! 🚀 @pumpitonsol\n\n#PUMPIT #Solana #MemeCoin #CryptoMemes`;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
     window.open(twitterUrl, '_blank', 'noopener,noreferrer');
     
-    // Then update share count
+    // Update share count
     if (meme) {
       try {
         const newShareCount = (meme.shares_count || 0) + 1;
@@ -106,13 +122,13 @@ export default function MemePage({ meme: initialMeme }) {
   };
 
   const shareOnTelegram = async () => {
-    // Open Telegram FIRST (for iOS fix)
     const creatorHandle = meme.creator_x_handle || 'anonymous';
-    const text = `Sharing meme created by ${creatorHandle} 🚀\n\nVisit: letspumpit.com\nJoin us at @Pumpetcto`;
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(meme.image_url)}&text=${encodeURIComponent(text)}`;
+    const topic = meme.topic || 'PUMPIT meme';
+    const text = `🚀 ${topic} by ${creatorHandle}\n\nJoin the PUMPIT movement!\n\n💛 letspumpit.com\n📱 @Pumpetcto`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(text)}`;
     window.open(telegramUrl, '_blank', 'noopener,noreferrer');
     
-    // Then update share count
+    // Update share count
     if (meme) {
       try {
         const newShareCount = (meme.shares_count || 0) + 1;
@@ -128,6 +144,20 @@ export default function MemePage({ meme: initialMeme }) {
     }
   };
 
+  const copyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setShowCopied(true);
+    setTimeout(() => setShowCopied(false), 2000);
+  };
+
+  const downloadMeme = () => {
+    const link = document.createElement('a');
+    link.href = meme.image_url;
+    link.download = `pumpit-meme-${meme.id}.png`;
+    link.target = '_blank';
+    link.click();
+  };
+
   if (!meme) {
     return (
       <div className="error-container">
@@ -137,80 +167,98 @@ export default function MemePage({ meme: initialMeme }) {
     );
   }
 
-  // Build the full URL for meta tags
+  // SEO data
   const siteUrl = 'https://letspumpit.com';
-  // Ensure we always have a full URL for the image
-  let fullImageUrl = meme.image_url;
+  const pageUrl = `${siteUrl}/meme/${meme.id}`;
+  const memeTitle = meme.topic ? `${meme.topic} - PUMPIT Meme #${meme.id}` : `PUMPIT Meme #${meme.id}`;
+  const memeDescription = meme.description || `${meme.topic || 'Epic'} PUMPIT meme created by ${meme.creator_x_handle || 'community'}. Join Solana's fastest growing memecoin community! 🚀 #PUMPIT #Solana`;
+  const keywords = `PUMPIT, Solana, meme, crypto, memecoin, ${meme.topic || ''}, ${meme.creator_x_handle || ''}, blockchain, web3`;
   
-  // If it's a relative URL or missing protocol, it won't work for Twitter
+  // Ensure full URL for image
+  let fullImageUrl = meme.image_url;
   if (!fullImageUrl.startsWith('http://') && !fullImageUrl.startsWith('https://')) {
-    // If it starts with /, prepend our domain
     if (fullImageUrl.startsWith('/')) {
       fullImageUrl = `${siteUrl}${fullImageUrl}`;
     } else {
-      // Otherwise assume it's a Supabase URL that needs https://
       fullImageUrl = `https://${fullImageUrl}`;
     }
   }
-  
-  const pageUrl = `${siteUrl}/meme/${meme.id}`;
-  
-  // Debug log to check URLs (remove after testing)
-  console.log('Original Image URL:', meme.image_url);
-  console.log('Full Image URL for Twitter:', fullImageUrl);
 
   return (
     <>
       <Head>
-        <title>$PUMPIT Meme by {meme.creator_x_handle}</title>
-        <meta name="description" content={`Check out this $PUMPIT meme created by ${meme.creator_x_handle}! Join the movement on Solana.`} />
+        <title>{memeTitle}</title>
+        <meta name="description" content={memeDescription} />
+        <meta name="keywords" content={keywords} />
+        <link rel="canonical" href={pageUrl} />
         
-        {/* Twitter Card - These MUST come first for Twitter */}
+        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@pumpitonsol" />
-        <meta name="twitter:title" content={`$PUMPIT Meme by ${meme.creator_x_handle}`} />
-        <meta name="twitter:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
+        <meta name="twitter:creator" content={`@${meme.creator_x_handle || 'pumpitonsol'}`} />
+        <meta name="twitter:title" content={memeTitle} />
+        <meta name="twitter:description" content={memeDescription} />
         <meta name="twitter:image" content={fullImageUrl} />
-        <meta name="twitter:image:width" content="1200" />
-        <meta name="twitter:image:height" content="1200" />
+        <meta name="twitter:image:alt" content={`${meme.topic || 'PUMPIT'} meme`} />
         
-        {/* Open Graph for other platforms */}
-        <meta property="og:type" content="website" />
+        {/* Open Graph */}
+        <meta property="og:type" content="article" />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:title" content={`$PUMPIT Meme by ${meme.creator_x_handle}`} />
-        <meta property="og:description" content="Join the $PUMPIT movement on Solana! Making Solana smile, one meme at a time 🚀" />
+        <meta property="og:title" content={memeTitle} />
+        <meta property="og:description" content={memeDescription} />
         <meta property="og:image" content={fullImageUrl} />
-        <meta property="og:image:secure_url" content={fullImageUrl} />
-        <meta property="og:image:type" content="image/png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="1200" />
-        <meta property="og:site_name" content="PumpItOnSol" />
+        <meta property="og:site_name" content="PUMPIT - Solana's Meme Revolution" />
+        <meta property="article:author" content={meme.creator_x_handle || 'PUMPIT Community'} />
+        <meta property="article:published_time" content={meme.created_at} />
+        
+        {/* Additional SEO */}
+        <meta name="robots" content="index, follow" />
+        <meta name="author" content={meme.creator_x_handle || 'PUMPIT Community'} />
       </Head>
 
       <div className="meme-page">
         <header className="mini-header">
           <a href="/" className="logo">$PUMPIT</a>
           <div className="header-buttons">
-            <a href="https://jup.ag" target="_blank" rel="noopener noreferrer" className="buy-button">
+            <a href="https://jup.ag/swap/SOL-PUMPIT" target="_blank" rel="noopener noreferrer" className="buy-button">
               🚀 Buy $PUMPIT
+            </a>
+            <a href="https://t.me/pumpermemebot" target="_blank" rel="noopener noreferrer" className="bot-button">
+              🤖 Telegram Bot
             </a>
           </div>
         </header>
 
         <main className="meme-container">
           <div className="meme-display">
-            <img src={meme.image_url} alt={`Meme by ${meme.creator_x_handle}`} />
+            <div className="meme-image-section">
+              <img src={meme.image_url} alt={`${meme.topic || 'PUMPIT'} meme by ${meme.creator_x_handle}`} />
+              {meme.from_telegram_bot && (
+                <div className="telegram-badge">
+                  🤖 Made with Telegram Bot!
+                </div>
+              )}
+            </div>
             
             <div className="meme-details">
-              <h1>Created by {meme.creator_x_handle}</h1>
+              <h1>{meme.topic || `PUMPIT Meme #${meme.id}`}</h1>
+              <p className="creator">Created by <span className="creator-handle">@{meme.creator_x_handle || 'anonymous'}</span></p>
+              
+              {meme.description && (
+                <p className="meme-description">{meme.description}</p>
+              )}
+              
               <div className="meme-stats">
                 <button 
                   onClick={handleLike}
                   className={`like-button ${likedMemes.includes(meme.id) ? 'liked' : ''}`}
                 >
-                  ❤️ {meme.likes_count || 0}
+                  ❤️ {meme.likes_count || 0} likes
                 </button>
-                <span className="share-count">🔄 {meme.shares_count || 0} shares</span>
+                <span className="stat-item">🔄 {meme.shares_count || 0} shares</span>
+                <span className="stat-item">👀 {meme.views_count || 0} views</span>
               </div>
               
               <div className="share-section">
@@ -220,16 +268,39 @@ export default function MemePage({ meme: initialMeme }) {
                     𝕏 Share on X
                   </button>
                   <button onClick={shareOnTelegram} className="share-btn telegram">
-                    TG Share on Telegram
+                    📱 Telegram
+                  </button>
+                  <button onClick={copyLink} className="share-btn copy">
+                    {showCopied ? '✅ Copied!' : '🔗 Copy Link'}
+                  </button>
+                  <button onClick={downloadMeme} className="share-btn download">
+                    📥 Download
                   </button>
                 </div>
               </div>
 
               <div className="cta-section">
                 <h2>Create Your Own $PUMPIT Meme!</h2>
-                <a href="/#generator" className="create-button">
-                  🎨 Open Meme Generator
-                </a>
+                <p>Join thousands creating viral memes daily</p>
+                <div className="cta-buttons">
+                  <a href="/#generator" className="create-button">
+                    🎨 Web Generator
+                  </a>
+                  <a href="https://t.me/pumpermemebot" target="_blank" className="create-button telegram">
+                    🤖 Telegram Bot
+                  </a>
+                </div>
+              </div>
+
+              <div className="pumpit-info">
+                <h3>🚀 What is PUMPIT?</h3>
+                <p>The most fun memecoin on Solana! Join our community:</p>
+                <ul>
+                  <li>📈 Contract: B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk</li>
+                  <li>💛 Website: <a href="https://letspumpit.com">letspumpit.com</a></li>
+                  <li>🐦 Twitter: <a href="https://twitter.com/pumpitonsol">@pumpitonsol</a></li>
+                  <li>📱 Telegram: <a href="https://t.me/Pumpetcto">@Pumpetcto</a></li>
+                </ul>
               </div>
             </div>
           </div>
@@ -302,7 +373,7 @@ export default function MemePage({ meme: initialMeme }) {
           gap: 1rem;
         }
 
-        .buy-button {
+        .buy-button, .bot-button {
           padding: 0.8rem 1.5rem;
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
@@ -312,7 +383,12 @@ export default function MemePage({ meme: initialMeme }) {
           transition: all 0.3s ease;
         }
 
-        .buy-button:hover {
+        .bot-button {
+          background: linear-gradient(135deg, #0088cc, #0077b3);
+          color: white;
+        }
+
+        .buy-button:hover, .bot-button:hover {
           transform: translateY(-2px) scale(1.05);
           box-shadow: 0 10px 30px rgba(255, 255, 0, 0.5);
         }
@@ -330,6 +406,10 @@ export default function MemePage({ meme: initialMeme }) {
           align-items: start;
         }
 
+        .meme-image-section {
+          position: relative;
+        }
+
         .meme-display img {
           width: 100%;
           height: auto;
@@ -337,31 +417,66 @@ export default function MemePage({ meme: initialMeme }) {
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         }
 
+        .telegram-badge {
+          position: absolute;
+          bottom: 1rem;
+          right: 1rem;
+          background: #0088cc;
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: 25px;
+          font-size: 0.9rem;
+          font-weight: bold;
+          box-shadow: 0 4px 15px rgba(0, 136, 204, 0.5);
+        }
+
         .meme-details {
           display: flex;
           flex-direction: column;
-          gap: 2rem;
+          gap: 1.5rem;
         }
 
         .meme-details h1 {
           font-size: 2.5rem;
           color: #FFFF00;
+          line-height: 1.2;
+        }
+
+        .creator {
+          font-size: 1.2rem;
+          color: #999;
+        }
+
+        .creator-handle {
+          color: #FFFF00;
+          font-weight: bold;
+        }
+
+        .meme-description {
+          font-size: 1.1rem;
+          line-height: 1.6;
+          color: #ccc;
+          padding: 1rem;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+          border-left: 3px solid #FFFF00;
         }
 
         .meme-stats {
           display: flex;
-          gap: 2rem;
-          font-size: 1.2rem;
+          gap: 1.5rem;
+          font-size: 1.1rem;
           align-items: center;
+          flex-wrap: wrap;
         }
 
         .like-button {
-          background: none;
+          background: rgba(255, 255, 255, 0.1);
           border: none;
-          color: #999;
+          color: #fff;
           cursor: pointer;
-          font-size: 1.2rem;
-          padding: 0.5rem 1rem;
+          font-size: 1.1rem;
+          padding: 0.6rem 1.2rem;
           border-radius: 30px;
           transition: all 0.2s ease;
           display: inline-flex;
@@ -370,16 +485,16 @@ export default function MemePage({ meme: initialMeme }) {
         }
 
         .like-button:hover {
-          background: rgba(255, 255, 0, 0.1);
-          color: #FFFF00;
-          transform: scale(1.1);
+          background: rgba(255, 255, 0, 0.2);
+          transform: scale(1.05);
         }
 
         .like-button.liked {
+          background: rgba(255, 255, 0, 0.3);
           color: #FFFF00;
         }
 
-        .share-count {
+        .stat-item {
           color: #999;
           display: inline-flex;
           align-items: center;
@@ -388,7 +503,7 @@ export default function MemePage({ meme: initialMeme }) {
 
         .share-section {
           background: rgba(255, 255, 255, 0.05);
-          padding: 2rem;
+          padding: 1.5rem;
           border-radius: 15px;
           border: 1px solid rgba(255, 255, 0, 0.2);
         }
@@ -399,38 +514,45 @@ export default function MemePage({ meme: initialMeme }) {
         }
 
         .share-buttons {
-          display: flex;
-          gap: 1rem;
-          flex-wrap: wrap;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.8rem;
         }
 
         .share-btn {
-          padding: 1rem 2rem;
+          padding: 0.9rem 1.5rem;
           border: none;
           border-radius: 50px;
-          font-size: 1rem;
+          font-size: 0.95rem;
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
           color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
         }
 
         .share-btn.twitter {
           background: #1DA1F2;
         }
 
-        .share-btn.twitter:hover {
-          background: #1a8cd8;
-          transform: translateY(-2px);
-        }
-
         .share-btn.telegram {
           background: #0088cc;
         }
 
-        .share-btn.telegram:hover {
-          background: #0077b3;
+        .share-btn.copy {
+          background: #666;
+        }
+
+        .share-btn.download {
+          background: #4CAF50;
+        }
+
+        .share-btn:hover {
           transform: translateY(-2px);
+          box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
         }
 
         .cta-section {
@@ -442,25 +564,75 @@ export default function MemePage({ meme: initialMeme }) {
         }
 
         .cta-section h2 {
-          margin-bottom: 1.5rem;
+          margin-bottom: 0.5rem;
           color: #FFFF00;
+        }
+
+        .cta-section p {
+          margin-bottom: 1.5rem;
+          color: #ccc;
+        }
+
+        .cta-buttons {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          flex-wrap: wrap;
         }
 
         .create-button {
           display: inline-block;
-          padding: 1rem 3rem;
+          padding: 1rem 2rem;
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
           text-decoration: none;
           border-radius: 50px;
           font-weight: bold;
-          font-size: 1.1rem;
+          font-size: 1rem;
           transition: all 0.3s ease;
+        }
+
+        .create-button.telegram {
+          background: linear-gradient(135deg, #0088cc, #0077b3);
+          color: white;
         }
 
         .create-button:hover {
           transform: translateY(-2px) scale(1.05);
           box-shadow: 0 10px 30px rgba(255, 255, 0, 0.5);
+        }
+
+        .pumpit-info {
+          background: rgba(255, 255, 0, 0.05);
+          padding: 1.5rem;
+          border-radius: 15px;
+          border: 1px solid rgba(255, 255, 0, 0.2);
+        }
+
+        .pumpit-info h3 {
+          color: #FFFF00;
+          margin-bottom: 0.8rem;
+        }
+
+        .pumpit-info ul {
+          list-style: none;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .pumpit-info li {
+          font-size: 0.95rem;
+          color: #ccc;
+        }
+
+        .pumpit-info a {
+          color: #FFFF00;
+          text-decoration: none;
+        }
+
+        .pumpit-info a:hover {
+          text-decoration: underline;
         }
 
         @media (max-width: 768px) {
@@ -473,16 +645,31 @@ export default function MemePage({ meme: initialMeme }) {
             gap: 1rem;
           }
 
+          .header-buttons {
+            width: 100%;
+            justify-content: center;
+          }
+
           .meme-details h1 {
             font-size: 1.8rem;
           }
 
           .share-buttons {
-            flex-direction: column;
+            grid-template-columns: 1fr;
           }
 
-          .share-btn {
+          .cta-buttons {
+            flex-direction: column;
             width: 100%;
+          }
+
+          .create-button {
+            width: 100%;
+          }
+
+          .meme-stats {
+            flex-direction: column;
+            align-items: flex-start;
           }
         }
       `}</style>
