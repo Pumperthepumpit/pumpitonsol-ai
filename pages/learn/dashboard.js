@@ -23,17 +23,36 @@ export default function Dashboard() {
         const address = response.publicKey.toString();
         setWalletAddress(address);
         
-        // Get user data from Supabase
+        // Get user data from Supabase - check both wallet_address and primary_wallet
         const { data: user, error } = await supabase
           .from('language_users')
           .select('*')
-          .eq('wallet_address', address)
+          .or(`wallet_address.eq.${address},primary_wallet.eq.${address}`)
           .single();
           
         if (user) {
           setUserData(user);
         } else {
-          router.push('/learn');
+          // Create a new web-only user if doesn't exist
+          const { data: newUser } = await supabase
+            .from('language_users')
+            .insert({
+              wallet_address: address,
+              primary_wallet: address,
+              hearts_remaining: 5,
+              daily_streak: 0,
+              total_xp: 0,
+              pumpit_balance: 0,
+              telegram_id: `web_${Date.now()}` // Web-only user
+            })
+            .select()
+            .single();
+          
+          if (newUser) {
+            setUserData(newUser);
+          } else {
+            router.push('/learn');
+          }
         }
       } catch (error) {
         console.error('Failed to load user data:', error);
@@ -98,8 +117,9 @@ export default function Dashboard() {
     return null;
   }
 
-  const level = calculateLevel(userData.total_xp);
-  const progress = calculateProgress(userData.total_xp);
+  const level = calculateLevel(userData.total_xp || 0);
+  const progress = calculateProgress(userData.total_xp || 0);
+  const isLinked = userData?.telegram_id && !userData.telegram_id.startsWith('web_');
 
   return (
     <>
@@ -122,6 +142,21 @@ export default function Dashboard() {
         </header>
 
         <main className="dashboard-main">
+          {/* Link Account Banner - Only show if not linked */}
+          {!isLinked && (
+            <div className="link-banner">
+              <div className="link-banner-content">
+                <div>
+                  <h3>📱 Connect Your Telegram Account</h3>
+                  <p>Link your Telegram learning progress to see all your achievements here!</p>
+                </div>
+                <Link href="/learn/link" className="link-btn">
+                  Link Account
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Stats Overview */}
           <div className="stats-grid">
             <div className="stat-card">
@@ -136,19 +171,19 @@ export default function Dashboard() {
             <div className="stat-card">
               <span className="stat-icon">⭐</span>
               <h3>Total XP</h3>
-              <p className="stat-value">{userData.total_xp}</p>
+              <p className="stat-value">{userData.total_xp || 0}</p>
             </div>
             
             <div className="stat-card">
               <span className="stat-icon">🔥</span>
               <h3>Daily Streak</h3>
-              <p className="stat-value">{userData.daily_streak} days</p>
+              <p className="stat-value">{userData.daily_streak || 0} days</p>
             </div>
             
             <div className="stat-card hearts-card">
               <span className="stat-icon">❤️</span>
               <h3>Hearts</h3>
-              <p className="stat-value">{userData.hearts_remaining}/5</p>
+              <p className="stat-value">{userData.hearts_remaining || 0}/5</p>
               {userData.hearts_remaining === 0 && (
                 <button onClick={refillHearts} className="refill-btn">
                   Refill Hearts
@@ -157,10 +192,42 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Show Telegram Stats if linked */}
+          {isLinked && (
+            <div className="telegram-stats">
+              <h2>📊 Learning Progress from Telegram</h2>
+              <div className="telegram-grid">
+                <div className="telegram-stat">
+                  <p className="telegram-value">{userData.total_lessons || 0}</p>
+                  <p className="telegram-label">Lessons Completed</p>
+                </div>
+                <div className="telegram-stat">
+                  <p className="telegram-value">{userData.perfect_lessons || 0}</p>
+                  <p className="telegram-label">Perfect Lessons</p>
+                </div>
+                <div className="telegram-stat">
+                  <p className="telegram-value">{userData.words_learned?.length || 0}</p>
+                  <p className="telegram-label">Words Learned</p>
+                </div>
+                <div className="telegram-stat">
+                  <p className="telegram-value">{userData.achievements?.length || 0}</p>
+                  <p className="telegram-label">Achievements</p>
+                </div>
+              </div>
+              
+              {/* Show username if available */}
+              {userData.telegram_username && (
+                <p className="telegram-username">
+                  Telegram: @{userData.telegram_username}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* PUMPIT Balance */}
           <div className="balance-section">
             <h2>💎 PUMPIT Balance</h2>
-            <p className="balance-value">{userData.pumpit_balance.toLocaleString()} PUMPIT</p>
+            <p className="balance-value">{(userData.pumpit_balance || 0).toLocaleString()} PUMPIT</p>
             <p className="balance-info">Keep holding to maintain access!</p>
           </div>
 
@@ -187,20 +254,45 @@ export default function Dashboard() {
           <div className="achievements-section">
             <h2>🏅 Recent Achievements</h2>
             <div className="achievements-grid">
-              <div className="achievement">
-                <span className="achievement-icon">🌟</span>
-                <p>First Lesson</p>
-              </div>
-              <div className="achievement">
-                <span className="achievement-icon">🔥</span>
-                <p>3 Day Streak</p>
-              </div>
-              <div className="achievement locked">
-                <span className="achievement-icon">🎯</span>
-                <p>Level 5</p>
-              </div>
+              {isLinked && userData.achievements?.length > 0 ? (
+                userData.achievements.slice(0, 6).map((achievement, index) => (
+                  <div key={index} className="achievement">
+                    <span className="achievement-icon">🏆</span>
+                    <p>{achievement}</p>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className="achievement">
+                    <span className="achievement-icon">🌟</span>
+                    <p>First Lesson</p>
+                  </div>
+                  <div className="achievement locked">
+                    <span className="achievement-icon">🔥</span>
+                    <p>3 Day Streak</p>
+                  </div>
+                  <div className="achievement locked">
+                    <span className="achievement-icon">🎯</span>
+                    <p>Level 5</p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
+
+          {/* Telegram Bot Link */}
+          {isLinked && (
+            <div className="telegram-link-section">
+              <a 
+                href="https://t.me/pumperpolyglotbot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="telegram-bot-link"
+              >
+                Continue learning on Telegram →
+              </a>
+            </div>
+          )}
         </main>
 
         {/* Heart Purchase Modal */}
@@ -308,6 +400,111 @@ export default function Dashboard() {
           max-width: 1200px;
           margin: 0 auto;
           padding: 3rem 2rem;
+        }
+
+        /* Link Banner */
+        .link-banner {
+          background: linear-gradient(135deg, rgba(147, 51, 234, 0.1), rgba(59, 130, 246, 0.1));
+          border: 2px solid rgba(147, 51, 234, 0.5);
+          border-radius: 20px;
+          padding: 2rem;
+          margin-bottom: 3rem;
+        }
+
+        .link-banner-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 2rem;
+        }
+
+        .link-banner h3 {
+          color: #FFFF00;
+          margin-bottom: 0.5rem;
+          font-size: 1.3rem;
+        }
+
+        .link-banner p {
+          color: #ccc;
+        }
+
+        .link-btn {
+          background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+          color: white;
+          padding: 0.8rem 2rem;
+          border-radius: 50px;
+          text-decoration: none;
+          font-weight: bold;
+          transition: all 0.3s ease;
+          white-space: nowrap;
+        }
+
+        .link-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+        }
+
+        /* Telegram Stats */
+        .telegram-stats {
+          background: rgba(0, 136, 204, 0.05);
+          border: 1px solid rgba(0, 136, 204, 0.2);
+          border-radius: 20px;
+          padding: 2rem;
+          margin-bottom: 3rem;
+        }
+
+        .telegram-stats h2 {
+          color: #00BFFF;
+          margin-bottom: 1.5rem;
+        }
+
+        .telegram-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 1.5rem;
+        }
+
+        .telegram-stat {
+          text-align: center;
+        }
+
+        .telegram-value {
+          font-size: 2rem;
+          font-weight: bold;
+          color: #00BFFF;
+          margin-bottom: 0.5rem;
+        }
+
+        .telegram-label {
+          color: #ccc;
+          font-size: 0.9rem;
+        }
+
+        .telegram-username {
+          text-align: center;
+          margin-top: 1.5rem;
+          color: #00BFFF;
+          font-size: 0.9rem;
+        }
+
+        .telegram-link-section {
+          text-align: center;
+          margin-top: 2rem;
+        }
+
+        .telegram-bot-link {
+          display: inline-block;
+          color: #00BFFF;
+          text-decoration: none;
+          padding: 0.8rem 2rem;
+          border: 1px solid #00BFFF;
+          border-radius: 50px;
+          transition: all 0.3s ease;
+        }
+
+        .telegram-bot-link:hover {
+          background: rgba(0, 191, 255, 0.1);
+          transform: translateY(-2px);
         }
 
         .stats-grid {
@@ -603,6 +800,11 @@ export default function Dashboard() {
           .dashboard-header {
             flex-direction: column;
             gap: 1rem;
+            text-align: center;
+          }
+
+          .link-banner-content {
+            flex-direction: column;
             text-align: center;
           }
 
