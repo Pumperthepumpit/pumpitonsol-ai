@@ -1,4 +1,4 @@
-@"
+@'
 {
   "build": {
     "builder": "NIXPACKS"
@@ -7,4 +7,4 @@
     "startCommand": "node bots/learn-bot.js"
   }
 }
-"@ | Out-File -FilePath railway.json -Encoding UTF8
+'@ | Out-File -FilePath railway.json -Encoding UTF8
