@@ -1018,6 +1018,7 @@ export default function Home() {
             <a href="#generator">Generate</a>
             <a href="#roadmap">Roadmap</a>
             <a href="/blog">Blog</a>
+			<a href="/learn">Learn</a>
             <a href="#social">Social</a>
           </div>
         </nav>
