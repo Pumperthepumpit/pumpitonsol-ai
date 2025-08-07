@@ -6,13 +6,58 @@ const { Redis } = require('@upstash/redis');
 const cron = require('node-cron');
 require('dotenv').config({ path: '.env.local' });
 
+// ==================== ENVIRONMENT DEBUG ====================
+console.log('=== ENVIRONMENT CHECK ===');
+console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
+console.log('REDIS URL exists:', !!process.env.UPSTASH_REDIS_REST_URL);
+console.log('REDIS TOKEN exists:', !!process.env.UPSTASH_REDIS_REST_TOKEN);
+console.log('BOT TOKEN exists:', !!process.env.LEARN_BOT_TOKEN);
+console.log('SUPABASE URL exists:', !!process.env.NEXT_PUBLIC_SUPABASE_URL);
+console.log('Available Redis vars:', Object.keys(process.env).filter(k => k.includes('UPSTASH') || k.includes('REDIS')));
+console.log('=========================');
+
 // ==================== INITIALIZE SERVICES ====================
 
-// Initialize Redis for ultra-fast caching
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_URL,
-  token: process.env.UPSTASH_REDIS_TOKEN
-});
+// Initialize Redis for ultra-fast caching - with proper error handling
+let redis;
+try {
+  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  
+  if (!redisUrl || !redisToken) {
+    console.error('❌ Redis credentials missing!');
+    console.error('URL:', redisUrl ? 'Found' : 'Missing');
+    console.error('Token:', redisToken ? 'Found' : 'Missing');
+    // Create a mock Redis that won't crash the bot
+    redis = {
+      get: async () => null,
+      set: async () => null,
+      del: async () => null,
+      keys: async () => [],
+      sadd: async () => null,
+      smembers: async () => [],
+      setex: async () => null
+    };
+  } else {
+    redis = new Redis({
+      url: redisUrl,
+      token: redisToken
+    });
+    console.log('✅ Redis initialized with URL:', redisUrl.substring(0, 30) + '...');
+  }
+} catch (error) {
+  console.error('Redis initialization error:', error);
+  // Create mock Redis to prevent crashes
+  redis = {
+    get: async () => null,
+    set: async () => null,
+    del: async () => null,
+    keys: async () => [],
+    sadd: async () => null,
+    smembers: async () => [],
+    setex: async () => null
+  };
+}
 
 // Initialize Supabase for permanent storage
 const supabase = createClient(
@@ -20,8 +65,16 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+// Check if we're on Railway for webhook setup
+const RAILWAY_URL = process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN;
+const IS_PRODUCTION = !!RAILWAY_URL;
+
 // Initialize Telegram Bot with optimized settings
-const bot = new TelegramBot(process.env.LEARN_BOT_TOKEN, { 
+const botConfig = IS_PRODUCTION ? {
+  webHook: {
+    port: process.env.PORT || 3000
+  }
+} : {
   polling: {
     interval: 300,
     autoStart: true,
@@ -30,7 +83,19 @@ const bot = new TelegramBot(process.env.LEARN_BOT_TOKEN, {
       allowed_updates: ['message', 'callback_query']
     }
   }
-});
+};
+
+const bot = new TelegramBot(process.env.LEARN_BOT_TOKEN, botConfig);
+
+// Set webhook if on Railway
+if (IS_PRODUCTION && RAILWAY_URL) {
+  const webhookUrl = `https://${RAILWAY_URL}/${process.env.LEARN_BOT_TOKEN}`;
+  bot.setWebHook(webhookUrl).then(() => {
+    console.log('✅ Webhook set:', webhookUrl);
+  }).catch(err => {
+    console.error('❌ Webhook error:', err);
+  });
+}
 
 // Solana RPC with Helius
 const HELIUS_KEY = process.env.HELIUS_API_KEY || 'demo';
@@ -45,17 +110,24 @@ const PAYMENT_WALLET = 'F3bVwQWTNTDNMtHr4P1h58DwLiFcre1F5mmeERrrBzdJ';
 
 // Startup logging
 console.log('⚡ ULTRA FAST PUMPIT LANGUAGE BOT');
-console.log('✅ Redis:', process.env.UPSTASH_REDIS_URL ? 'Connected' : 'Missing');
+console.log('✅ Redis:', redis.get ? 'Connected' : 'Mock Mode');
 console.log('✅ Supabase:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Connected' : 'Missing');
 console.log('✅ Bot Token:', process.env.LEARN_BOT_TOKEN ? 'Connected' : 'Missing');
 console.log('✅ Helius RPC:', HELIUS_KEY !== 'demo' ? 'Connected' : 'Demo mode');
-console.log('🚀 Loading 9,000 questions to Redis cache...');
+console.log('✅ Mode:', IS_PRODUCTION ? 'Production (Webhook)' : 'Development (Polling)');
+console.log('🚀 Loading lessons to Redis cache...');
 
 // ==================== CACHE MANAGEMENT ====================
 
 // Load all lessons to Redis on startup (one-time operation)
 async function loadLessonsToRedis() {
   try {
+    // Skip if Redis is not properly initialized
+    if (!redis.get || !process.env.UPSTASH_REDIS_REST_URL) {
+      console.log('⚠️ Redis not available, using database directly');
+      return false;
+    }
+    
     console.log('📚 Fetching lessons from Supabase...');
     
     // Get all lessons from database
@@ -162,13 +234,15 @@ const SKILL_LIST = [
 
 async function getUserFromCache(userId) {
   try {
-    // Check Redis first (1ms)
-    const cached = await redis.get(`user:${userId}`);
-    if (cached) {
-      return JSON.parse(cached);
+    // Check Redis first if available
+    if (redis.get && process.env.UPSTASH_REDIS_REST_URL) {
+      const cached = await redis.get(`user:${userId}`);
+      if (cached) {
+        return JSON.parse(cached);
+      }
     }
     
-    // Not in cache, get from database
+    // Not in cache or Redis unavailable, get from database
     const { data: user } = await supabase
       .from('language_users')
       .select('*')
@@ -176,8 +250,10 @@ async function getUserFromCache(userId) {
       .single();
     
     if (user) {
-      // Cache for 1 hour
-      await redis.set(`user:${userId}`, JSON.stringify(user), { ex: 3600 });
+      // Cache for 1 hour if Redis is available
+      if (redis.set && process.env.UPSTASH_REDIS_REST_URL) {
+        await redis.set(`user:${userId}`, JSON.stringify(user), { ex: 3600 });
+      }
       return user;
     }
     
@@ -197,8 +273,10 @@ async function getUserFromCache(userId) {
     // Save to database
     await supabase.from('language_users').insert(newUser);
     
-    // Cache it
-    await redis.set(`user:${userId}`, JSON.stringify(newUser), { ex: 3600 });
+    // Cache it if Redis is available
+    if (redis.set && process.env.UPSTASH_REDIS_REST_URL) {
+      await redis.set(`user:${userId}`, JSON.stringify(newUser), { ex: 3600 });
+    }
     
     return newUser;
   } catch (error) {
@@ -216,11 +294,18 @@ async function updateUserCache(userId, updates) {
     // Merge updates
     const updatedUser = { ...user, ...updates };
     
-    // Update cache immediately (instant)
-    await redis.set(`user:${userId}`, JSON.stringify(updatedUser), { ex: 3600 });
-    
-    // Mark user as dirty for background sync
-    await redis.sadd('dirty:users', userId);
+    // Update cache immediately if Redis is available
+    if (redis.set && process.env.UPSTASH_REDIS_REST_URL) {
+      await redis.set(`user:${userId}`, JSON.stringify(updatedUser), { ex: 3600 });
+      // Mark user as dirty for background sync
+      await redis.sadd('dirty:users', userId);
+    } else {
+      // If Redis not available, update database directly
+      await supabase
+        .from('language_users')
+        .update(updates)
+        .eq('telegram_id', userId);
+    }
     
     return updatedUser;
   } catch (error) {
@@ -243,27 +328,41 @@ async function getLessonFromCache(language, userId) {
     const lessonLevel = Math.min(5, Math.max(1, Math.ceil(userLevel / 4)));
     const lessonNumber = Math.floor(Math.random() * 3) + 1;
     
-    // Try to get from Redis (1ms)
-    const key = `lesson:${language}:${skillId}:${lessonLevel}:${lessonNumber}`;
-    const cached = await redis.get(key);
-    
-    if (cached) {
-      const questions = JSON.parse(cached);
-      console.log(`✅ Loaded lesson from Redis: ${key}`);
-      return questions;
+    // Try to get from Redis if available
+    if (redis.get && process.env.UPSTASH_REDIS_REST_URL) {
+      const key = `lesson:${language}:${skillId}:${lessonLevel}:${lessonNumber}`;
+      const cached = await redis.get(key);
+      
+      if (cached) {
+        const questions = JSON.parse(cached);
+        console.log(`✅ Loaded lesson from Redis: ${key}`);
+        return questions;
+      }
+      
+      // Fallback: Get ANY lesson for that language from Redis
+      const pattern = `lesson:${language}:*`;
+      const keys = await redis.keys(pattern);
+      
+      if (keys && keys.length > 0) {
+        const randomKey = keys[Math.floor(Math.random() * keys.length)];
+        const fallbackCached = await redis.get(randomKey);
+        if (fallbackCached) {
+          console.log(`✅ Loaded fallback lesson from Redis: ${randomKey}`);
+          return JSON.parse(fallbackCached);
+        }
+      }
     }
     
-    // Fallback: Get ANY lesson for that language from Redis
-    const pattern = `lesson:${language}:*`;
-    const keys = await redis.keys(pattern);
+    // If Redis not available or lesson not found, get from database
+    const { data: lessons } = await supabase
+      .from('lessons')
+      .select('questions')
+      .eq('language', language)
+      .limit(1)
+      .single();
     
-    if (keys && keys.length > 0) {
-      const randomKey = keys[Math.floor(Math.random() * keys.length)];
-      const fallbackCached = await redis.get(randomKey);
-      if (fallbackCached) {
-        console.log(`✅ Loaded fallback lesson from Redis: ${randomKey}`);
-        return JSON.parse(fallbackCached);
-      }
+    if (lessons?.questions) {
+      return lessons.questions;
     }
     
     // Last resort: Return static questions
@@ -331,8 +430,14 @@ async function createSession(userId, language, type, size = 10) {
       comboStreak: 0
     };
     
-    // Store session in Redis (expires in 1 hour)
-    await redis.set(`session:${userId}`, JSON.stringify(session), { ex: 3600 });
+    // Store session in Redis if available, otherwise in memory
+    if (redis.set && process.env.UPSTASH_REDIS_REST_URL) {
+      await redis.set(`session:${userId}`, JSON.stringify(session), { ex: 3600 });
+    } else {
+      // Fallback to in-memory storage
+      global.sessions = global.sessions || {};
+      global.sessions[userId] = session;
+    }
     
     return session;
   } catch (error) {
@@ -343,8 +448,13 @@ async function createSession(userId, language, type, size = 10) {
 
 async function getSession(userId) {
   try {
-    const cached = await redis.get(`session:${userId}`);
-    return cached ? JSON.parse(cached) : null;
+    if (redis.get && process.env.UPSTASH_REDIS_REST_URL) {
+      const cached = await redis.get(`session:${userId}`);
+      return cached ? JSON.parse(cached) : null;
+    } else {
+      // Fallback to in-memory storage
+      return global.sessions?.[userId] || null;
+    }
   } catch (error) {
     console.error('Session fetch error:', error);
     return null;
@@ -357,7 +467,14 @@ async function updateSession(userId, updates) {
     if (!session) return null;
     
     const updatedSession = { ...session, ...updates };
-    await redis.set(`session:${userId}`, JSON.stringify(updatedSession), { ex: 3600 });
+    
+    if (redis.set && process.env.UPSTASH_REDIS_REST_URL) {
+      await redis.set(`session:${userId}`, JSON.stringify(updatedSession), { ex: 3600 });
+    } else {
+      // Fallback to in-memory storage
+      global.sessions = global.sessions || {};
+      global.sessions[userId] = updatedSession;
+    }
     
     return updatedSession;
   } catch (error) {
@@ -528,7 +645,11 @@ async function completeSession(chatId, session) {
   }
   
   // Clear session
-  await redis.del(`session:${session.userId}`);
+  if (redis.del && process.env.UPSTASH_REDIS_REST_URL) {
+    await redis.del(`session:${session.userId}`);
+  } else if (global.sessions) {
+    delete global.sessions[session.userId];
+  }
   
   const gradeEmoji = accuracy === 100 ? '🥇' : accuracy >= 80 ? '🥈' : '🥉';
   
@@ -657,7 +778,7 @@ bot.onText(/\/help/, (msg) => {
 • Pro (1M PUMPIT) - Unlimited
 • Max (5M PUMPIT) - 3x XP
 
-Powered by Redis cache for instant responses!
+${redis.get ? '⚡ Powered by Redis cache for instant responses!' : '⚠️ Running in fallback mode'}
 `, { parse_mode: 'Markdown' });
 });
 
@@ -676,8 +797,13 @@ Token requirements:
 • 5M+ PUMPIT = Max
 `, { parse_mode: 'Markdown' });
   
-  // Store state in Redis
-  await redis.set(`state:${userId}`, 'awaiting_wallet', { ex: 300 });
+  // Store state
+  if (redis.set && process.env.UPSTASH_REDIS_REST_URL) {
+    await redis.set(`state:${userId}`, 'awaiting_wallet', { ex: 300 });
+  } else {
+    global.states = global.states || {};
+    global.states[userId] = 'awaiting_wallet';
+  }
 });
 
 bot.onText(/\/progress/, async (msg) => {
@@ -700,8 +826,11 @@ Progress: [${'▓'.repeat(Math.floor(progress/10))}${'░'.repeat(10-Math.floor(
 });
 
 bot.onText(/\/leaderboard/, async (msg) => {
-  // Get from cache first
-  const cached = await redis.get('leaderboard:weekly');
+  // Get from cache first if Redis available
+  let cached = null;
+  if (redis.get && process.env.UPSTASH_REDIS_REST_URL) {
+    cached = await redis.get('leaderboard:weekly');
+  }
   
   if (cached) {
     bot.sendMessage(msg.chat.id, cached, { parse_mode: 'Markdown' });
@@ -728,8 +857,10 @@ bot.onText(/\/leaderboard/, async (msg) => {
     message += `   ${user.total_xp} XP | 🔥 ${user.daily_streak} days\n\n`;
   });
   
-  // Cache for 5 minutes
-  await redis.set('leaderboard:weekly', message, { ex: 300 });
+  // Cache for 5 minutes if Redis available
+  if (redis.set && process.env.UPSTASH_REDIS_REST_URL) {
+    await redis.set('leaderboard:weekly', message, { ex: 300 });
+  }
   
   bot.sendMessage(msg.chat.id, message, { parse_mode: 'Markdown' });
 });
@@ -876,7 +1007,14 @@ Choose:
     
     // Check if already completed today
     const dailyKey = `daily:${userId}:${new Date().toDateString()}`;
-    const completed = await redis.get(dailyKey);
+    let completed = false;
+    
+    if (redis.get && process.env.UPSTASH_REDIS_REST_URL) {
+      completed = await redis.get(dailyKey);
+    } else {
+      global.dailyCompleted = global.dailyCompleted || {};
+      completed = global.dailyCompleted[dailyKey];
+    }
     
     if (completed) {
       bot.answerCallbackQuery(query.id, {
@@ -895,7 +1033,12 @@ Choose:
     }
     
     // Mark as completed
-    await redis.set(dailyKey, '1', { ex: 86400 });
+    if (redis.set && process.env.UPSTASH_REDIS_REST_URL) {
+      await redis.set(dailyKey, '1', { ex: 86400 });
+    } else {
+      global.dailyCompleted = global.dailyCompleted || {};
+      global.dailyCompleted[dailyKey] = true;
+    }
     
     setTimeout(() => showQuestion(chatId, session), 500);
     return;
@@ -956,7 +1099,12 @@ Choose:
         
         if (user.hearts_remaining - 1 <= 0) {
           bot.sendMessage(chatId, '💔 Out of hearts! Wait for regeneration or buy more.');
-          await redis.del(`session:${userId}`);
+          // Clear session
+          if (redis.del && process.env.UPSTASH_REDIS_REST_URL) {
+            await redis.del(`session:${userId}`);
+          } else if (global.sessions) {
+            delete global.sessions[userId];
+          }
           return;
         }
       }
@@ -1051,11 +1199,18 @@ Keep going! 🚀
     if (!price) return;
     
     // Store payment pending
-    await redis.set(`payment:${userId}`, JSON.stringify({
+    const paymentData = {
       hearts: parseInt(amount),
       price: price,
       timestamp: Date.now()
-    }), { ex: 600 });
+    };
+    
+    if (redis.set && process.env.UPSTASH_REDIS_REST_URL) {
+      await redis.set(`payment:${userId}`, JSON.stringify(paymentData), { ex: 600 });
+    } else {
+      global.payments = global.payments || {};
+      global.payments[userId] = paymentData;
+    }
     
     bot.sendMessage(chatId, `
 💰 **Payment Instructions**
@@ -1078,33 +1233,44 @@ After sending, click verify:
   
   // Verify payment
   if (data === 'verify_payment') {
-    const pendingData = await redis.get(`payment:${userId}`);
+    let pendingData = null;
+    
+    if (redis.get && process.env.UPSTASH_REDIS_REST_URL) {
+      const cached = await redis.get(`payment:${userId}`);
+      pendingData = cached ? JSON.parse(cached) : null;
+    } else {
+      pendingData = global.payments?.[userId];
+    }
+    
     if (!pendingData) {
       bot.sendMessage(chatId, '❌ No pending payment found.');
       return;
     }
-    
-    const pending = JSON.parse(pendingData);
     
     bot.answerCallbackQuery(query.id, {
       text: 'Checking blockchain...',
       show_alert: false
     });
     
-    const result = await checkRecentPayment(userId, pending.price);
+    const result = await checkRecentPayment(userId, pendingData.price);
     
     if (result.found) {
       const user = await getUserFromCache(userId);
       await updateUserCache(userId, {
-        hearts_remaining: (user?.hearts_remaining || 0) + pending.hearts
+        hearts_remaining: (user?.hearts_remaining || 0) + pendingData.hearts
       });
       
-      await redis.del(`payment:${userId}`);
+      // Clear payment
+      if (redis.del && process.env.UPSTASH_REDIS_REST_URL) {
+        await redis.del(`payment:${userId}`);
+      } else if (global.payments) {
+        delete global.payments[userId];
+      }
       
       bot.sendMessage(chatId, `
 ✅ **Payment Confirmed!**
 
-Added ${pending.hearts} hearts!
+Added ${pendingData.hearts} hearts!
 Transaction: \`${result.signature.slice(0, 8)}...\`
 
 Continue learning! 🎉
@@ -1114,7 +1280,7 @@ Continue learning! 🎉
 ❌ **Payment Not Found**
 
 Please check:
-• Sent exactly ${pending.price} SOL
+• Sent exactly ${pendingData.price} SOL
 • Transaction confirmed
 
 Try again in 30 seconds.
@@ -1165,7 +1331,12 @@ bot.on('text', async (msg) => {
   if (text.startsWith('/')) return;
   
   // Check if awaiting wallet
-  const state = await redis.get(`state:${userId}`);
+  let state = null;
+  if (redis.get && process.env.UPSTASH_REDIS_REST_URL) {
+    state = await redis.get(`state:${userId}`);
+  } else {
+    state = global.states?.[userId];
+  }
   
   if (state === 'awaiting_wallet') {
     if (text.length === 44 && /^[A-Za-z0-9]+$/.test(text)) {
@@ -1194,7 +1365,12 @@ ${tier !== 'Free' ? '🎉 Premium benefits activated!' : 'Need 300k+ PUMPIT for 
         reply_markup: getMainKeyboard()
       });
       
-      await redis.del(`state:${userId}`);
+      // Clear state
+      if (redis.del && process.env.UPSTASH_REDIS_REST_URL) {
+        await redis.del(`state:${userId}`);
+      } else if (global.states) {
+        delete global.states[userId];
+      }
     } else {
       bot.sendMessage(chatId, '❌ Invalid wallet address. Try again.');
     }
@@ -1203,46 +1379,48 @@ ${tier !== 'Free' ? '🎉 Premium benefits activated!' : 'Need 300k+ PUMPIT for 
 
 // ==================== BACKGROUND SYNC TO SUPABASE ====================
 
-// Sync dirty users to database every 30 seconds
-setInterval(async () => {
-  try {
-    const dirtyUsers = await redis.smembers('dirty:users');
-    
-    if (dirtyUsers.length === 0) return;
-    
-    console.log(`📤 Syncing ${dirtyUsers.length} users to Supabase...`);
-    
-    for (const userId of dirtyUsers) {
-      const userData = await redis.get(`user:${userId}`);
-      if (userData) {
-        const user = JSON.parse(userData);
-        
-        // Update in database
-        await supabase
-          .from('language_users')
-          .update({
-            total_xp: user.total_xp,
-            weekly_xp: user.weekly_xp,
-            hearts_remaining: user.hearts_remaining,
-            achievements: user.achievements,
-            lessons_today: user.lessons_today,
-            total_lessons: user.total_lessons,
-            last_lesson_at: user.last_lesson_at,
-            wallet_address: user.wallet_address,
-            pumpit_balance: user.pumpit_balance
-          })
-          .eq('telegram_id', userId);
+// Sync dirty users to database every 30 seconds (only if Redis is available)
+if (redis.smembers && process.env.UPSTASH_REDIS_REST_URL) {
+  setInterval(async () => {
+    try {
+      const dirtyUsers = await redis.smembers('dirty:users');
+      
+      if (dirtyUsers.length === 0) return;
+      
+      console.log(`📤 Syncing ${dirtyUsers.length} users to Supabase...`);
+      
+      for (const userId of dirtyUsers) {
+        const userData = await redis.get(`user:${userId}`);
+        if (userData) {
+          const user = JSON.parse(userData);
+          
+          // Update in database
+          await supabase
+            .from('language_users')
+            .update({
+              total_xp: user.total_xp,
+              weekly_xp: user.weekly_xp,
+              hearts_remaining: user.hearts_remaining,
+              achievements: user.achievements,
+              lessons_today: user.lessons_today,
+              total_lessons: user.total_lessons,
+              last_lesson_at: user.last_lesson_at,
+              wallet_address: user.wallet_address,
+              pumpit_balance: user.pumpit_balance
+            })
+            .eq('telegram_id', userId);
+        }
       }
+      
+      // Clear dirty users
+      await redis.del('dirty:users');
+      
+      console.log('✅ Sync complete');
+    } catch (error) {
+      console.error('Sync error:', error);
     }
-    
-    // Clear dirty users
-    await redis.del('dirty:users');
-    
-    console.log('✅ Sync complete');
-  } catch (error) {
-    console.error('Sync error:', error);
-  }
-}, 30000); // Every 30 seconds
+  }, 30000); // Every 30 seconds
+}
 
 // ==================== CRON JOBS ====================
 
@@ -1250,10 +1428,15 @@ setInterval(async () => {
 cron.schedule('0 0 * * *', async () => {
   console.log('🔄 Daily reset');
   
-  // Clear all daily keys
-  const keys = await redis.keys('daily:*');
-  if (keys.length > 0) {
-    await redis.del(...keys);
+  // Clear all daily keys if Redis available
+  if (redis.keys && process.env.UPSTASH_REDIS_REST_URL) {
+    const keys = await redis.keys('daily:*');
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  } else {
+    // Clear in-memory daily completed
+    global.dailyCompleted = {};
   }
   
   // Reset lessons_today for all users
@@ -1293,8 +1476,10 @@ cron.schedule('0 * * * *', async () => {
 cron.schedule('0 0 * * 0', async () => {
   console.log('🏆 Weekly reset');
   
-  // Clear leaderboard cache
-  await redis.del('leaderboard:weekly');
+  // Clear leaderboard cache if Redis available
+  if (redis.del && process.env.UPSTASH_REDIS_REST_URL) {
+    await redis.del('leaderboard:weekly');
+  }
   
   // Reset weekly XP
   await supabase
@@ -1303,11 +1488,13 @@ cron.schedule('0 0 * * 0', async () => {
     .gte('telegram_id', '0');
 });
 
-// Reload lessons cache daily
-cron.schedule('0 3 * * *', async () => {
-  console.log('🔄 Reloading lessons cache');
-  await loadLessonsToRedis();
-});
+// Reload lessons cache daily (only if Redis available)
+if (redis.set && process.env.UPSTASH_REDIS_REST_URL) {
+  cron.schedule('0 3 * * *', async () => {
+    console.log('🔄 Reloading lessons cache');
+    await loadLessonsToRedis();
+  });
+}
 
 // ==================== ERROR HANDLING ====================
 
@@ -1329,8 +1516,8 @@ process.on('uncaughtException', (error) => {
 
 // Load lessons to Redis on startup
 loadLessonsToRedis().then(() => {
-  console.log('✅ Bot ready with Redis cache!');
+  console.log('✅ Bot ready!');
   console.log('🚀 All systems operational');
-  console.log('⚡ Response time: <5ms');
+  console.log(redis.get && process.env.UPSTASH_REDIS_REST_URL ? '⚡ Response time: <5ms' : '⚠️ Running without Redis cache');
   console.log('📊 Use /start in Telegram');
 });
