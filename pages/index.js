@@ -2213,15 +2213,18 @@ export default function Home() {
             <div className="social-grid">
               <div className="social-card">
                 <h3>𝕏 Latest from X/Twitter</h3>
-                <div className="social-card">
-  <h3>𝕏 Latest Updates</h3>
-  <div style={{ textAlign: 'center', padding: '2rem' }}>
-    <p>Follow us on X for latest updates!</p>
-    <a href="https://x.com/pumpitonsol" target="_blank" className="community-button twitter">
-      Visit our X Profile →
-    </a>
-  </div>
-</div>
+                <div className="twitter-embed">
+                  <a 
+                    className="twitter-timeline" 
+                    data-height="400"
+                    data-theme="dark"
+                    href="https://twitter.com/pumpitonsol?ref_src=twsrc%5Etfw"
+                  >
+                    Tweets by @pumpitonsol
+                  </a>
+                  <script async src="https://platform.twitter.com/widgets.js" charSet="utf-8"></script>
+                </div>
+              </div>
               
               <div className="social-card">
                 <h3>TG Community Updates</h3>
