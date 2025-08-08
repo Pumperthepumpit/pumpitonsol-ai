@@ -1684,3 +1684,104 @@ export default function Home() {
           </div>
         </div>
       )}
+	  // Add this to the END of your index.js file (after line 1685):
+
+      )}
+
+      {/* Mobile Top Buttons */}
+      <div className="mobile-top-buttons">
+        {xConnected ? (
+          <div className="x-connected-badge-mobile">
+            <span>@{xProfile?.username}</span>
+          </div>
+        ) : (
+          <button onClick={connectWithX} className="social-button x-connect">
+            𝕏
+          </button>
+        )}
+        <a href="https://t.me/pumpermemebot" target="_blank" rel="noopener noreferrer" className="social-button telegram-bot">
+          🤖 Bot
+        </a>
+        {walletAddress ? (
+          <button className="social-button wallet-button">
+            {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
+          </button>
+        ) : (
+          <button onClick={connectWallet} className="social-button wallet-button">
+            Connect
+          </button>
+        )}
+        <button 
+          onClick={handleBuyClick}
+          className="social-button buy-button"
+        >
+          🚀 Buy
+        </button>
+      </div>
+
+      <div className="container">
+        <header>
+          <div className="pumper-float">
+            <img src="/pumper.png" alt="Pumper - PumpItOnSol Mascot" />
+          </div>
+          <div className="header-content">
+            <h1>$PUMPIT</h1>
+            <p>Making Solana smile, one meme at a time</p>
+            
+            {/* User Stats Display */}
+            <div className="user-stats-display">
+              <div className="stat-badge">
+                <span className="stat-label">Daily Limit:</span>
+                <span className="stat-value">{userStats.dailyLimit}</span>
+              </div>
+              <div className="stat-badge">
+                <span className="stat-label">Remaining:</span>
+                <span className="stat-value">{userStats.remainingToday}</span>
+              </div>
+              {isVerifiedPremium && (
+                <div className="stat-badge premium">
+                  <span>⭐ Premium Active</span>
+                </div>
+              )}
+              {xVerified && (
+                <div className="stat-badge verified">
+                  <span>✓ X Verified</span>
+                </div>
+              )}
+            </div>
+            
+            <div className="mobile-social-icons">
+              <a href="https://x.com/pumpitonsol" target="_blank" rel="noopener noreferrer" title="X/Twitter">
+                𝕏
+              </a>
+              <a href="https://www.tiktok.com/@pumper.the.pumpit" target="_blank" rel="noopener noreferrer" title="TikTok">
+                ♪
+              </a>
+              <a href="https://t.me/Pumpetcto" target="_blank" rel="noopener noreferrer" title="Telegram">
+                TG
+              </a>
+            </div>
+          </div>
+        </header>
+
+        <nav className="main-nav">
+          <div className="nav-container">
+            <a href="#vision">Vision</a>
+            <a href="#token-info">Token</a>
+            <a href="#about">About</a>
+            <a href="#generator">Generate</a>
+            <a href="#premium-tools">✨ Premium</a>
+            <a href="#roadmap">Roadmap</a>
+            <a href="/blog">Blog</a>
+            <a href="#social">Social</a>
+          </div>
+        </nav>
+
+        <main>
+          {/* All your sections go here - vision, token-info, about, generator, premium-tools, community, etc. */}
+          {/* These should already be in your file */}
+        </main>
+      </div>
+    </>
+  );
+}
