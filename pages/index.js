@@ -997,7 +997,529 @@ export default function Home() {
             <h1>$PUMPIT</h1>
             <p>Making Solana smile, one meme at a time</p>
             <div className="mobile-social-icons">
-              <a href="https://x.com/pumpitonsol" target="_blank" rel="noopener noreferrer">Twitter</a>
+              <a href="https://x.com/pumpitonsol" target="_blank" rel="noopener noreferrer" title="X/Twitter">
+                𝕏
+              </a>
+              <a href="https://www.tiktok.com/@pumper.the.pumpit" target="_blank" rel="noopener noreferrer" title="TikTok">
+                ♪
+              </a>
+              <a href="https://t.me/Pumpetcto" target="_blank" rel="noopener noreferrer" title="Telegram">
+                TG
+              </a>
+            </div>
+          </div>
+        </header>
+
+        <nav className="main-nav">
+          <div className="nav-container">
+            <a href="#vision">Vision</a>
+            <a href="#token-info">Token</a>
+            <a href="#about">About</a>
+            <a href="#generator">Generate</a>
+            <a href="#roadmap">Roadmap</a>
+            <a href="/blog">Blog</a>
+            <a href="#social">Social</a>
+          </div>
+        </nav>
+
+        <main>
+          <section id="vision" className="reveal">
+            <h2>Our Vision</h2>
+            <div className={`expandable-content ${expandedSections.vision ? 'expanded' : ''}`}>
+              <p className="preview-text">
+                <strong>$PUMPIT. Created with one purpose: to become the most recognized meme on Solana.</strong>
+                {!expandedSections.vision && '...'}
+              </p>
+              {expandedSections.vision && (
+                <div className="full-content">
+                  <p>
+                    Launched on Bonk, $PUMPIT is focused on real growth. Pumper has the ability to adapt — 
+                    changing his face to support other strong tokens and communities he believes are the best ones to be in.
+                  </p>
+                </div>
+              )}
+              <button onClick={() => toggleSection('vision')} className="read-more-btn">
+                {expandedSections.vision ? 'Show Less' : 'Read More'}
+              </button>
+            </div>
+            
+            <div className="token-stats">
+              <h3>📊 Token Stats</h3>
+              <p>Contract Address: B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk</p>
+              <p>Total Supply: 1,000,000,000 $PUMPIT</p>
+              <p>🔥 Burned: 29% (286M $PUMPIT)</p>
+              <p>✅ Circulating: 714,268,067 $PUMPIT</p>
+              <a 
+                href="https://letsbonk.fun/token/B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="token-link"
+              >
+                View on LetsBonk.fun →
+              </a>
+            </div>
+          </section>
+
+          <section id="token-info" className="reveal token-info-section">
+            <h2>💎 $PUMPIT Live Data</h2>
+            <div className="token-grid">
+              <div className="token-card">
+                <h4>Price</h4>
+                {isLoadingPrice ? (
+                  <p className="loading">Loading...</p>
+                ) : (
+                  <>
+                    <p className="price">${tokenPrice?.toFixed(6) || '0.000000'}</p>
+                    <p className={`price-change ${priceChange24h >= 0 ? 'positive' : 'negative'}`}>
+                      {priceChange24h >= 0 ? '+' : ''}{priceChange24h?.toFixed(2)}% (24h)
+                    </p>
+                  </>
+                )}
+              </div>
+              
+              <div className="token-card">
+                <h4>Market Cap</h4>
+                <p className="value">
+                  ${tokenData?.marketCap?.toLocaleString() || '0'}
+                </p>
+              </div>
+              
+              <div className="token-card">
+                <h4>24h Volume</h4>
+                <p className="value">
+                  ${tokenData?.volume24h?.toLocaleString() || '0'}
+                </p>
+              </div>
+              
+              <div className="token-card">
+                <h4>Liquidity</h4>
+                <p className="value">
+                  ${tokenData?.liquidity?.toLocaleString() || '0'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="buy-section">
+              <button 
+                onClick={handleBuyClick}
+                className="buy-button-large"
+              >
+                🚀 Buy $PUMPIT Now
+              </button>
+              <p className="buy-info">
+                Buy directly with SOL using Jupiter DEX aggregator
+              </p>
+            </div>
+          </section>
+
+          <section id="about" className="reveal">
+            <h2>About Us</h2>
+            <div className={`expandable-content ${expandedSections.about ? 'expanded' : ''}`}>
+              <p className="preview-text">
+                <strong>Yes — $PUMPIT faced setbacks before. We've been rugged. Not once, but twice.</strong>
+                {!expandedSections.about && '...'}
+              </p>
+              {expandedSections.about && (
+                <div className="full-content">
+                  <p>
+                    But here's the difference: We learn. We adapt. We grow. To take $PUMPIT to the next level, 
+                    we've made key updates to our meme identity. Originally, the project was linked to an old meme format. 
+                    But in order to grow and collaborate with bigger communities, we needed a fresh, clear look — 
+                    without using anyone's real face or risking ownership issues.
+                  </p>
+                  <p>
+                    Now meet <strong>Pumper</strong> — the official face of $PUMPIT. From now on, $PUMPIT's official meme template includes:
+                  </p>
+                  <ul>
+                    <li>The same suit, phone, and oversized lips</li>
+                    <li>Exclamation marks — because we support bonk.fun and its ecosystem</li>
+                    <li>The face changes — replaced by the popular tokens we support</li>
+                  </ul>
+                  <p>
+                    Pumper represents not just $PUMPIT, but the entire community: A clean, recognizable identity 
+                    that can feature any token while staying true to our roots.
+                  </p>
+                  <p>
+                    <strong>Why?</strong> Because we're not just building a token — we're building connections. 
+                    By adapting the face, we connect with other communities while keeping our own brand locked in. 
+                    Every time we feature a token, we advertise for both $PUMPIT and them. More exposure. 
+                    More partnerships. Bigger growth.
+                  </p>
+                  <p>
+                    And most importantly: We're working for you — the community. Those who believed in us, 
+                    the CTO leaders. We're here to make this a successful adventure — and as fun as possible. 
+                    This community is only the beginning. <strong>Thank you all for believing, supporting, 
+                    and pushing $PUMPIT forward.</strong>
+                  </p>
+                </div>
+              )}
+              <button onClick={() => toggleSection('about')} className="read-more-btn">
+                {expandedSections.about ? 'Show Less' : 'Read More'}
+              </button>
+            </div>
+          </section>
+
+          <section id="generator" className="reveal">
+            <h2>🎨 AI-Powered Meme Generator</h2>
+            <p>
+              Transform any image into a $PUMPIT meme! Just upload, position the overlays, and download!
+            </p>
+            
+            <div className="daily-counter">
+              <span className="fire-icon">🔥</span>
+              <span className="counter-text">{dailyMemeCount} memes created today!</span>
+            </div>
+            
+            {showXForm && (
+              <div className="x-form-modal" onClick={handleModalClose}>
+                <form onSubmit={handleXHandleSubmit} className="x-form" onClick={(e) => e.stopPropagation()}>
+                  <h3>Enter your X handle to continue</h3>
+                  <input
+                    type="text"
+                    name="xhandle"
+                    placeholder="@yourhandle"
+                    required
+                    minLength="2"
+                    autoComplete="off"
+                    autoFocus
+                  />
+                  <button type="submit">Continue</button>
+                </form>
+              </div>
+            )}
+            
+            {!xHandle && (
+              <div className="x-handle-section">
+                <form onSubmit={handleXHandleSubmit} className="x-handle-inline-form">
+                  <label>Enter your X handle to get started:</label>
+                  <div className="x-handle-input-group">
+                    <input
+                      type="text"
+                      name="xhandle"
+                      placeholder="@yourhandle"
+                      required
+                      minLength="2"
+                      autoComplete="off"
+                    />
+                    <button type="submit">Set Handle</button>
+                  </div>
+                </form>
+              </div>
+            )}
+            
+            <div className="meme-upload">
+              <div 
+                className={`modern-upload-zone ${isDragOver ? 'drag-over' : ''} ${selectedFile ? 'has-file' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={(e) => {
+                  // Only trigger file input if clicking on the empty upload area
+                  if (!selectedFile && e.target.classList.contains('modern-upload-zone')) {
+                    document.getElementById('memeImage').click();
+                  }
+                }}
+              >
+                <input 
+                  type="file" 
+                  id="memeImage" 
+                  accept="image/*" 
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
+                />
+                
+                {!selectedFile ? (
+                  <div className="upload-content" onClick={() => document.getElementById('memeImage').click()}>
+                    <div className="upload-icon">📸</div>
+                    <h3>Drop your image here</h3>
+                    <p>or click to browse</p>
+                    <div className="supported-formats">
+                      JPG, PNG, GIF up to 10MB
+                    </div>
+                  </div>
+                ) : (
+                  <div className="preview-container" ref={containerRef}>
+                    <img src={preview} alt="Preview" className="preview-image" />
+                    
+                    {showOverlays && (
+                      <>
+                        <div
+                          ref={lipRef}
+                          className={`overlay-element ${dragging === 'lips' || dragging === 'lips-rotate' ? 'dragging' : ''}`}
+                          style={{
+                            transform: getLipTransform()
+                          }}
+                          onMouseDown={(e) => handleMouseDown(e, 'lips')}
+                          onTouchStart={(e) => handleTouchStart(e, 'lips')}
+                          onTouchMove={handleTouchMove}
+                          onTouchEnd={handleTouchEnd}
+                          onWheel={(e) => handleWheel(e, 'lips')}
+                        >
+                          <img src="/meme-assets/lips.png" alt="Lips" draggable={false} />
+                        </div>
+                        
+                        <div
+                          ref={exclamationRef}
+                          className={`overlay-element ${dragging === 'exclamation' || dragging === 'exclamation-rotate' ? 'dragging' : ''}`}
+                          style={{
+                            transform: getExclamationTransform()
+                          }}
+                          onMouseDown={(e) => handleMouseDown(e, 'exclamation')}
+                          onTouchStart={(e) => handleTouchStart(e, 'exclamation')}
+                          onTouchMove={handleTouchMove}
+                          onTouchEnd={handleTouchEnd}
+                          onWheel={(e) => handleWheel(e, 'exclamation')}
+                        >
+                          <img src="/meme-assets/exclamation.png" alt="Exclamation" draggable={false} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {selectedFile && (
+                <div className="action-buttons">
+                  <button 
+                    onClick={() => {
+                      setSelectedFile(null);
+                      setPreview('/pumper.png');
+                      setShowOverlays(false);
+                      setGeneratedMeme(null);
+                    }}
+                    className="secondary-button"
+                  >
+                    🔄 Change Image
+                  </button>
+                  
+                  {!showOverlays ? (
+                    <button 
+                      onClick={generateMeme}
+                      disabled={isProcessing || !xHandle}
+                      className="primary-button"
+                    >
+                      {isProcessing ? '🎨 Processing...' : '✨ Generate Meme'}
+                    </button>
+                  ) : (
+                    <>
+                      <button 
+                        onClick={() => downloadMeme(false)}
+                        className="complete-button"
+                      >
+                        ✅ Complete
+                      </button>
+                      <button 
+                        onClick={() => downloadMeme(true)}
+                        className="download-button"
+                      >
+                        💾 Download Meme
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+              
+              {showOverlays && (
+                <div className="gesture-hints">
+                  <p className="desktop-hint">🖱️ Drag to move • Scroll to resize • Alt+drag to rotate</p>
+                  <p className="mobile-hint">👆 Drag to move • 🤏 Pinch to resize • 🔄 Twist to rotate</p>
+                </div>
+              )}
+              
+              {error && (
+                <div className="error-message">
+                  ⚠️ {error}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section id="roadmap" className="reveal">
+            <h2>🗺️ Roadmap</h2>
+            <ul>
+              <li>✅ Phase 1: Launch $PUMPIT on Bonk.fun with meme identity + Pumper reveal</li>
+              <li>✅ Phase 2: AI meme generator with smooth drag & drop editing</li>
+              <li>✅ Phase 3: Telegram bot for easy meme creation</li>
+              <li>✅ Phase 4: SEO-optimized blog for daily content</li>
+              <li>📋 Phase 5: Community meme contests & rewards</li>
+              <li>📋 Phase 6: Pumper Comic Series - Exclusive stories for $PUMPIT holders!</li>
+            </ul>
+          </section>
+
+          <section id="community" className="reveal">
+            <h2>🔥 Top Community Memes</h2>
+            <div className="community-memes">
+              {isLoadingMemes ? (
+                <div className="loading-memes">
+                  <p>Loading awesome memes...</p>
+                </div>
+              ) : communityMemes.length > 0 ? (
+                communityMemes.map((meme) => (
+                  <div key={meme.id} className="meme-card">
+                    <a href={`/meme/${meme.id}`} className="meme-link">
+                      <img src={meme.image_url} alt={meme.topic || `Community Meme by ${meme.creator_x_handle}`} />
+                      {meme.topic && (
+                        <div className="meme-topic">{meme.topic}</div>
+                      )}
+                    </a>
+                    {(meme.source === 'telegram' || meme.from_telegram_bot) && (
+                      <a 
+                        href="https://t.me/pumpermemebot" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="telegram-badge"
+                      >
+                        <span>🤖 Made with Telegram Bot!</span>
+                        <div className="tooltip">
+                          Create memes with just text - no image upload needed!<br/>
+                          Try @pumpermemebot on Telegram
+                        </div>
+                      </a>
+                    )}
+                    <div className="meme-info">
+                      <p className="creator">by {meme.creator_x_handle}</p>
+                      <div className="meme-stats">
+                        <button 
+                          onClick={() => handleLike(meme.id)}
+                          className={`like-button ${likedMemes.includes(meme.id) ? 'liked' : ''}`}
+                          type="button"
+                        >
+                          ❤️ {meme.likes_count || 0}
+                        </button>
+                        <span className={`share-counter ${meme.id === shareAnimatingId ? 'animating' : ''}`}>
+                          🔄 {meme.shares_count || 0}
+                        </span>
+                        {meme.views_count > 0 && (
+                          <span className="view-counter">
+                            👀 {meme.views_count}
+                          </span>
+                        )}
+                      </div>
+                      <div className="share-buttons">
+                        <button 
+                          onClick={() => shareOnTwitter(meme.id)}
+                          className={`share-btn twitter ${sharedMemes.includes(meme.id) ? 'shared' : ''}`}
+                          type="button"
+                          disabled={sharedMemes.includes(meme.id)}
+                        >
+                          {sharedMemes.includes(meme.id) ? '✓ Shared' : '𝕏 Share'}
+                        </button>
+                        <button 
+                          onClick={() => shareOnTelegram(meme.id, meme.image_url)}
+                          className={`share-btn telegram ${sharedMemes.includes(meme.id) ? 'shared' : ''}`}
+                          type="button"
+                          disabled={sharedMemes.includes(meme.id)}
+                        >
+                          {sharedMemes.includes(meme.id) ? '✓ Shared' : 'TG Share'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className="meme-card placeholder">
+                    <div className="placeholder-content">
+                      <p>🎨 Be the first to create a meme!</p>
+                    </div>
+                  </div>
+                  <div className="meme-card placeholder">
+                    <div className="placeholder-content">
+                      <p>🚀 Your meme here</p>
+                    </div>
+                  </div>
+                  <div className="meme-card placeholder">
+                    <div className="placeholder-content">
+                      <p>💎 Join the revolution!</p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+
+          <section id="social" className="reveal">
+            <h2>🌐 Join the $PUMPIT Community</h2>
+            <div className="social-grid">
+              <div className="social-card">
+                <h3>𝕏 Latest from X/Twitter</h3>
+                <div className="twitter-embed">
+                  <a 
+                    className="twitter-timeline" 
+                    data-height="400"
+                    data-theme="dark"
+                    href="https://twitter.com/pumpitonsol?ref_src=twsrc%5Etfw"
+                  >
+                    Tweets by @pumpitonsol
+                  </a>
+                  <script async src="https://platform.twitter.com/widgets.js" charSet="utf-8"></script>
+                </div>
+              </div>
+              
+              <div className="social-card">
+                <h3>TG Community Updates</h3>
+                <div className="community-links">
+                  <a 
+                    href="https://t.me/Pumpetcto" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="community-button telegram"
+                  >
+                    <span className="icon">TG</span>
+                    <div>
+                      <strong>Telegram Community</strong>
+                      <p>Join our active Telegram group</p>
+                    </div>
+                  </a>
+                  
+                  <a 
+                    href="https://www.tiktok.com/@pumper.the.pumpit" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="community-button tiktok"
+                  >
+                    <span className="icon">♪</span>
+                    <div>
+                      <strong>TikTok Videos</strong>
+                      <p>Watch Pumper's latest content</p>
+                    </div>
+                  </a>
+                  
+                  <a 
+                    href="https://x.com/pumpitonsol" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="community-button twitter"
+                  >
+                    <span className="icon">𝕏</span>
+                    <div>
+                      <strong>X / Twitter</strong>
+                      <p>Follow for real-time updates</p>
+                    </div>
+                  </a>
+                  
+                  <a 
+                    href="/blog" 
+                    className="community-button blog"
+                  >
+                    <span className="icon">📝</span>
+                    <div>
+                      <strong>PUMPIT Blog</strong>
+                      <p>Daily meme updates & insights</p>
+                    </div>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <footer>
+          <p>© 2025 PumpItOnSol. Powered by AI & Community. 🎨🚀</p>
+          <div className="footer-links">
+            <a href="/blog">Blog</a>
+            <span> • </span>
+            <a href="https://x.com/pumpitonsol" target="_blank" rel="noopener noreferrer">Twitter</a>
             <span> • </span>
             <a href="https://t.me/Pumpetcto" target="_blank" rel="noopener noreferrer">Telegram</a>
           </div>
@@ -1673,7 +2195,6 @@ export default function Home() {
           z-index: 10;
         }
 
-        /* Bigger invisible touch target for mobile */
         .overlay-element::before {
           content: '';
           position: absolute;
@@ -1796,7 +2317,6 @@ export default function Home() {
           }
         }
 
-        /* Share Modal Styles */
         .share-modal-backdrop {
           position: fixed;
           top: 0;
@@ -2052,7 +2572,6 @@ export default function Home() {
           text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
         }
 
-        /* Telegram Badge Styles */
         .telegram-badge {
           position: absolute;
           top: 10px;
@@ -2539,526 +3058,4 @@ export default function Home() {
       `}</style>
     </>
   );
-}="noopener noreferrer" title="X/Twitter">
-                𝕏
-              </a>
-              <a href="https://www.tiktok.com/@pumper.the.pumpit" target="_blank" rel="noopener noreferrer" title="TikTok">
-                ♪
-              </a>
-              <a href="https://t.me/Pumpetcto" target="_blank" rel="noopener noreferrer" title="Telegram">
-                TG
-              </a>
-            </div>
-          </div>
-        </header>
-
-        <nav className="main-nav">
-          <div className="nav-container">
-            <a href="#vision">Vision</a>
-            <a href="#token-info">Token</a>
-            <a href="#about">About</a>
-            <a href="#generator">Generate</a>
-            <a href="#roadmap">Roadmap</a>
-            <a href="/blog">Blog</a>
-            <a href="#social">Social</a>
-          </div>
-        </nav>
-
-        <main>
-          <section id="vision" className="reveal">
-            <h2>Our Vision</h2>
-            <div className={`expandable-content ${expandedSections.vision ? 'expanded' : ''}`}>
-              <p className="preview-text">
-                <strong>$PUMPIT. Created with one purpose: to become the most recognized meme on Solana.</strong>
-                {!expandedSections.vision && '...'}
-              </p>
-              {expandedSections.vision && (
-                <div className="full-content">
-                  <p>
-                    Launched on Bonk, $PUMPIT is focused on real growth. Pumper has the ability to adapt — 
-                    changing his face to support other strong tokens and communities he believes are the best ones to be in.
-                  </p>
-                </div>
-              )}
-              <button onClick={() => toggleSection('vision')} className="read-more-btn">
-                {expandedSections.vision ? 'Show Less' : 'Read More'}
-              </button>
-            </div>
-            
-            <div className="token-stats">
-              <h3>📊 Token Stats</h3>
-              <p>Contract Address: B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk</p>
-              <p>Total Supply: 1,000,000,000 $PUMPIT</p>
-              <p>🔥 Burned: 29% (286M $PUMPIT)</p>
-              <p>✅ Circulating: 714,268,067 $PUMPIT</p>
-              <a 
-                href="https://letsbonk.fun/token/B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="token-link"
-              >
-                View on LetsBonk.fun →
-              </a>
-            </div>
-          </section>
-
-          <section id="token-info" className="reveal token-info-section">
-            <h2>💎 $PUMPIT Live Data</h2>
-            <div className="token-grid">
-              <div className="token-card">
-                <h4>Price</h4>
-                {isLoadingPrice ? (
-                  <p className="loading">Loading...</p>
-                ) : (
-                  <>
-                    <p className="price">${tokenPrice?.toFixed(6) || '0.000000'}</p>
-                    <p className={`price-change ${priceChange24h >= 0 ? 'positive' : 'negative'}`}>
-                      {priceChange24h >= 0 ? '+' : ''}{priceChange24h?.toFixed(2)}% (24h)
-                    </p>
-                  </>
-                )}
-              </div>
-              
-              <div className="token-card">
-                <h4>Market Cap</h4>
-                <p className="value">
-                  ${tokenData?.marketCap?.toLocaleString() || '0'}
-                </p>
-              </div>
-              
-              <div className="token-card">
-                <h4>24h Volume</h4>
-                <p className="value">
-                  ${tokenData?.volume24h?.toLocaleString() || '0'}
-                </p>
-              </div>
-              
-              <div className="token-card">
-                <h4>Liquidity</h4>
-                <p className="value">
-                  ${tokenData?.liquidity?.toLocaleString() || '0'}
-                </p>
-              </div>
-            </div>
-            
-            <div className="buy-section">
-              <button 
-                onClick={handleBuyClick}
-                className="buy-button-large"
-              >
-                🚀 Buy $PUMPIT Now
-              </button>
-              <p className="buy-info">
-                Buy directly with SOL using Jupiter DEX aggregator
-              </p>
-            </div>
-          </section>
-
-          <section id="about" className="reveal">
-            <h2>About Us</h2>
-            <div className={`expandable-content ${expandedSections.about ? 'expanded' : ''}`}>
-              <p className="preview-text">
-                <strong>Yes — $PUMPIT faced setbacks before. We've been rugged. Not once, but twice.</strong>
-                {!expandedSections.about && '...'}
-              </p>
-              {expandedSections.about && (
-                <div className="full-content">
-                  <p>
-                    But here's the difference: We learn. We adapt. We grow. To take $PUMPIT to the next level, 
-                    we've made key updates to our meme identity. Originally, the project was linked to an old meme format. 
-                    But in order to grow and collaborate with bigger communities, we needed a fresh, clear look — 
-                    without using anyone's real face or risking ownership issues.
-                  </p>
-                  <p>
-                    Now meet <strong>Pumper</strong> — the official face of $PUMPIT. From now on, $PUMPIT's official meme template includes:
-                  </p>
-                  <ul>
-                    <li>The same suit, phone, and oversized lips</li>
-                    <li>Exclamation marks — because we support bonk.fun and its ecosystem</li>
-                    <li>The face changes — replaced by the popular tokens we support</li>
-                  </ul>
-                  <p>
-                    Pumper represents not just $PUMPIT, but the entire community: A clean, recognizable identity 
-                    that can feature any token while staying true to our roots.
-                  </p>
-                  <p>
-                    <strong>Why?</strong> Because we're not just building a token — we're building connections. 
-                    By adapting the face, we connect with other communities while keeping our own brand locked in. 
-                    Every time we feature a token, we advertise for both $PUMPIT and them. More exposure. 
-                    More partnerships. Bigger growth.
-                  </p>
-                  <p>
-                    And most importantly: We're working for you — the community. Those who believed in us, 
-                    the CTO leaders. We're here to make this a successful adventure — and as fun as possible. 
-                    This community is only the beginning. <strong>Thank you all for believing, supporting, 
-                    and pushing $PUMPIT forward.</strong>
-                  </p>
-                </div>
-              )}
-              <button onClick={() => toggleSection('about')} className="read-more-btn">
-                {expandedSections.about ? 'Show Less' : 'Read More'}
-              </button>
-            </div>
-          </section>
-
-          <section id="generator" className="reveal">
-            <h2>🎨 AI-Powered Meme Generator</h2>
-            <p>
-              Transform any image into a $PUMPIT meme! Just upload, position the overlays, and download!
-            </p>
-            
-            <div className="daily-counter">
-              <span className="fire-icon">🔥</span>
-              <span className="counter-text">{dailyMemeCount} memes created today!</span>
-            </div>
-            
-            {showXForm && (
-              <div className="x-form-modal" onClick={handleModalClose}>
-                <form onSubmit={handleXHandleSubmit} className="x-form" onClick={(e) => e.stopPropagation()}>
-                  <h3>Enter your X handle to continue</h3>
-                  <input
-                    type="text"
-                    name="xhandle"
-                    placeholder="@yourhandle"
-                    required
-                    minLength="2"
-                    autoComplete="off"
-                    autoFocus
-                  />
-                  <button type="submit">Continue</button>
-                </form>
-              </div>
-            )}
-            
-            {!xHandle && (
-              <div className="x-handle-section">
-                <form onSubmit={handleXHandleSubmit} className="x-handle-inline-form">
-                  <label>Enter your X handle to get started:</label>
-                  <div className="x-handle-input-group">
-                    <input
-                      type="text"
-                      name="xhandle"
-                      placeholder="@yourhandle"
-                      required
-                      minLength="2"
-                      autoComplete="off"
-                    />
-                    <button type="submit">Set Handle</button>
-                  </div>
-                </form>
-              </div>
-            )}
-            
-            <div className="meme-upload">
-              <div 
-                className={`modern-upload-zone ${isDragOver ? 'drag-over' : ''} ${selectedFile ? 'has-file' : ''}`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={(e) => {
-                  // Only trigger file input if clicking on the empty upload area
-                  if (!selectedFile && e.target.classList.contains('modern-upload-zone')) {
-                    document.getElementById('memeImage').click();
-                  }
-                }}
-              >
-                <input 
-                  type="file" 
-                  id="memeImage" 
-                  accept="image/*" 
-                  onChange={handleFileSelect}
-                  style={{ display: 'none' }}
-                />
-                
-                {!selectedFile ? (
-                  <div className="upload-content" onClick={() => document.getElementById('memeImage').click()}>
-                    <div className="upload-icon">📸</div>
-                    <h3>Drop your image here</h3>
-                    <p>or click to browse</p>
-                    <div className="supported-formats">
-                      JPG, PNG, GIF up to 10MB
-                    </div>
-                  </div>
-                ) : (
-                  <div className="preview-container" ref={containerRef}>
-                    <img src={preview} alt="Preview" className="preview-image" />
-                    
-                    {showOverlays && (
-                      <>
-                        <div
-                          ref={lipRef}
-                          className={`overlay-element ${dragging === 'lips' || dragging === 'lips-rotate' ? 'dragging' : ''}`}
-                          style={{
-                            transform: getLipTransform()
-                          }}
-                          onMouseDown={(e) => handleMouseDown(e, 'lips')}
-                          onTouchStart={(e) => handleTouchStart(e, 'lips')}
-                          onTouchMove={handleTouchMove}
-                          onTouchEnd={handleTouchEnd}
-                          onWheel={(e) => handleWheel(e, 'lips')}
-                        >
-                          <img src="/meme-assets/lips.png" alt="Lips" draggable={false} />
-                        </div>
-                        
-                        <div
-                          ref={exclamationRef}
-                          className={`overlay-element ${dragging === 'exclamation' || dragging === 'exclamation-rotate' ? 'dragging' : ''}`}
-                          style={{
-                            transform: getExclamationTransform()
-                          }}
-                          onMouseDown={(e) => handleMouseDown(e, 'exclamation')}
-                          onTouchStart={(e) => handleTouchStart(e, 'exclamation')}
-                          onTouchMove={handleTouchMove}
-                          onTouchEnd={handleTouchEnd}
-                          onWheel={(e) => handleWheel(e, 'exclamation')}
-                        >
-                          <img src="/meme-assets/exclamation.png" alt="Exclamation" draggable={false} />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-              
-              {selectedFile && (
-                <div className="action-buttons">
-                  <button 
-                    onClick={() => {
-                      setSelectedFile(null);
-                      setPreview('/pumper.png');
-                      setShowOverlays(false);
-                      setGeneratedMeme(null);
-                    }}
-                    className="secondary-button"
-                  >
-                    🔄 Change Image
-                  </button>
-                  
-                  {!showOverlays ? (
-                    <button 
-                      onClick={generateMeme}
-                      disabled={isProcessing || !xHandle}
-                      className="primary-button"
-                    >
-                      {isProcessing ? '🎨 Processing...' : '✨ Generate Meme'}
-                    </button>
-                  ) : (
-                    <>
-                      <button 
-                        onClick={() => downloadMeme(false)}
-                        className="complete-button"
-                      >
-                        ✅ Complete
-                      </button>
-                      <button 
-                        onClick={() => downloadMeme(true)}
-                        className="download-button"
-                      >
-                        💾 Download Meme
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-              
-              {showOverlays && (
-                <div className="gesture-hints">
-                  <p className="desktop-hint">🖱️ Drag to move • Scroll to resize • Alt+drag to rotate</p>
-                  <p className="mobile-hint">👆 Drag to move • 🤏 Pinch to resize • 🔄 Twist to rotate</p>
-                </div>
-              )}
-              
-              {error && (
-                <div className="error-message">
-                  ⚠️ {error}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section id="roadmap" className="reveal">
-            <h2>🗺️ Roadmap</h2>
-            <ul>
-              <li>✅ Phase 1: Launch $PUMPIT on Bonk.fun with meme identity + Pumper reveal</li>
-              <li>✅ Phase 2: AI meme generator with smooth drag & drop editing</li>
-              <li>✅ Phase 3: Telegram bot for easy meme creation</li>
-              <li>✅ Phase 4: SEO-optimized blog for daily content</li>
-              <li>📋 Phase 5: Community meme contests & rewards</li>
-              <li>📋 Phase 6: Pumper Comic Series - Exclusive stories for $PUMPIT holders!</li>
-            </ul>
-          </section>
-
-          <section id="community" className="reveal">
-            <h2>🔥 Top Community Memes</h2>
-            <div className="community-memes">
-              {isLoadingMemes ? (
-                <div className="loading-memes">
-                  <p>Loading awesome memes...</p>
-                </div>
-              ) : communityMemes.length > 0 ? (
-                communityMemes.map((meme) => (
-                  <div key={meme.id} className="meme-card">
-                    <a href={`/meme/${meme.id}`} className="meme-link">
-                      <img src={meme.image_url} alt={meme.topic || `Community Meme by ${meme.creator_x_handle}`} />
-                      {meme.topic && (
-                        <div className="meme-topic">{meme.topic}</div>
-                      )}
-                    </a>
-                    {(meme.source === 'telegram' || meme.from_telegram_bot) && (
-                      <a 
-                        href="https://t.me/pumpermemebot" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="telegram-badge"
-                      >
-                        <span>🤖 Made with Telegram Bot!</span>
-                        <div className="tooltip">
-                          Create memes with just text - no image upload needed!<br/>
-                          Try @pumpermemebot on Telegram
-                        </div>
-                      </a>
-                    )}
-                    <div className="meme-info">
-                      <p className="creator">by {meme.creator_x_handle}</p>
-                      <div className="meme-stats">
-                        <button 
-                          onClick={() => handleLike(meme.id)}
-                          className={`like-button ${likedMemes.includes(meme.id) ? 'liked' : ''}`}
-                          type="button"
-                        >
-                          ❤️ {meme.likes_count || 0}
-                        </button>
-                        <span className={`share-counter ${meme.id === shareAnimatingId ? 'animating' : ''}`}>
-                          🔄 {meme.shares_count || 0}
-                        </span>
-                        {meme.views_count > 0 && (
-                          <span className="view-counter">
-                            👀 {meme.views_count}
-                          </span>
-                        )}
-                      </div>
-                      <div className="share-buttons">
-                        <button 
-                          onClick={() => shareOnTwitter(meme.id)}
-                          className={`share-btn twitter ${sharedMemes.includes(meme.id) ? 'shared' : ''}`}
-                          type="button"
-                          disabled={sharedMemes.includes(meme.id)}
-                        >
-                          {sharedMemes.includes(meme.id) ? '✓ Shared' : '𝕏 Share'}
-                        </button>
-                        <button 
-                          onClick={() => shareOnTelegram(meme.id, meme.image_url)}
-                          className={`share-btn telegram ${sharedMemes.includes(meme.id) ? 'shared' : ''}`}
-                          type="button"
-                          disabled={sharedMemes.includes(meme.id)}
-                        >
-                          {sharedMemes.includes(meme.id) ? '✓ Shared' : 'TG Share'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <>
-                  <div className="meme-card placeholder">
-                    <div className="placeholder-content">
-                      <p>🎨 Be the first to create a meme!</p>
-                    </div>
-                  </div>
-                  <div className="meme-card placeholder">
-                    <div className="placeholder-content">
-                      <p>🚀 Your meme here</p>
-                    </div>
-                  </div>
-                  <div className="meme-card placeholder">
-                    <div className="placeholder-content">
-                      <p>💎 Join the revolution!</p>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </section>
-
-          <section id="social" className="reveal">
-            <h2>🌐 Join the $PUMPIT Community</h2>
-            <div className="social-grid">
-              <div className="social-card">
-                <h3>𝕏 Latest from X/Twitter</h3>
-                <div className="twitter-embed">
-                  <a 
-                    className="twitter-timeline" 
-                    data-height="400"
-                    data-theme="dark"
-                    href="https://twitter.com/pumpitonsol?ref_src=twsrc%5Etfw"
-                  >
-                    Tweets by @pumpitonsol
-                  </a>
-                  <script async src="https://platform.twitter.com/widgets.js" charSet="utf-8"></script>
-                </div>
-              </div>
-              
-              <div className="social-card">
-                <h3>TG Community Updates</h3>
-                <div className="community-links">
-                  <a 
-                    href="https://t.me/Pumpetcto" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="community-button telegram"
-                  >
-                    <span className="icon">TG</span>
-                    <div>
-                      <strong>Telegram Community</strong>
-                      <p>Join our active Telegram group</p>
-                    </div>
-                  </a>
-                  
-                  <a 
-                    href="https://www.tiktok.com/@pumper.the.pumpit" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="community-button tiktok"
-                  >
-                    <span className="icon">♪</span>
-                    <div>
-                      <strong>TikTok Videos</strong>
-                      <p>Watch Pumper's latest content</p>
-                    </div>
-                  </a>
-                  
-                  <a 
-                    href="https://x.com/pumpitonsol" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="community-button twitter"
-                  >
-                    <span className="icon">𝕏</span>
-                    <div>
-                      <strong>X / Twitter</strong>
-                      <p>Follow for real-time updates</p>
-                    </div>
-                  </a>
-                  
-                  <a 
-                    href="/blog" 
-                    className="community-button blog"
-                  >
-                    <span className="icon">📝</span>
-                    <div>
-                      <strong>PUMPIT Blog</strong>
-                      <p>Daily meme updates & insights</p>
-                    </div>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </section>
-        </main>
-
-        <footer>
-          <p>© 2025 PumpItOnSol. Powered by AI & Community. 🎨🚀</p>
-          <div className="footer-links">
-            <a href="/blog">Blog</a>
-            <span> • </span>
-            <a href="https://x.com/pumpitonsol" target="_blank" rel
+}
