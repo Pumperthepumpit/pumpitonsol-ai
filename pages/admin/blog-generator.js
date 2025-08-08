@@ -40,6 +40,7 @@ export default function BlogGenerator() {
 
   const fetchTopMemes = async () => {
     try {
+      console.log('Fetching top memes...');
       // Get top memes from last 7 days
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -52,10 +53,11 @@ export default function BlogGenerator() {
         .limit(10);
 
       if (error) throw error;
+      console.log('Fetched memes:', data?.length || 0);
       setTopMemes(data || []);
     } catch (error) {
       console.error('Error fetching memes:', error);
-      setError('Failed to fetch memes');
+      setError('Failed to fetch memes: ' + error.message);
     }
   };
 
@@ -74,29 +76,68 @@ export default function BlogGenerator() {
     setGeneratedPost(null);
 
     try {
+      console.log('=== STARTING BLOG GENERATION ===');
+      console.log('Blog type:', blogType);
+      console.log('Custom topic:', customTopic);
+      console.log('Selected memes count:', selectedMemes.length);
+      console.log('Selected meme IDs:', selectedMemes);
+      
+      const requestBody = {
+        type: blogType,
+        customTopic,
+        featuredMemes: selectedMemes,
+        memeDetails: topMemes.filter(m => selectedMemes.includes(m.id))
+      };
+      
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+      console.log('Calling API endpoint...');
+      
       // Call our API endpoint to generate content
       const response = await fetch('/api/generate-blog-post', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          type: blogType,
-          customTopic,
-          featuredMemes: selectedMemes,
-          memeDetails: topMemes.filter(m => selectedMemes.includes(m.id))
-        })
+        body: JSON.stringify(requestBody)
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      
+      // Get response as text first to debug
+      const responseText = await response.text();
+      console.log('Raw response text:', responseText);
+      
       if (!response.ok) {
-        throw new Error('Failed to generate blog post');
+        console.error('Response not OK:', response.status, responseText);
+        throw new Error(`API returned ${response.status}: ${responseText}`);
       }
 
-      const data = await response.json();
+      // Try to parse as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('Parsed response data:', data);
+      } catch (parseError) {
+        console.error('Failed to parse JSON:', parseError);
+        console.error('Response was:', responseText);
+        throw new Error('Invalid JSON response from API');
+      }
+
+      // Validate the response has expected fields
+      if (!data.title || !data.content) {
+        console.error('Invalid response structure:', data);
+        throw new Error('Response missing required fields (title or content)');
+      }
+      
       setGeneratedPost(data);
       setSuccess('Blog post generated successfully!');
+      console.log('=== BLOG GENERATION SUCCESS ===');
     } catch (error) {
-      console.error('Error generating post:', error);
+      console.error('=== BLOG GENERATION ERROR ===');
+      console.error('Error type:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Full error object:', error);
       setError('Failed to generate blog post: ' + error.message);
     } finally {
       setIsGenerating(false);
@@ -107,6 +148,7 @@ export default function BlogGenerator() {
     if (!generatedPost) return;
 
     try {
+      console.log('Saving blog post...');
       const slug = generatedPost.title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -130,6 +172,7 @@ export default function BlogGenerator() {
 
       if (error) throw error;
 
+      console.log('Blog post saved:', data);
       setSuccess(`Blog post saved! View at: /blog/${slug}`);
       
       // Reset form
@@ -236,10 +279,25 @@ export default function BlogGenerator() {
           <nav>
             <a href="/">← Back to Site</a>
             <a href="/blog">View Blog</a>
+            <button 
+              onClick={() => {
+                sessionStorage.removeItem('blog_admin_auth');
+                setIsAuthenticated(false);
+              }}
+              className="logout-btn"
+            >
+              Logout
+            </button>
           </nav>
         </header>
 
         <main className="admin-main">
+          {/* Debug Info */}
+          <div className="debug-info">
+            <p>Memes loaded: {topMemes.length}</p>
+            <p>Selected: {selectedMemes.length}</p>
+          </div>
+
           {/* Blog Type Selection */}
           <section className="section">
             <h2>1. Choose Blog Post Type</h2>
@@ -307,7 +365,7 @@ export default function BlogGenerator() {
             <h2>2. Select Featured Memes (Optional)</h2>
             <div className="meme-grid">
               {topMemes.length === 0 ? (
-                <p>No recent memes found</p>
+                <p>No recent memes found. You can still generate a blog post without featured memes.</p>
               ) : (
                 topMemes.map(meme => (
                   <div 
@@ -320,7 +378,7 @@ export default function BlogGenerator() {
                       <p>{meme.topic || 'Untitled'}</p>
                       <small>by {meme.creator_x_handle || 'anonymous'}</small>
                       <div className="stats">
-                        ❤️ {meme.likes_count} | 🔄 {meme.shares_count}
+                        ❤️ {meme.likes_count || 0} | 🔄 {meme.shares_count || 0}
                       </div>
                     </div>
                   </div>
@@ -341,11 +399,14 @@ export default function BlogGenerator() {
             >
               {isGenerating ? '⏳ Generating with AI...' : '🚀 Generate Blog Post'}
             </button>
+            <p className="info-text">
+              {blogType === 'custom' && !customTopic && 'Please enter a custom topic first'}
+            </p>
           </section>
 
           {/* Error/Success Messages */}
-          {error && <div className="error-message">{error}</div>}
-          {success && <div className="success-message">{success}</div>}
+          {error && <div className="error-message">❌ {error}</div>}
+          {success && <div className="success-message">✅ {success}</div>}
 
           {/* Generated Post Preview */}
           {generatedPost && (
@@ -403,19 +464,32 @@ export default function BlogGenerator() {
         .admin-header nav {
           display: flex;
           gap: 2rem;
+          align-items: center;
         }
 
-        .admin-header a {
+        .admin-header a, .logout-btn {
           color: #FFFF00;
           text-decoration: none;
           padding: 0.5rem 1rem;
           border: 1px solid rgba(255, 255, 0, 0.3);
           border-radius: 25px;
           transition: all 0.3s;
+          background: transparent;
+          cursor: pointer;
+          font-size: 1rem;
         }
 
-        .admin-header a:hover {
+        .admin-header a:hover, .logout-btn:hover {
           background: rgba(255, 255, 0, 0.1);
+        }
+
+        .debug-info {
+          max-width: 1200px;
+          margin: 0 auto 2rem;
+          padding: 1rem;
+          background: rgba(0, 100, 255, 0.1);
+          border-radius: 10px;
+          font-family: monospace;
         }
 
         .admin-main {
@@ -552,6 +626,13 @@ export default function BlogGenerator() {
         .generate-button:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+        }
+
+        .info-text {
+          text-align: center;
+          color: #999;
+          margin-top: 1rem;
+          font-size: 0.9rem;
         }
 
         .error-message {
