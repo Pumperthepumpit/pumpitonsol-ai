@@ -117,7 +117,7 @@ export default function Home() {
     totalLikes: 0,
     totalShares: 0
   });
-  
+
   useEffect(() => {
     fetchCommunityMemes();
     fetchDailyMemeCount();
@@ -250,7 +250,7 @@ export default function Home() {
       };
     }
   }, [dragging, dragStart, startPos]);
-
+  
   const connectWithX = async () => {
     setConnectingX(true);
     try {
@@ -299,6 +299,7 @@ export default function Home() {
         localStorage.setItem('xAccessToken', data.accessToken);
         
         calculateDailyLimit();
+        alert(`Successfully connected as @${data.profile.username}!`);
       }
     } catch (error) {
       console.error('Callback error:', error);
@@ -339,41 +340,41 @@ export default function Home() {
       setError('Please enter your Telegram username');
       return;
     }
-  
-    setError('');
-  
+    
+    console.log('Verifying premium for:', username);
+    
     try {
       const response = await fetch('/api/verify-premium', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username })
       });
-    
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-    
+      
+      console.log('Response status:', response.status);
       const data = await response.json();
-    
+      console.log('Response data:', data);
+      
       if (data.success && data.isPremium) {
         setIsVerifiedPremium(true);
         setPremiumExpiry(data.expiresAt);
         localStorage.setItem('premiumUsername', username);
         calculateDailyLimit();
+        alert('Premium access verified! All tools unlocked.');
         setShowPremiumModal(false);
+        setError('');
         return true;
       } else {
         setIsVerifiedPremium(false);
-        setError(data.error || 'No active premium subscription found. Subscribe via @pumpermemebot');
+        setError('No active premium subscription found. Subscribe via @pumpermemebot');
         return false;
       }
     } catch (error) {
       console.error('Premium verification error:', error);
-      setError('Failed to verify premium status: ' + error.message);
+      setError('Failed to verify premium status');
       return false;
     }
   };
-  
+
   const loadUserStats = async () => {
     try {
       const userId = xProfile?.id || localStorage.getItem('userId') || 'anonymous';
@@ -654,7 +655,7 @@ export default function Home() {
       setIsAnalyzingContract(false);
     }
   };
-  
+
   const processWhitepaper = async () => {
     if (!whitepaperFile) {
       setError('Please upload a whitepaper PDF');
@@ -955,7 +956,7 @@ export default function Home() {
       setShowXForm(false);
     }
   };
-  
+
   const generateMeme = async () => {
     if (!selectedFile) {
       setError('Please select an image first!');
@@ -1197,92 +1198,102 @@ export default function Home() {
     setDragging(null);
   };
 
+  // Add missing handler functions
+  const handleCloseShareModal = () => {
+    setShowShareModal(false);
+  };
+
+  const handleShareFromModal = (platform) => {
+    if (platform === 'twitter') {
+      shareOnTwitter(currentMemeId);
+    } else if (platform === 'telegram') {
+      shareOnTelegram(currentMemeId, generatedMeme);
+    }
+    setShowShareModal(false);
+  };
+
+  const handleCreateAnother = () => {
+    setShowShareModal(false);
+    setSelectedFile(null);
+    setPreview('/pumper.png');
+    setShowOverlays(false);
+    setGeneratedMeme(null);
+    setCurrentMemeId(null);
+  };
+
   const handleTouchStart = (e, element) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (e.touches.length === 1) {
-      handleMouseDown(e, element);
-    } else if (e.touches.length === 2) {
-      setDragging(null);
-      
+    if (e.touches.length === 2) {
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
-      
-      const distance = Math.sqrt(
-        Math.pow(touch2.clientX - touch1.clientX, 2) +
-        Math.pow(touch2.clientY - touch1.clientY, 2)
+      const distance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
       );
-      
       const angle = Math.atan2(
         touch2.clientY - touch1.clientY,
         touch2.clientX - touch1.clientX
       ) * 180 / Math.PI;
       
-      setGestureStart({
-        distance,
-        angle,
+      setGestureStart({ 
+        distance, 
+        angle, 
         scale: element === 'lips' ? lipScale : exclamationScale,
-        rotation: element === 'lips' ? lipRotation : exclamationRotation,
-        element
+        rotation: element === 'lips' ? lipRotation : exclamationRotation
       });
+      setTouches([...e.touches]);
+    } else {
+      handleMouseDown(e, element);
     }
   };
 
   const handleTouchMove = (e) => {
-    if (e.touches.length === 2 && gestureStart.element) {
+    if (e.touches.length === 2 && gestureStart.distance > 0) {
       e.preventDefault();
-      
       const touch1 = e.touches[0];
       const touch2 = e.touches[1];
-      
-      const distance = Math.sqrt(
-        Math.pow(touch2.clientX - touch1.clientX, 2) +
-        Math.pow(touch2.clientY - touch1.clientY, 2)
+      const distance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
       );
-      
       const angle = Math.atan2(
         touch2.clientY - touch1.clientY,
         touch2.clientX - touch1.clientX
       ) * 180 / Math.PI;
       
-      const scaleDelta = distance / gestureStart.distance;
-      const sensitivityMultiplier = 1.5;
-      const adjustedDelta = 1 + (scaleDelta - 1) * sensitivityMultiplier;
-      const newScale = Math.max(0.3, Math.min(3, gestureStart.scale * adjustedDelta));
+      const scaleChange = distance / gestureStart.distance;
+      const angleChange = angle - gestureStart.angle;
       
-      const rotationDelta = angle - gestureStart.angle;
-      const rotationSensitivity = 1.5;
-      const newRotation = gestureStart.rotation + (rotationDelta * rotationSensitivity);
-      
-      if (gestureStart.element === 'lips') {
-        setLipScale(newScale);
-        setLipRotation(newRotation);
-      } else {
-        setExclamationScale(newScale);
-        setExclamationRotation(newRotation);
+      const element = dragging?.replace('-rotate', '');
+      if (element === 'lips') {
+        setLipScale(gestureStart.scale * scaleChange);
+        setLipRotation(gestureStart.rotation + angleChange);
+      } else if (element === 'exclamation') {
+        setExclamationScale(gestureStart.scale * scaleChange);
+        setExclamationRotation(gestureStart.rotation + angleChange);
       }
-    } else if (e.touches.length === 1 && dragging) {
-      handleMouseMove(e);
     }
   };
 
   const handleTouchEnd = (e) => {
-    if (e.touches.length === 0) {
-      setDragging(null);
-      setGestureStart({ distance: 0, angle: 0, scale: 1, rotation: 0, element: null });
+    if (e.touches.length < 2) {
+      setGestureStart({ distance: 0, angle: 0, scale: 1, rotation: 0 });
+      setTouches([]);
     }
+    handleMouseUp();
   };
 
   const handleWheel = (e, element) => {
     e.preventDefault();
-    e.stopPropagation();
-    const delta = e.deltaY > 0 ? -0.05 : 0.05;
+    const delta = e.deltaY * -0.001;
+    const scaleFactor = 1 + delta;
     
     if (element === 'lips') {
-      setLipScale(prev => Math.max(0.3, Math.min(3, prev + delta)));
+      setLipScale(prev => Math.max(0.1, Math.min(3, prev * scaleFactor)));
     } else {
-      setExclamationScale(prev => Math.max(0.3, Math.min(3, prev + delta)));
+      setExclamationScale(prev => Math.max(0.1, Math.min(3, prev * scaleFactor)));
     }
   };
 
@@ -1293,166 +1304,95 @@ export default function Home() {
   const getExclamationTransform = () => {
     return `translate(${exclamationPosition.x}px, ${exclamationPosition.y}px) scale(${exclamationScale}) rotate(${exclamationRotation}deg)`;
   };
-  
-  const handleLike = async (memeId) => {
-    const isLiked = likedMemes.includes(memeId);
-    
-    try {
-      const meme = communityMemes.find(m => m.id === memeId);
-      if (!meme) return;
-      
-      const newLikesCount = isLiked ? meme.likes_count - 1 : meme.likes_count + 1;
-      
-      const { error } = await supabase
-        .from('memes')
-        .update({ likes_count: newLikesCount })
-        .eq('id', memeId);
-        
-      if (error) throw error;
-      
-      if (isLiked) {
-        setLikedMemes(prev => {
-          const updated = prev.filter(id => id !== memeId);
-          localStorage.setItem('likedMemes', JSON.stringify(updated));
-          return updated;
-        });
-      } else {
-        setLikedMemes(prev => {
-          const updated = [...prev, memeId];
-          localStorage.setItem('likedMemes', JSON.stringify(updated));
-          return updated;
-        });
-      }
-      
-      fetchCommunityMemes();
-      
-    } catch (error) {
-      console.error('Error updating like:', error);
-    }
-  };
 
-  const shareOnTwitter = async (memeId) => {
-    const meme = communityMemes.find(m => m.id === memeId);
-    if (!meme) return;
-    
-    setShareAnimatingId(memeId);
-    setTimeout(() => setShareAnimatingId(null), 600);
+  const handleLike = async (memeId) => {
+    if (likedMemes.includes(memeId)) return;
     
     try {
-      const newShareCount = (meme.shares_count || 0) + 1;
-      
       const { data, error } = await supabase
         .from('memes')
-        .update({ shares_count: newShareCount })
+        .update({ likes_count: supabase.sql`likes_count + 1` })
         .eq('id', memeId)
         .select();
       
       if (!error) {
-        setCommunityMemes(prev => prev.map(m => 
-          m.id === memeId ? { ...m, shares_count: newShareCount } : m
-        ));
+        const newLikedMemes = [...likedMemes, memeId];
+        setLikedMemes(newLikedMemes);
+        localStorage.setItem('likedMemes', JSON.stringify(newLikedMemes));
+        fetchCommunityMemes();
+      }
+    } catch (error) {
+      console.error('Error liking meme:', error);
+    }
+  };
+
+  const shareOnTwitter = async (memeId) => {
+    const text = `Check out this awesome $PUMPIT meme! 🚀`;
+    const url = `${window.location.origin}/meme/${memeId}`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=PUMPIT,Solana`;
+    
+    window.open(twitterUrl, '_blank');
+    
+    try {
+      const { error } = await supabase
+        .from('memes')
+        .update({ shares_count: supabase.sql`shares_count + 1` })
+        .eq('id', memeId);
+      
+      if (!error) {
+        const newSharedMemes = [...sharedMemes, memeId];
+        setSharedMemes(newSharedMemes);
+        localStorage.setItem('sharedMemes', JSON.stringify(newSharedMemes));
+        setShareAnimatingId(memeId);
+        setTimeout(() => setShareAnimatingId(null), 500);
+        fetchCommunityMemes();
       }
     } catch (error) {
       console.error('Error updating share count:', error);
     }
-    
-    const memeUrl = window.location.origin + '/meme/' + memeId;
-    const creatorHandle = meme.creator_x_handle || 'anonymous';
-    const text = 'Sharing meme created by ' + creatorHandle + ' 🚀 @pumpitonsol\n\nJoin the movement: letspumpit.com';
-    const twitterUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(memeUrl) + '&hashtags=PUMPIT,Solana,PumpItOnSol';
-    window.open(twitterUrl, '_blank');
   };
 
   const shareOnTelegram = async (memeId, imageUrl) => {
-    const meme = communityMemes.find(m => m.id === memeId);
-    if (!meme) return;
+    const text = `Check out this awesome $PUMPIT meme! 🚀`;
+    const url = `${window.location.origin}/meme/${memeId}`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
     
-    setShareAnimatingId(memeId);
-    setTimeout(() => setShareAnimatingId(null), 600);
+    window.open(telegramUrl, '_blank');
     
     try {
-      const newShareCount = (meme.shares_count || 0) + 1;
-      
-      await supabase
+      const { error } = await supabase
         .from('memes')
-        .update({ shares_count: newShareCount })
+        .update({ shares_count: supabase.sql`shares_count + 1` })
         .eq('id', memeId);
       
-      setCommunityMemes(prev => prev.map(m => 
-        m.id === memeId ? { ...m, shares_count: newShareCount } : m
-      ));
+      if (!error) {
+        const newSharedMemes = [...sharedMemes, memeId];
+        setSharedMemes(newSharedMemes);
+        localStorage.setItem('sharedMemes', JSON.stringify(newSharedMemes));
+        setShareAnimatingId(memeId);
+        setTimeout(() => setShareAnimatingId(null), 500);
+        fetchCommunityMemes();
+      }
     } catch (error) {
       console.error('Error updating share count:', error);
-    }
-    
-    const creatorHandle = meme.creator_x_handle || 'anonymous';
-    const text = 'Sharing meme created by ' + creatorHandle + ' 🚀\n\nVisit: letspumpit.com\nJoin us at @Pumpetcto';
-    const telegramUrl = 'https://t.me/share/url?url=' + encodeURIComponent(imageUrl) + '&text=' + encodeURIComponent(text);
-    window.open(telegramUrl, '_blank');
-  };
-
-  const handleCloseShareModal = (e) => {
-    if (e.target.classList.contains('share-modal-backdrop')) {
-      setShowShareModal(false);
     }
   };
 
   const handleModalClose = (e) => {
-    if (e.target.classList.contains('x-form-modal')) {
+    if (e.target === e.currentTarget) {
       setShowXForm(false);
     }
   };
-
-  const handleShareFromModal = (platform) => {
-    if (!currentMemeId) return;
-    
-    if (platform === 'twitter') {
-      shareOnTwitter(currentMemeId);
-    } else if (platform === 'telegram') {
-      const meme = communityMemes.find(m => m.id === currentMemeId);
-      if (meme) {
-        shareOnTelegram(currentMemeId, meme.image_url);
-      }
-    }
-  };
-
-  const handleCreateAnother = () => {
-    setShowShareModal(false);
-    setSelectedFile(null);
-    setPreview('/pumper.png');
-    setShowOverlays(false);
-    setGeneratedMeme(null);
-    setCurrentMemeId(null);
-    setLipPosition({ x: 0, y: 0 });
-    setExclamationPosition({ x: 0, y: 0 });
-    setLipScale(1);
-    setExclamationScale(1);
-    setLipRotation(0);
-    setExclamationRotation(0);
-  };
-
+  
   return (
     <>
       <Head>
-        <title>PumpItOnSol - AI-Powered Meme Generator | Solana's #1 Meme Community</title>
-        <meta name="description" content="Create viral $PUMPIT memes with our AI-powered generator. Join Solana's fastest growing memecoin community!" />
-        <meta name="keywords" content="PUMPIT, Solana, meme generator, memecoin, crypto memes, AI memes" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="canonical" href="https://letspumpit.com" />
-        
-        <meta property="og:title" content="PumpItOnSol - AI-Powered Meme Generator" />
-        <meta property="og:description" content="Create viral $PUMPIT memes with our AI generator. Join Solana's fastest growing memecoin community!" />
-        <meta property="og:image" content="https://letspumpit.com/pumper.png" />
-        <meta property="og:url" content="https://letspumpit.com" />
-        <meta property="og:type" content="website" />
-        
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@pumpitonsol" />
-        <meta name="twitter:title" content="PumpItOnSol - AI-Powered Meme Generator" />
-        <meta name="twitter:description" content="Create viral $PUMPIT memes with our AI generator. Join Solana's fastest growing memecoin community!" />
-        <meta name="twitter:image" content="https://letspumpit.com/pumper.png" />
-        
-        <script src="https://terminal.jup.ag/main-v2.js" data-preload></script>
+        <title>$PUMPIT - AI Meme Generator | Making Solana Smile</title>
+        <meta name="description" content="Create viral $PUMPIT memes with our AI-powered generator. Join the Solana revolution!" />
+        <meta property="og:title" content="$PUMPIT - AI Meme Generator" />
+        <meta property="og:description" content="Making Solana smile, one meme at a time" />
+        <meta property="og:image" content="/pumper.png" />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <div className="desktop-social-buttons">
@@ -1531,7 +1471,14 @@ export default function Home() {
             </div>
             
             {error && (
-              <div className="error-message">
+              <div className="error-message" style={{
+                background: 'rgba(255, 0, 0, 0.1)',
+                border: '1px solid rgba(255, 0, 0, 0.3)',
+                borderRadius: '10px',
+                padding: '1rem',
+                margin: '1rem 0',
+                color: '#ff6666'
+              }}>
                 ⚠️ {error}
               </div>
             )}
@@ -1555,10 +1502,10 @@ export default function Home() {
           </div>
         </div>
       )}
-      
+
       {showShareModal && (
         <div className="share-modal-backdrop" onClick={handleCloseShareModal}>
-          <div className="share-modal">
+          <div className="share-modal" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setShowShareModal(false)}>✕</button>
             
             <div className="modal-content">
@@ -1654,10 +1601,6 @@ export default function Home() {
             <p>Making Solana smile, one meme at a time</p>
             
             <div className="user-stats-display">
-              <div className="stat-badge">
-                <span className="stat-label">Daily Limit:</span>
-                <span className="stat-value">{userStats.dailyLimit}</span>
-              </div>
               <div className="stat-badge">
                 <span className="stat-label">Remaining:</span>
                 <span className="stat-value">{userStats.remainingToday}</span>
@@ -1837,7 +1780,7 @@ export default function Home() {
               </button>
             </div>
           </section>
-          
+
           <section id="generator" className="reveal">
             <h2>🎨 AI-Powered Meme Generator</h2>
             <p>
@@ -1986,7 +1929,7 @@ export default function Home() {
                 </div>
               )}
               
-              {error && (
+              {error && !showPremiumModal && (
                 <div className="error-message">
                   ⚠️ {error}
                 </div>
@@ -2127,7 +2070,7 @@ export default function Home() {
               <li>📋 Phase 7: Pumper Comic Series - Exclusive stories for $PUMPIT holders!</li>
             </ul>
           </section>
-          
+
           <section id="community" className="reveal">
             <h2>🔥 Top Community Memes</h2>
             <div className="community-memes">
@@ -2230,17 +2173,12 @@ export default function Home() {
             <h2>🌐 Join the $PUMPIT Community</h2>
             <div className="social-grid">
               <div className="social-card">
-                <h3>𝕏 Latest from X/Twitter</h3>
-                <div className="twitter-embed">
-                  <a 
-                    className="twitter-timeline" 
-                    data-height="400"
-                    data-theme="dark"
-                    href="https://twitter.com/pumpitonsol?ref_src=twsrc%5Etfw"
-                  >
-                    Tweets by @pumpitonsol
+                <h3>𝕏 Latest Updates</h3>
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <p>Follow us on X for latest updates!</p>
+                  <a href="https://x.com/pumpitonsol" target="_blank" rel="noopener noreferrer" className="community-button twitter">
+                    Visit our X Profile →
                   </a>
-                  <script async src="https://platform.twitter.com/widgets.js" charSet="utf-8"></script>
                 </div>
               </div>
               
@@ -2313,65 +2251,196 @@ export default function Home() {
           </div>
         </footer>
       </div>
-      
-      solid rgba(255, 255, 255, 0.2);
+
+      <style jsx global>{`">
+                <span className="stat-label">Daily Limit:</span>
+                <span className="stat-value">{userStats.dailyLimit}</span>
+              </div>
+              <div className="stat-badge
+              
+              * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
         }
 
-        .secondary-button:hover {
-          background: rgba(255, 255, 255, 0.2);
-          transform: translateY(-2px);
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+          background: #0a0a0a;
+          color: #ffffff;
+          min-height: 100vh;
+          overflow-x: hidden;
+          margin: 0;
+          padding: 0;
         }
 
-        .complete-button {
-          background: linear-gradient(135deg, #00BFFF, #0080FF);
-          color: white;
-        }
-
-        .complete-button:hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(0, 191, 255, 0.4);
-        }
-
-        .download-button {
-          background: linear-gradient(135deg, #00FF00, #00CC00);
-          color: white;
-        }
-
-        .download-button:hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(0, 255, 0, 0.4);
-        }
-
-        .primary-button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .gesture-hints {
-          text-align: center;
-          margin-top: 1rem;
-          padding: 1rem;
-          background: rgba(255, 255, 0, 0.05);
-          border-radius: 10px;
-          font-size: 0.9rem;
-          color: #FFFF00;
-        }
-
-        .gesture-hints .desktop-hint {
-          display: block;
-        }
-
-        .gesture-hints .mobile-hint {
-          display: none;
-        }
-
-        .share-modal-backdrop {
+        body::before {
+          content: '';
           position: fixed;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
+          background: 
+            radial-gradient(circle at 20% 50%, rgba(255, 255, 0, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 40% 20%, rgba(255, 255, 0, 0.05) 0%, transparent 50%);
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        .container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 20px;
+          width: 100%;
+          position: relative;
+          z-index: 2;
+        }
+
+        .desktop-social-buttons {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          display: flex;
+          gap: 0.75rem;
+          z-index: 1000;
+          flex-wrap: wrap;
+          max-width: calc(100vw - 40px);
+        }
+
+        .mobile-top-buttons {
+          display: none;
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          gap: 0.5rem;
+          z-index: 1000;
           background: rgba(0, 0, 0, 0.8);
+          padding: 0.5rem;
+          border-radius: 30px;
+          backdrop-filter: blur(10px);
+        }
+
+        .mobile-social-icons {
+          display: none;
+          gap: 1rem;
+          margin-top: 1rem;
+          font-size: 1.5rem;
+          justify-content: center;
+        }
+
+        .mobile-social-icons a {
+          text-decoration: none;
+          transition: transform 0.3s ease;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 50%;
+          width: 50px;
+          height: 50px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.3rem;
+        }
+
+        .mobile-social-icons a:hover {
+          transform: scale(1.2);
+          background: rgba(255, 255, 255, 0.1);
+          border-color: #FFFF00;
+        }
+
+        .social-button {
+          padding: 0.6rem 1.2rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 50px;
+          color: white;
+          text-decoration: none;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(10px);
+          font-size: 0.9rem;
+          white-space: nowrap;
+          cursor: pointer;
+          font-weight: 500;
+        }
+
+        .social-button:hover {
+          background: rgba(255, 255, 255, 0.1);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .social-button.telegram-bot {
+          background: #0088cc;
+          color: white;
+          border: none;
+        }
+
+        .social-button.telegram-bot:hover {
+          background: #0077b3;
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(0, 136, 204, 0.5);
+        }
+
+        .social-button.buy-button {
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          font-weight: bold;
+          border: none;
+        }
+
+        .social-button.buy-button:hover {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.5);
+        }
+
+        .social-button.wallet-button {
+          background: rgba(255, 255, 0, 0.1);
+          border-color: rgba(255, 255, 0, 0.3);
+        }
+
+        .x-connected-badge {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          background: rgba(29, 161, 242, 0.1);
+          border: 1px solid rgba(29, 161, 242, 0.3);
+          border-radius: 50px;
+        }
+
+        .x-connected-badge img {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+        }
+
+        .x-connected-badge .verified-badge {
+          color: #1DA1F2;
+          font-weight: bold;
+        }
+
+        .x-connected-badge .disconnect-btn {
+          background: none;
+          border: none;
+          color: #999;
+          cursor: pointer;
+          font-size: 1.2rem;
+          padding: 0 0.25rem;
+        }
+
+        .x-connected-badge .disconnect-btn:hover {
+          color: #ff4444;
+        }
+
+        .premium-modal-backdrop, .share-modal-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.9);
           backdrop-filter: blur(10px);
           display: flex;
           align-items: center;
@@ -2380,7 +2449,7 @@ export default function Home() {
           padding: 1rem;
         }
 
-        .share-modal {
+        .premium-modal, .share-modal {
           background: rgba(20, 20, 20, 0.98);
           border: 2px solid #FFFF00;
           border-radius: 20px;
@@ -2388,22 +2457,11 @@ export default function Home() {
           width: 100%;
           max-height: 90vh;
           overflow-y: auto;
+          padding: 2rem;
           position: relative;
-          animation: modalAppear 0.3s ease;
         }
 
-        @keyframes modalAppear {
-          from {
-            transform: scale(0.9);
-            opacity: 0;
-          }
-          to {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-
-        .modal-close {
+        .premium-modal .modal-close, .share-modal .modal-close {
           position: absolute;
           top: 1rem;
           right: 1rem;
@@ -2412,100 +2470,514 @@ export default function Home() {
           color: #FFFF00;
           font-size: 1.5rem;
           cursor: pointer;
-          width: 40px;
-          height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          transition: all 0.2s ease;
         }
 
-        .modal-close:hover {
-          background: rgba(255, 255, 0, 0.1);
-          transform: scale(1.1);
+        .premium-modal h2, .share-modal h2 {
+          color: #FFFF00;
+          margin-bottom: 1rem;
+        }
+
+        .premium-input {
+          width: 100%;
+          padding: 1rem;
+          margin: 1rem 0;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 0, 0.3);
+          border-radius: 10px;
+          color: white;
+          font-size: 1rem;
+        }
+
+        .verify-premium-btn, .get-premium-btn {
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          padding: 1rem 2rem;
+          border-radius: 50px;
+          font-weight: bold;
+          cursor: pointer;
+          width: 100%;
+          margin-top: 1rem;
+          text-align: center;
+          text-decoration: none;
+          display: block;
+        }
+
+        .premium-benefits {
+          margin-top: 2rem;
+          padding-top: 2rem;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .premium-benefits h3 {
+          color: #FFD700;
+          margin-bottom: 1rem;
+        }
+
+        .premium-benefits ul {
+          list-style: none;
+          padding: 0;
+        }
+
+        .premium-benefits li {
+          padding: 0.5rem 0;
+          color: #ccc;
         }
 
         .modal-content {
-          padding: 3rem 2rem 2rem;
           text-align: center;
-        }
-
-        .modal-content h2 {
-          font-size: 2rem;
-          color: #FFFF00;
-          margin-bottom: 0.5rem;
-        }
-
-        .modal-content p {
-          font-size: 1.1rem;
-          color: #ffffff;
-          margin-bottom: 1.5rem;
         }
 
         .modal-meme-preview {
           margin: 1.5rem 0;
-          border-radius: 15px;
+          border-radius: 10px;
           overflow: hidden;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
         .modal-meme-preview img {
           width: 100%;
+          max-width: 300px;
           height: auto;
-          display: block;
-          max-height: 300px;
-          object-fit: contain;
-        }
-
-        .modal-content h3 {
-          color: #FFD700;
-          margin: 1.5rem 0 1rem;
-          font-size: 1.2rem;
+          border-radius: 10px;
         }
 
         .modal-share-buttons {
           display: flex;
           gap: 1rem;
           justify-content: center;
-          margin-bottom: 1.5rem;
+          margin: 1.5rem 0;
           flex-wrap: wrap;
         }
 
         .modal-share-btn {
           padding: 1rem 2rem;
-          border: none;
           border-radius: 50px;
-          font-size: 1rem;
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
-          color: white;
-          min-width: 150px;
-        }
-
-        .modal-share-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+          border: none;
+          font-size: 1rem;
         }
 
         .modal-share-btn.twitter {
           background: #1DA1F2;
-        }
-
-        .modal-share-btn.twitter:hover {
-          background: #1a8cd8;
+          color: white;
         }
 
         .modal-share-btn.telegram {
           background: #0088cc;
-        }
-
-        .modal-share-btn.telegram:hover {
-          background: #0077b3;
+          color: white;
         }
 
         .create-another-btn {
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          padding: 1rem 2rem;
+          border-radius: 50px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .user-stats-display {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          margin-top: 1rem;
+          flex-wrap: wrap;
+        }
+
+        .stat-badge {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 20px;
+          padding: 0.5rem 1rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .stat-badge.premium {
+          background: rgba(255, 215, 0, 0.1);
+          border-color: #FFD700;
+          color: #FFD700;
+        }
+
+        .stat-badge.verified {
+          background: rgba(29, 161, 242, 0.1);
+          border-color: #1DA1F2;
+          color: #1DA1F2;
+        }
+
+        .stat-label {
+          color: #999;
+          font-size: 0.85rem;
+        }
+
+        .stat-value {
+          color: #FFFF00;
+          font-weight: bold;
+        }
+
+        header {
+          text-align: center;
+          padding: 5rem 1rem 3rem;
+          position: relative;
+          overflow: hidden;
+          margin-top: 80px;
+          background: transparent;
+        }
+
+        .header-content {
+          position: relative;
+          z-index: 2;
+        }
+
+        .pumper-float {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          opacity: 0.15;
+          animation: float 6s ease-in-out infinite;
+          pointer-events: none;
+          filter: blur(2px) drop-shadow(0 0 60px rgba(255, 255, 0, 0.6));
+          z-index: 0;
+        }
+
+        .pumper-float img {
+          width: 250px;
+          height: 250px;
+        }
+
+        @keyframes float {
+          0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+          50% { transform: translate(-50%, -50%) translateY(-20px); }
+        }
+
+        h1 {
+          font-size: 4rem;
+          font-weight: 900;
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          margin-bottom: 1rem;
+          letter-spacing: -2px;
+        }
+
+        .main-nav {
+          position: sticky;
+          top: 0;
+          z-index: 99;
+          background: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(20px);
+          padding: 1rem 0;
+          margin: 0 0 3rem 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-container {
+          display: flex;
+          justify-content: center;
+          gap: 2rem;
+          flex-wrap: wrap;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 1rem;
+        }
+
+        .main-nav a {
+          color: #ffffff;
+          text-decoration: none;
+          padding: 0.5rem 1.5rem;
+          transition: all 0.3s ease;
+          border-radius: 25px;
+          font-weight: 500;
+          font-size: 0.95rem;
+        }
+
+        .main-nav a:hover {
+          background: rgba(255, 255, 0, 0.1);
+          transform: translateY(-2px);
+        }
+
+        section {
+          margin: 4rem auto;
+          padding: 3rem;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 20px;
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        h2 {
+          font-size: 2.5rem;
+          margin-bottom: 2rem;
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          font-weight: 800;
+        }
+
+        .expandable-content {
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
+
+        .preview-text {
+          margin-bottom: 1rem;
+          line-height: 1.8;
+        }
+
+        .full-content {
+          animation: fadeIn 0.5s ease;
+          line-height: 1.8;
+        }
+
+        .full-content ul {
+          margin: 1rem 0 1rem 2rem;
+        }
+
+        .full-content li {
+          margin: 0.5rem 0;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .read-more-btn {
+          background: none;
+          border: 2px solid #FFFF00;
+          color: #FFFF00;
+          padding: 0.6rem 1.5rem;
+          border-radius: 25px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-weight: 600;
+          margin-top: 1rem;
+        }
+
+        .read-more-btn:hover {
+          background: #FFFF00;
+          color: black;
+          transform: scale(1.05);
+        }
+
+        .token-stats {
+          background: rgba(255, 255, 0, 0.05);
+          padding: 2rem;
+          border-radius: 15px;
+          margin-top: 2rem;
+          border: 1px solid rgba(255, 255, 0, 0.2);
+        }
+
+        .token-stats h3 {
+          color: #FFFF00;
+          margin-bottom: 1rem;
+        }
+
+        .token-stats p {
+          margin: 0.75rem 0;
+          font-family: 'Courier New', monospace;
+          word-break: break-all;
+          opacity: 0.9;
+        }
+
+        .token-info-section {
+          background: linear-gradient(135deg, rgba(255, 255, 0, 0.03), rgba(255, 215, 0, 0.03));
+          border: 1px solid rgba(255, 255, 0, 0.1);
+        }
+
+        .token-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1.5rem;
+          margin: 2rem 0;
+        }
+
+        .token-card {
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 0, 0.2);
+          border-radius: 15px;
+          padding: 2rem;
+          text-align: center;
+          transition: all 0.3s ease;
+        }
+
+        .token-card:hover {
+          transform: translateY(-5px);
+          border-color: #FFFF00;
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.2);
+        }
+
+        .token-card h4 {
+          color: #FFFF00;
+          margin-bottom: 1rem;
+          font-size: 0.9rem;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .token-card .price {
+          font-size: 1.8rem;
+          font-weight: bold;
+          color: #ffffff;
+          margin: 0.5rem 0;
+        }
+
+        .token-card .value {
+          font-size: 1.4rem;
+          font-weight: bold;
+          color: #ffffff;
+        }
+
+        .price-change {
+          font-size: 1rem;
+          font-weight: 600;
+        }
+
+        .price-change.positive {
+          color: #00ff00;
+        }
+
+        .price-change.negative {
+          color: #ff3333;
+        }
+
+        .loading {
+          color: #666;
+          font-style: italic;
+        }
+
+        .buy-section {
+          text-align: center;
+          margin-top: 3rem;
+        }
+
+        .buy-button-large {
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          padding: 1.2rem 3rem;
+          font-size: 1.2rem;
+          font-weight: bold;
+          border-radius: 50px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.3);
+        }
+
+        .buy-button-large:hover {
+          transform: translateY(-2px) scale(1.05);
+          box-shadow: 0 15px 40px rgba(255, 255, 0, 0.5);
+        }
+
+        .buy-info {
+          color: #999;
+          margin-top: 1rem;
+          font-size: 0.9rem;
+        }
+
+        .token-link {
+          display: inline-block;
+          margin-top: 1rem;
+          color: #FFFF00;
+          text-decoration: none;
+          font-weight: 600;
+          transition: all 0.3s ease;
+        }
+
+        .token-link:hover {
+          color: #FFD700;
+          text-decoration: underline;
+        }
+
+        .daily-counter {
+          text-align: center;
+          margin: 1.5rem 0;
+          padding: 1rem;
+          background: rgba(255, 255, 0, 0.05);
+          border-radius: 50px;
+          border: 1px solid rgba(255, 255, 0, 0.2);
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        .fire-icon {
+          font-size: 1.5rem;
+          animation: flicker 1.5s ease-in-out infinite;
+        }
+
+        @keyframes flicker {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.2); }
+        }
+
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.02); opacity: 1; }
+        }
+
+        .counter-text {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #FFFF00;
+        }
+
+        .x-form-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.9);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2000;
+          backdrop-filter: blur(10px);
+        }
+
+        .x-form {
+          background: rgba(20, 20, 20, 0.95);
+          padding: 3rem;
+          border-radius: 20px;
+          border: 1px solid rgba(255, 255, 0, 0.3);
+          text-align: center;
+          max-width: 400px;
+          width: 90%;
+        }
+
+        .x-form h3 {
+          color: #FFFF00;
+          margin-bottom: 2rem;
+          font-size: 1.5rem;
+        }
+
+        .x-form input {
+          width: 100%;
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 0, 0.3);
+          border-radius: 10px;
+          color: white;
+          font-size: 1rem;
+        }
+
+        .x-form input:focus {
+          outline: none;
+          border-color: #FFFF00;
+          box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.2);
+        }
+
+        .x-form button {
           background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
           border: none;
@@ -2514,39 +2986,263 @@ export default function Home() {
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
-          font-size: 1.1rem;
-          margin-top: 0.5rem;
+          font-size: 1rem;
         }
 
-        .create-another-btn:hover {
+        .x-form button:hover {
           transform: scale(1.05);
           box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
         }
 
+        .x-handle-section {
+          background: rgba(255, 255, 0, 0.05);
+          padding: 2rem;
+          border-radius: 15px;
+          margin-bottom: 2rem;
+          border: 1px solid rgba(255, 255, 0, 0.2);
+        }
+
+        .x-handle-inline-form label {
+          display: block;
+          margin-bottom: 1rem;
+          color: #FFFF00;
+          font-weight: 600;
+        }
+
+        .x-handle-input-group {
+          display: flex;
+          gap: 1rem;
+          align-items: center;
+        }
+
+        .x-handle-input-group input {
+          flex: 1;
+          padding: 0.8rem 1rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 0, 0.3);
+          border-radius: 10px;
+          color: white;
+          font-size: 1rem;
+        }
+
+        .x-handle-input-group input:focus {
+          outline: none;
+          border-color: #FFFF00;
+          box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.2);
+        }
+
+        .x-handle-input-group button {
+          padding: 0.8rem 2rem;
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          border-radius: 50px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          white-space: nowrap;
+        }
+
+        .x-handle-input-group button:hover {
+          transform: scale(1.05);
+          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
+        }
+
+        .meme-upload {
+          margin-top: 2rem;
+        }
+
+        .modern-upload-zone {
+          width: 100%;
+          min-height: 500px;
+          border: 2px dashed rgba(255, 255, 0, 0.3);
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s ease;
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .modern-upload-zone:hover {
+          border-color: rgba(255, 255, 0, 0.5);
+          background: rgba(255, 255, 0, 0.05);
+        }
+
+        .modern-upload-zone.drag-over {
+          border-color: #FFFF00;
+          background: rgba(255, 255, 0, 0.1);
+          transform: scale(1.02);
+        }
+
+        .modern-upload-zone.has-file {
+          cursor: default;
+          border-style: solid;
+        }
+
+        .upload-content {
+          text-align: center;
+          padding: 3rem;
+          cursor: pointer;
+        }
+
+        .upload-icon {
+          font-size: 4rem;
+          margin-bottom: 1rem;
+          animation: pulse 2s ease-in-out infinite;
+        }
+
+        .upload-content h3 {
+          font-size: 1.5rem;
+          margin-bottom: 0.5rem;
+          color: #FFFF00;
+        }
+
+        .upload-content p {
+          color: #999;
+          margin-bottom: 1rem;
+        }
+
+        .supported-formats {
+          font-size: 0.85rem;
+          color: #666;
+          background: rgba(255, 255, 255, 0.05);
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          display: inline-block;
+        }
+
+        .preview-container {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: visible;
+          touch-action: none;
+        }
+
+        .preview-image {
+          max-width: 100%;
+          max-height: 500px;
+          border-radius: 10px;
+          user-select: none;
+          -webkit-user-drag: none;
+        }
+
+        .overlay-element {
+          position: absolute;
+          cursor: grab;
+          touch-action: none;
+          user-select: none;
+          transition: filter 0.2s ease;
+          transform-origin: center;
+          left: 50%;
+          top: 50%;
+          z-index: 10;
+        }
+
+        .overlay-element::before {
+          content: '';
+          position: absolute;
+          width: 200%;
+          height: 200%;
+          top: -50%;
+          left: -50%;
+          z-index: -1;
+        }
+
+        .overlay-element:active {
+          cursor: grabbing;
+        }
+
+        .overlay-element.dragging {
+          filter: drop-shadow(0 10px 30px rgba(255, 255, 0, 0.5));
+          cursor: grabbing;
+          z-index: 20;
+        }
+
+        .overlay-element img {
+          width: 120px;
+          height: auto;
+          pointer-events: none;
+          display: block;
+          transform: translate(-50%, -50%);
+          user-select: none;
+          -webkit-user-drag: none;
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          margin-top: 2rem;
+          flex-wrap: wrap;
+        }
+
+        .primary-button, .secondary-button, .download-button, .complete-button {
+          padding: 1rem 2rem;
+          border-radius: 50px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          border: none;
+          font-size: 1rem;
+        }
+
+        .primary-button {
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+        }
+
+        .secondary-button {
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .download-button, .complete-button {
+          background: linear-gradient(135deg, #00ff00, #00cc00);
+          color: white;
+        }
+
+        .gesture-hints {
+          text-align: center;
+          margin-top: 1rem;
+          padding: 0.5rem;
+          background: rgba(255, 255, 0, 0.05);
+          border-radius: 10px;
+        }
+
+        .desktop-hint {
+          display: block;
+        }
+
+        .mobile-hint {
+          display: none;
+        }
+
         .error-message {
           background: rgba(255, 0, 0, 0.1);
-          color: #ff6666;
-          padding: 1rem;
-          border-radius: 10px;
-          margin-top: 1rem;
           border: 1px solid rgba(255, 0, 0, 0.3);
+          border-radius: 10px;
+          padding: 1rem;
+          margin: 1rem 0;
+          color: #ff6666;
           text-align: center;
         }
 
         .premium-section {
           background: linear-gradient(135deg, rgba(255, 215, 0, 0.03), rgba(255, 255, 0, 0.03));
-          border: 2px solid rgba(255, 215, 0, 0.2);
         }
 
         .premium-cta {
           text-align: center;
           padding: 2rem;
-        }
-
-        .premium-cta p {
-          font-size: 1.2rem;
-          margin-bottom: 1.5rem;
-          color: #FFD700;
         }
 
         .premium-tools-grid {
@@ -2557,16 +3253,9 @@ export default function Home() {
 
         .premium-tool-card {
           background: rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 215, 0, 0.2);
+          border: 1px solid rgba(255, 215, 0, 0.3);
           border-radius: 15px;
           padding: 2rem;
-          transition: all 0.3s ease;
-        }
-
-        .premium-tool-card:hover {
-          transform: translateY(-5px);
-          border-color: #FFD700;
-          box-shadow: 0 10px 30px rgba(255, 215, 0, 0.2);
         }
 
         .premium-tool-card h3 {
@@ -2576,114 +3265,23 @@ export default function Home() {
 
         .premium-tool-card p {
           color: #ccc;
-          margin-bottom: 1.5rem;
-        }
-
-        .premium-tool-card input,
-        .premium-tool-card textarea {
-          width: 100%;
-          padding: 0.8rem;
           margin-bottom: 1rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 0, 0.2);
-          border-radius: 10px;
-          color: white;
         }
 
         .premium-tool-card button {
-          width: 100%;
-          padding: 0.8rem;
-          background: linear-gradient(135deg, #FFD700, #FFA500);
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
           color: black;
           border: none;
-          border-radius: 50px;
+          padding: 0.8rem 1.5rem;
+          border-radius: 25px;
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
         }
 
-        .premium-tool-card button:hover:not(:disabled) {
-          transform: scale(1.05);
-          box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
-        }
-
-        .premium-tool-card button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .trending-topics, .token-analysis, .whitepaper-memes, .translations {
-          margin-top: 1rem;
-          padding: 1rem;
-          background: rgba(255, 255, 255, 0.02);
-          border-radius: 10px;
-        }
-
-        .trend-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.5rem;
-          margin: 0.5rem 0;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 8px;
-        }
-
-        .trend-item button {
-          padding: 0.5rem 1rem;
-          background: #FFD700;
-          color: black;
-          border: none;
-          border-radius: 20px;
-          font-size: 0.85rem;
-          cursor: pointer;
-        }
-
-        .language-selector {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-          margin-bottom: 1rem;
-        }
-
-        .language-selector label {
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
-          padding: 0.3rem 0.6rem;
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 15px;
-          cursor: pointer;
-          font-size: 0.85rem;
-        }
-
-        .language-selector input[type="checkbox"] {
-          width: auto;
-          margin: 0;
-        }
-
-        #roadmap ul {
-          list-style: none;
-          padding-left: 0;
-        }
-
-        #roadmap li {
-          padding: 1.5rem;
-          margin: 1rem 0;
-          background: rgba(255, 255, 255, 0.03);
-          border-left: 4px solid #FFFF00;
-          border-radius: 10px;
-          transition: all 0.3s ease;
-        }
-
-        #roadmap li:hover {
-          transform: translateX(10px);
-          background: rgba(255, 255, 0, 0.05);
-        }
-
         .community-memes {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
           gap: 2rem;
           margin-top: 2rem;
         }
@@ -2692,29 +3290,23 @@ export default function Home() {
           background: rgba(255, 255, 255, 0.03);
           border-radius: 15px;
           overflow: hidden;
-          transition: transform 0.3s ease;
-          border: 1px solid rgba(255, 255, 0, 0.1);
+          transition: all 0.3s ease;
           position: relative;
         }
 
         .meme-card:hover {
           transform: translateY(-5px);
-          border-color: rgba(255, 255, 0, 0.3);
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.2);
         }
 
         .meme-link {
           display: block;
           position: relative;
-          text-decoration: none;
         }
 
         .meme-link img {
           width: 100%;
           height: auto;
-          object-fit: contain;
-          max-height: 400px;
-          background: #000;
           display: block;
         }
 
@@ -2724,74 +3316,52 @@ export default function Home() {
           left: 0;
           right: 0;
           background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
-          color: #FFFF00;
-          padding: 1.5rem 1rem 1rem;
-          font-weight: 600;
-          font-size: 1.1rem;
-          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+          padding: 1rem;
+          color: white;
+          font-weight: bold;
         }
 
         .telegram-badge {
           position: absolute;
           top: 10px;
           right: 10px;
-          background: linear-gradient(135deg, #0088cc, #00a8e6);
+          background: #0088cc;
           color: white;
-          padding: 8px 16px;
-          border-radius: 25px;
-          cursor: pointer;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 0.9rem;
-          font-weight: 600;
-          animation: glow 2s ease-in-out infinite;
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
           text-decoration: none;
-          transition: all 0.3s ease;
-          z-index: 2;
-        }
-
-        .telegram-badge:hover {
-          transform: scale(1.05);
-          box-shadow: 0 5px 20px rgba(0, 136, 204, 0.6);
-        }
-
-        .telegram-badge .tooltip {
-          position: absolute;
-          bottom: -70px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(0, 0, 0, 0.95);
-          color: white;
-          padding: 10px 15px;
-          border-radius: 8px;
-          white-space: nowrap;
-          opacity: 0;
-          visibility: hidden;
-          transition: all 0.3s ease;
           font-size: 0.85rem;
-          font-weight: normal;
-          pointer-events: none;
-          width: max-content;
-          max-width: 250px;
-          text-align: center;
+          transition: all 0.3s ease;
         }
 
         .telegram-badge:hover .tooltip {
-          opacity: 1;
-          visibility: visible;
-          bottom: -80px;
+          display: block;
+        }
+
+        .tooltip {
+          display: none;
+          position: absolute;
+          top: 100%;
+          right: 0;
+          background: rgba(0, 0, 0, 0.9);
+          color: white;
+          padding: 1rem;
+          border-radius: 10px;
+          margin-top: 0.5rem;
+          width: 250px;
+          font-size: 0.85rem;
+          line-height: 1.4;
+          z-index: 100;
         }
 
         .premium-badge, .verified-badge {
           position: absolute;
           top: 10px;
           left: 10px;
-          padding: 5px 12px;
+          padding: 0.5rem 1rem;
           border-radius: 20px;
           font-size: 0.85rem;
-          font-weight: 600;
-          z-index: 2;
+          font-weight: bold;
         }
 
         .premium-badge {
@@ -2804,171 +3374,100 @@ export default function Home() {
           color: white;
         }
 
-        @keyframes glow {
-          0%, 100% { box-shadow: 0 0 20px rgba(0, 136, 204, 0.5); }
-          50% { box-shadow: 0 0 30px rgba(0, 136, 204, 0.8); }
-        }
-
         .meme-info {
-          padding: 1rem;
+          padding: 1.5rem;
         }
 
-        .meme-card .creator {
-          text-align: center;
-          color: #FFFF00;
-          margin: 0.5rem 0;
-          font-weight: 500;
+        .creator {
+          color: #999;
+          font-size: 0.9rem;
+          margin-bottom: 1rem;
         }
 
         .meme-stats {
           display: flex;
-          justify-content: center;
-          gap: 1.5rem;
-          margin: 0.5rem 0;
-          color: #999;
-          font-size: 0.9rem;
+          gap: 1rem;
           align-items: center;
+          margin-bottom: 1rem;
         }
 
         .like-button {
           background: none;
-          border: none;
-          color: #999;
-          cursor: pointer;
-          font-size: 0.9rem;
-          padding: 0.5rem;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: white;
+          padding: 0.5rem 1rem;
           border-radius: 20px;
-          transition: all 0.2s ease;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.3rem;
-          -webkit-tap-highlight-color: transparent;
-          outline: none;
-        }
-
-        .like-button:hover {
-          background: rgba(255, 255, 0, 0.1);
-          color: #FFFF00;
-          transform: scale(1.1);
-        }
-
-        .like-button:active {
-          transform: scale(0.95);
+          cursor: pointer;
+          transition: all 0.3s ease;
         }
 
         .like-button.liked {
-          color: #FFFF00;
+          background: rgba(255, 0, 0, 0.2);
+          border-color: #ff0000;
+          color: #ff6666;
         }
 
-        .like-button.liked:hover {
-          transform: scale(1.15);
-        }
-
-        .share-counter {
+        .share-counter, .view-counter {
           color: #999;
-          padding: 0.5rem;
-          border-radius: 20px;
-          transition: all 0.2s ease;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.3rem;
+          font-size: 0.9rem;
         }
 
         .share-counter.animating {
-          animation: shareAnimation 0.6s ease;
-          color: #FFFF00;
-        }
-
-        .view-counter {
-          color: #999;
-          padding: 0.5rem;
-          border-radius: 20px;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.3rem;
+          animation: shareAnimation 0.5s ease;
         }
 
         @keyframes shareAnimation {
-          0% { transform: scale(1) rotate(0deg); }
-          25% { transform: scale(1.3) rotate(180deg); }
-          50% { transform: scale(1.3) rotate(360deg); }
-          100% { transform: scale(1) rotate(360deg); }
+          0% { transform: scale(1); }
+          50% { transform: scale(1.3); color: #FFFF00; }
+          100% { transform: scale(1); }
         }
 
         .share-buttons {
           display: flex;
           gap: 0.5rem;
-          margin-top: 0.75rem;
         }
 
         .share-btn {
           flex: 1;
           padding: 0.5rem;
-          border: none;
-          border-radius: 8px;
-          font-size: 0.85rem;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.05);
+          color: white;
+          border-radius: 10px;
           cursor: pointer;
-          transition: all 0.2s ease;
-          font-weight: 500;
-          outline: none;
-          -webkit-tap-highlight-color: transparent;
-        }
-
-        .share-btn:active {
-          transform: scale(0.95);
-        }
-
-        .share-btn:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-
-        .share-btn.shared {
-          background: #4CAF50 !important;
+          transition: all 0.3s ease;
+          text-align: center;
+          font-size: 0.85rem;
         }
 
         .share-btn.twitter {
-          background: #1DA1F2;
-          color: white;
-        }
-
-        .share-btn.twitter:hover {
-          background: #1a8cd8;
-          transform: translateY(-1px);
+          border-color: #1DA1F2;
+          background: rgba(29, 161, 242, 0.1);
         }
 
         .share-btn.telegram {
-          background: #0088cc;
-          color: white;
+          border-color: #0088cc;
+          background: rgba(0, 136, 204, 0.1);
         }
 
-        .share-btn.telegram:hover {
-          background: #0077b3;
-          transform: translateY(-1px);
+        .share-btn.shared {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
-        .loading-memes {
-          grid-column: 1 / -1;
-          text-align: center;
-          padding: 3rem;
-          color: #FFFF00;
-        }
-
-        .meme-card.placeholder {
+        .placeholder {
+          background: rgba(255, 255, 255, 0.03);
+          border: 2px dashed rgba(255, 255, 0, 0.2);
+          min-height: 300px;
           display: flex;
           align-items: center;
           justify-content: center;
-          min-height: 250px;
         }
 
         .placeholder-content {
-          padding: 2rem;
           text-align: center;
-        }
-
-        .placeholder-content p {
           color: #666;
-          font-size: 1.1rem;
+          font-size: 1.2rem;
         }
 
         .social-grid {
@@ -2982,18 +3481,12 @@ export default function Home() {
           background: rgba(255, 255, 255, 0.03);
           border-radius: 15px;
           padding: 2rem;
-          border: 1px solid rgba(255, 255, 0, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .social-card h3 {
           color: #FFFF00;
           margin-bottom: 1.5rem;
-          text-align: center;
-        }
-
-        .twitter-embed {
-          border-radius: 10px;
-          overflow: hidden;
         }
 
         .community-links {
@@ -3006,100 +3499,79 @@ export default function Home() {
           display: flex;
           align-items: center;
           gap: 1rem;
-          padding: 1.2rem;
-          background: rgba(255, 255, 255, 0.03);
+          padding: 1rem;
+          background: rgba(255, 255, 255, 0.05);
           border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 15px;
+          border-radius: 10px;
           text-decoration: none;
           color: white;
           transition: all 0.3s ease;
         }
 
         .community-button:hover {
+          background: rgba(255, 255, 255, 0.1);
           transform: translateX(5px);
-          background: rgba(255, 255, 255, 0.05);
-          border-color: #FFFF00;
         }
 
         .community-button .icon {
           font-size: 2rem;
-          min-width: 50px;
-          text-align: center;
+          width: 50px;
+          height: 50px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .community-button.telegram .icon {
+          background: rgba(0, 136, 204, 0.2);
+        }
+
+        .community-button.twitter .icon {
+          background: rgba(29, 161, 242, 0.2);
+        }
+
+        .community-button.tiktok .icon {
+          background: rgba(255, 0, 80, 0.2);
+        }
+
+        .community-button.blog .icon {
+          background: rgba(255, 255, 0, 0.2);
         }
 
         .community-button strong {
           display: block;
-          margin-bottom: 0.3rem;
+          margin-bottom: 0.25rem;
         }
 
         .community-button p {
-          margin: 0;
-          font-size: 0.9rem;
           color: #999;
-        }
-
-        .community-button.telegram:hover {
-          border-color: #0088cc;
-        }
-
-        .community-button.tiktok:hover {
-          border-color: #ff0050;
-        }
-
-        .community-button.twitter:hover {
-          border-color: #1da1f2;
-        }
-
-        .community-button.blog:hover {
-          border-color: #FFD700;
+          font-size: 0.85rem;
+          margin: 0;
         }
 
         footer {
           text-align: center;
-          padding: 3rem;
-          background: rgba(0, 0, 0, 0.5);
-          margin-top: 6rem;
+          padding: 3rem 1rem;
+          margin-top: 5rem;
           border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        footer p {
-          color: #666;
-          margin-bottom: 1rem;
-        }
-
         .footer-links {
-          display: flex;
-          gap: 0.5rem;
-          justify-content: center;
-          align-items: center;
-          flex-wrap: wrap;
+          margin-top: 1rem;
+          color: #999;
         }
 
         .footer-links a {
-          color: #999;
+          color: #FFFF00;
           text-decoration: none;
           transition: color 0.3s ease;
         }
 
         .footer-links a:hover {
-          color: #FFFF00;
-        }
-
-        .footer-links span {
-          color: #666;
-        }
-
-        .reveal {
-          opacity: 0;
-          transform: translateY(30px);
-          animation: revealAnimation 0.6s ease forwards;
-        }
-
-        @keyframes revealAnimation {
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          color: #FFD700;
+          text-decoration: underline;
         }
 
         @media (max-width: 768px) {
@@ -3113,25 +3585,14 @@ export default function Home() {
 
           .mobile-social-icons {
             display: flex;
-            justify-content: center;
           }
 
-          .gesture-hints .desktop-hint {
+          .desktop-hint {
             display: none;
           }
-          
-          .gesture-hints .mobile-hint {
+
+          .mobile-hint {
             display: block;
-          }
-
-          header {
-            margin-top: 80px;
-            padding-top: 3rem;
-          }
-
-          .pumper-float img {
-            width: 250px;
-            height: 250px;
           }
 
           h1 {
@@ -3142,80 +3603,41 @@ export default function Home() {
             font-size: 2rem;
           }
 
-          .nav-container {
-            gap: 1rem;
-            padding: 0.5rem;
-          }
-
-          .main-nav a {
-            padding: 0.4rem 1rem;
-            font-size: 0.85rem;
-          }
-
           section {
-            padding: 2rem;
+            padding: 2rem 1.5rem;
             margin: 2rem auto;
           }
 
           .token-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
+            grid-template-columns: 1fr;
           }
 
-          .token-card {
-            padding: 1.5rem;
+          .premium-tools-grid {
+            grid-template-columns: 1fr;
           }
 
-          .token-card .price {
-            font-size: 1.4rem;
+          .community-memes {
+            grid-template-columns: 1fr;
           }
 
-          .token-card .value {
-            font-size: 1.1rem;
+          .social-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .main-nav {
+            display: none;
           }
 
           .x-handle-input-group {
             flex-direction: column;
           }
 
-          .x-handle-input-group input,
+          .x-handle-input-group input {
+            width: 100%;
+          }
+
           .x-handle-input-group button {
             width: 100%;
-          }
-
-          .overlay-element img {
-            width: 80px;
-          }
-
-          .action-buttons {
-            flex-direction: column;
-          }
-
-          .action-buttons button {
-            width: 100%;
-          }
-
-          .social-grid,
-          .community-memes {
-            grid-template-columns: 1fr;
-          }
-
-          .telegram-badge {
-            font-size: 0.8rem;
-            padding: 6px 12px;
-          }
-
-          .telegram-badge .tooltip {
-            font-size: 0.75rem;
-            max-width: 200px;
-          }
-
-          .share-modal {
-            max-width: calc(100vw - 2rem);
-          }
-
-          .modal-content {
-            padding: 2.5rem 1.5rem 1.5rem;
           }
 
           .modal-share-buttons {
@@ -3228,36 +3650,20 @@ export default function Home() {
         }
 
         @media (max-width: 480px) {
-          .mobile-top-buttons {
-            right: 5px;
-            top: 5px;
-          }
-
-          .social-button {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.8rem;
-          }
-
           h1 {
             font-size: 2.5rem;
           }
 
+          header {
+            padding: 3rem 1rem 2rem;
+          }
+
           .pumper-float img {
-            width: 200px;
-            height: 200px;
-          }
-
-          .token-grid {
-            grid-template-columns: 1fr;
-          }
-
-          section {
-            padding: 1.5rem;
-          }
-
-          .overlay-element img {
-            width: 60px;
+            width: 150px;
+            height: 150px;
           }
         }
       `}</style>
-      
+    </>
+  );
+}
