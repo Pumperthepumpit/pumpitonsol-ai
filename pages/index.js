@@ -335,51 +335,52 @@ export default function Home() {
   };
 
   const verifyPremiumAccess = async (username) => {
-    if (!username) {
-      setError('Please enter your Telegram username');
-      return;
-    }
+     if (!username) {
+       setError('Please enter your Telegram username');
+       return;
+     }
   
-    console.log('Verifying premium for:', username);
-    setError(''); // Clear any previous errors
+     console.log('Verifying premium for:', username);
+     setError(''); // Clear any previous errors
   
-    try {
-      const response = await fetch('/api/verify-premium', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
-      });
+     try {
+       const response = await fetch('/api/verify-premium', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ username })
+       });
     
-        console.log('Response status:', response.status);
+       console.log('Response status:', response.status);
     
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+       if (!response.ok) {
+         throw new Error(`HTTP error! status: ${response.status}`);
+       }
     
-      const data = await response.json();
-      console.log('Response data:', data);
+       const data = await response.json();
+       console.log('Response data:', data);
     
-      if (data.success && data.isPremium) {
-        setIsVerifiedPremium(true);
-        setPremiumExpiry(data.expiresAt);
-        localStorage.setItem('premiumUsername', username);
-        calculateDailyLimit();
-        alert('Premium access verified! All tools unlocked.');
-        setShowPremiumModal(false);  // This will close the modal
-        return true;
-      } else {
-        setIsVerifiedPremium(false);
-        setError(data.error || 'No active premium subscription found. Subscribe via @pumpermemebot');
-        alert(data.error || 'No premium subscription found');
-        return false;
-      }
-    } catch (error) {
-      console.error('Premium verification error:', error);
-      setError('Failed to verify premium status: ' + error.message);
-      alert('Error: ' + error.message);
-      return false;
-    }
-  };
+       if (data.success && data.isPremium) {
+         setIsVerifiedPremium(true);
+         setPremiumExpiry(data.expiresAt);
+         localStorage.setItem('premiumUsername', username);
+         calculateDailyLimit();
+         // Removed alert - less annoying
+         setShowPremiumModal(false);  // Close modal on success
+         return true;
+       } else {
+         setIsVerifiedPremium(false);
+         setError(data.error || 'No active premium subscription found. Subscribe via @pumpermemebot');
+         // Removed alert - error shows in modal instead
+         // Don't close modal so user can see the error
+         return false;
+       }
+     } catch (error) {
+       console.error('Premium verification error:', error);
+       setError('Failed to verify premium status: ' + error.message);
+       // Removed alert
+       return false;
+     }
+   };
 
   const loadUserStats = async () => {
     try {
