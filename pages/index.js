@@ -1541,7 +1541,7 @@ export default function Home() {
       )}
 
       {showShareModal && (
-        <div className="share-modal-backdrop" onClick={handleCloseShare
+        <div className="share-modal-backdrop" onClick={handleCloseShareModal}>
 		<div className="share-modal">
             <button className="modal-close" onClick={() => setShowShareModal(false)}>✕</button>
             
