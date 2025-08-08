@@ -1,4 +1,4 @@
-﻿# NEVER TRACK THESE
+# NEVER TRACK THESE
 node_modules/
 .env.local
 .env
@@ -37,7 +37,6 @@ yarn-error.log*
 next-env.d.ts
 
 # Bots folder (local only)
-bots/
 
 # Scripts folder  
 scripts/

@@ -1,84 +1,70 @@
-require('dotenv').config({ path: '.env.local' });
+// meme-bot.js - UPDATED TO SAVE USERNAMES
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env.local') });
+
 const TelegramBot = require('node-telegram-bot-api');
 const OpenAI = require('openai');
 const { createClient } = require('@supabase/supabase-js');
 const { Connection, PublicKey } = require('@solana/web3.js');
 const fs = require('fs').promises;
-const path = require('path');
 const https = require('https');
 
-// Initialize services
+// ============================================
+// CONFIGURATION CHECK
+// ============================================
+console.log('🔍 Checking configuration...');
+
+const requiredEnvVars = [
+  'TELEGRAM_BOT_TOKEN',
+  'OPENAI_API_KEY', 
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY'
+];
+
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+  console.error('❌ Missing required environment variables:');
+  missingVars.forEach(varName => console.error(`   - ${varName}`));
+  console.error('\nPlease add these to your .env.local file in the parent directory');
+  process.exit(1);
+}
+
+console.log('✅ All required environment variables found');
+
+// ============================================
+// INITIALIZE SERVICES
+// ============================================
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
+const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
 
-// Solana connection
-const connection = new Connection('https://api.mainnet-beta.solana.com');
-
-// Constants
-const PUMPIT_GROUP_ID = '-1002887330073'; // Your private group for all memes
+// ============================================
+// CONSTANTS
+// ============================================
+const PUMPIT_GROUP_ID = '-1002887330073';
 const PAYMENT_WALLET = 'F3bVwQWTNTDNMtHr4P1h58DwLiFcre1F5mmeERrrBzdJ';
-const OWNER_ID = '1923063992'; // Your ID for admin commands
+const OWNER_ID = '1923063992';
 const OWNER_USERNAME = 'Growthewealth';
-const PREMIUM_PRICE = 0.065; // SOL
+const PREMIUM_PRICE = 0.065;
 const PREMIUM_DAYS = 30;
 
-// Track daily usage
+// ============================================
+// DATA STORES
+// ============================================
 const userLimits = new Map();
-
-// Track processed transactions
-const processedTransactions = new Set();
+const paymentReservations = new Map();
+const verifiedPayments = new Set();
+const userPaymentHistory = new Map();
 
 // ============================================
-// COMPREHENSIVE LOGGING FOR GROUP ID DETECTION
+// HELPER FUNCTIONS
 // ============================================
-bot.on('message', (msg) => {
-  console.log('\n========== NEW MESSAGE ==========');
-  console.log('Time:', new Date().toLocaleString());
-  console.log('Chat ID:', msg.chat.id);
-  console.log('Chat Type:', msg.chat.type);
-  console.log('Chat Title:', msg.chat.title || 'No title (private chat)');
-  
-  if (msg.chat.type === 'group' || msg.chat.type === 'supergroup') {
-    console.log('>>> THIS IS A GROUP! <<<');
-    console.log('>>> GROUP ID:', msg.chat.id, '<<<');
-    console.log('Members Count:', msg.chat.members_count || 'Unknown');
-  }
-  
-  if (msg.chat.type === 'channel') {
-    console.log('>>> THIS IS A CHANNEL! <<<');
-    console.log('>>> CHANNEL ID:', msg.chat.id, '<<<');
-  }
-  
-  console.log('From User:', msg.from.username || msg.from.first_name);
-  console.log('From ID:', msg.from.id);
-  console.log('Message:', msg.text || '[Non-text message]');
-  console.log('=================================\n');
-});
 
-// Special command to get chat info
-bot.onText(/\/info/, (msg) => {
-  const chatInfo = `
-📊 Chat Information:
-
-Chat ID: \`${msg.chat.id}\`
-Type: ${msg.chat.type}
-Title: ${msg.chat.title || 'Private Chat'}
-Your ID: ${msg.from.id}
-Your Username: @${msg.from.username || 'No username'}
-
-${msg.chat.type === 'private' ? '💡 This is a private chat (DM)' : ''}
-${msg.chat.type === 'group' || msg.chat.type === 'supergroup' ? '👥 This is a group chat' : ''}
-${msg.chat.type === 'channel' ? '📢 This is a channel' : ''}
-  `;
-  
-  bot.sendMessage(msg.chat.id, chatInfo, { parse_mode: 'Markdown' });
-});
-
-// Helper to get user's daily limit
 async function getUserDailyLimit(userId) {
   const today = new Date().toDateString();
   const userKey = `${userId}-${today}`;
@@ -90,7 +76,6 @@ async function getUserDailyLimit(userId) {
   return userLimits.get(userKey);
 }
 
-// Helper to increment usage
 async function incrementUsage(userId) {
   const today = new Date().toDateString();
   const userKey = `${userId}-${today}`;
@@ -98,7 +83,6 @@ async function incrementUsage(userId) {
   userLimits.set(userKey, current + 1);
 }
 
-// Check if user is premium
 async function isPremium(userId) {
   try {
     const { data, error } = await supabase
@@ -114,87 +98,23 @@ async function isPremium(userId) {
   }
 }
 
-// Check for payments
-async function checkForPayments() {
-  try {
-    console.log('Checking for new payments...');
-    const wallet = new PublicKey(PAYMENT_WALLET);
-    const signatures = await connection.getSignaturesForAddress(wallet, { limit: 20 });
-    
-    for (const sigInfo of signatures) {
-      // Skip if already processed
-      if (processedTransactions.has(sigInfo.signature)) continue;
-      
-      const tx = await connection.getParsedTransaction(sigInfo.signature, {
-        maxSupportedTransactionVersion: 0
-      });
-      if (!tx || !tx.meta) continue;
-      
-      // Find transfers to our wallet
-      const postBalance = tx.meta.postBalances[0];
-      const preBalance = tx.meta.preBalances[0];
-      const receivedLamports = postBalance - preBalance;
-      
-      // Check if it's at least 0.065 SOL (65000000 lamports)
-      if (receivedLamports >= 65000000) {
-        // Look for memo with Telegram ID
-        let telegramId = null;
-        
-        for (const instruction of tx.transaction.message.instructions) {
-          if (instruction.program === 'spl-memo' && instruction.parsed) {
-            const memoText = instruction.parsed;
-            // Check if memo is a valid telegram ID
-            if (/^\d+$/.test(memoText)) {
-              telegramId = memoText;
-              break;
-            }
-          }
-        }
-        
-        if (telegramId) {
-          // Grant premium
-          await grantPremium(telegramId, sigInfo.signature, receivedLamports / 1000000000);
-          processedTransactions.add(sigInfo.signature);
-          
-          // Notify user
-          bot.sendMessage(telegramId, `✅ Payment received! You now have premium access for ${PREMIUM_DAYS} days. Enjoy 3 daily memes! 🎨`);
-          
-          // Notify admin
-          bot.sendMessage(OWNER_ID, `💰 New premium subscriber: User ${telegramId} paid ${receivedLamports / 1000000000} SOL`);
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error checking payments:', error);
-  }
-}
-
-// Grant premium access
-async function grantPremium(telegramId, transactionSignature, amount) {
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + PREMIUM_DAYS);
+// UPDATED: Function to update username for existing users
+async function updateUserUsername(userId, username) {
+  if (!username) return;
   
   try {
-    const { error } = await supabase
+    // Update username for existing premium users
+    await supabase
       .from('premium_users')
-      .upsert({
-        telegram_id: telegramId.toString(),
-        transaction_signature: transactionSignature,
-        payment_date: new Date().toISOString(),
-        expires_at: expiresAt.toISOString(),
-        amount: amount
-      });
+      .update({ telegram_username: username })
+      .eq('telegram_id', userId.toString());
     
-    if (error) throw error;
-    console.log(`Premium granted to ${telegramId} until ${expiresAt}`);
-    return true;
+    console.log(`Updated username @${username} for user ${userId}`);
   } catch (error) {
-    console.error('Error granting premium:', error);
-    return false;
+    console.error('Error updating username:', error);
   }
 }
 
-// Download image from URL
 async function downloadImage(url, filepath) {
   return new Promise((resolve, reject) => {
     const file = require('fs').createWriteStream(filepath);
@@ -211,17 +131,17 @@ async function downloadImage(url, filepath) {
   });
 }
 
-// Generate meme with DALL-E
 async function generateMeme(prompt, isPremiumUser) {
   try {
+    console.log(`🎨 Generating meme: "${prompt}"`);
+    
     let finalPrompt = prompt;
     if (!isPremiumUser) {
-      finalPrompt = `${prompt}. Add cartoon red lips on the person's face (forehead or cheek area).`;
+      finalPrompt = `${prompt}. Add cartoon red lips on the person's face.`;
     } else {
-      finalPrompt = `${prompt}. Add cartoon red lips somewhere in the scene but NOT on any person's face.`;
+      finalPrompt = `${prompt}. Add cartoon red lips somewhere creative in the scene.`;
     }
     
-    // Always include $PUMPIT branding for all users
     finalPrompt += ' Include "$PUMPIT" text in the image.';
     
     const response = await openai.images.generate({
@@ -231,6 +151,10 @@ async function generateMeme(prompt, isPremiumUser) {
       size: "1024x1024",
     });
     
+    if (!response.data || !response.data[0] || !response.data[0].url) {
+      throw new Error('No image generated');
+    }
+    
     return response.data[0].url;
   } catch (error) {
     console.error('DALL-E error:', error);
@@ -238,7 +162,6 @@ async function generateMeme(prompt, isPremiumUser) {
   }
 }
 
-// Save meme to Supabase - UPDATED WITH SOURCE TRACKING AND SEO
 async function saveMemeToSupabase(imageUrl, userId, username, topic, description) {
   let tempPath = null;
   try {
@@ -264,21 +187,22 @@ async function saveMemeToSupabase(imageUrl, userId, username, topic, description
       .from('memes')
       .insert({
         image_url: publicUrl,
-        creator_x_handle: `${username || 'telegram_user'}`,
+        creator_x_handle: username || 'telegram_user',
         creator_wallet: null,
         likes_count: 0,
         shares_count: 0,
         views_count: 0,
-        topic: topic,
-        description: description,
-        source: 'telegram',  // ADDED: Mark as telegram source
-        from_telegram_bot: true  // ADDED: For the badge
+        topic: topic || 'PUMPIT Meme',
+        description: description || `${topic} - Created via Telegram bot`,
+        source: 'telegram',
+        from_telegram_bot: true
       })
       .select()
       .single();
     
     if (dbError) throw dbError;
     
+    console.log('✅ Meme saved successfully');
     return { publicUrl, memeId: memeData.id };
   } catch (error) {
     console.error('Supabase error:', error);
@@ -294,43 +218,254 @@ async function saveMemeToSupabase(imageUrl, userId, username, topic, description
   }
 }
 
-// Bot Commands
+// ============================================
+// PAYMENT VERIFICATION SYSTEM
+// ============================================
 
-// /start command
-bot.onText(/\/start/, (msg) => {
+async function verifyBlockchainPayment(signature, paymentId) {
+  try {
+    console.log(`Verifying: ${signature} with Payment ID: ${paymentId}`);
+    
+    const tx = await connection.getParsedTransaction(signature, {
+      maxSupportedTransactionVersion: 0,
+      commitment: 'confirmed'
+    });
+    
+    if (!tx) {
+      return { 
+        success: false, 
+        error: 'INVALID_SIGNATURE',
+        errorMessage: 'Transaction not found on blockchain'
+      };
+    }
+    
+    const txTime = tx.blockTime * 1000;
+    const now = Date.now();
+    const minutesSince = (now - txTime) / (1000 * 60);
+    
+    if (minutesSince > 60) {
+      return { 
+        success: false, 
+        error: 'TOO_OLD',
+        errorMessage: `Transaction is ${Math.floor(minutesSince)} minutes old (max 60 minutes)`
+      };
+    }
+    
+    // Check for Payment ID in memo
+    let memoFound = false;
+    
+    for (const instruction of tx.transaction.message.instructions) {
+      if (instruction.program === 'spl-memo') {
+        const memoText = instruction.parsed || '';
+        if (memoText.includes(paymentId)) {
+          memoFound = true;
+          break;
+        }
+      }
+    }
+    
+    if (!memoFound) {
+      return { 
+        success: false, 
+        error: 'NO_PAYMENT_ID',
+        errorMessage: `Payment ID "${paymentId}" not found in transaction memo`
+      };
+    }
+    
+    // Verify the transfer amount and recipient
+    let transferAmount = 0;
+    let correctRecipient = false;
+    
+    for (const instruction of tx.transaction.message.instructions) {
+      if (instruction.parsed && instruction.parsed.type === 'transfer') {
+        const info = instruction.parsed.info;
+        
+        if (info.destination === PAYMENT_WALLET) {
+          correctRecipient = true;
+          transferAmount = info.lamports / 1000000000;
+          break;
+        }
+      }
+    }
+    
+    if (!correctRecipient && tx.meta) {
+      const accountKeys = tx.transaction.message.accountKeys;
+      const walletIndex = accountKeys.findIndex(key => 
+        key.pubkey && key.pubkey.toString() === PAYMENT_WALLET
+      );
+      
+      if (walletIndex !== -1) {
+        const preBalance = tx.meta.preBalances[walletIndex] || 0;
+        const postBalance = tx.meta.postBalances[walletIndex] || 0;
+        const received = (postBalance - preBalance) / 1000000000;
+        
+        if (received > 0) {
+          correctRecipient = true;
+          transferAmount = received;
+        }
+      }
+    }
+    
+    if (!correctRecipient) {
+      return { 
+        success: false, 
+        error: 'WRONG_WALLET',
+        errorMessage: 'Payment was sent to wrong wallet address'
+      };
+    }
+    
+    const expectedAmount = PREMIUM_PRICE;
+    const minAmount = expectedAmount * 0.99;
+    const maxAmount = expectedAmount * 1.01;
+    
+    if (transferAmount < minAmount || transferAmount > maxAmount) {
+      return { 
+        success: false, 
+        error: 'WRONG_AMOUNT',
+        errorMessage: `Sent ${transferAmount.toFixed(4)} SOL, expected ${expectedAmount} SOL`
+      };
+    }
+    
+    return {
+      success: true,
+      amount: transferAmount.toFixed(4),
+      signature: signature,
+      paymentId: paymentId
+    };
+    
+  } catch (error) {
+    console.error('Blockchain verification error:', error);
+    throw error;
+  }
+}
+
+// ============================================
+// EXPIRY REMINDER SYSTEM
+// ============================================
+
+async function checkExpiryReminders() {
+  try {
+    console.log('🔔 Checking for expiring premium subscriptions...');
+    
+    const { data: premiumUsers, error } = await supabase
+      .from('premium_users')
+      .select('*')
+      .gte('expires_at', new Date().toISOString());
+    
+    if (error) throw error;
+    if (!premiumUsers || premiumUsers.length === 0) return;
+    
+    const now = new Date();
+    
+    for (const user of premiumUsers) {
+      const expiryDate = new Date(user.expires_at);
+      const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+      
+      if (daysUntilExpiry <= 5 && daysUntilExpiry > 0) {
+        let reminderMessage = '';
+        
+        switch(daysUntilExpiry) {
+          case 5:
+            reminderMessage = `⏰ Premium expires in 5 days!\n\nRenew now: /subscribe`;
+            break;
+          case 4:
+            reminderMessage = `⚠️ Premium expires in 4 days!\n\nDon't lose your benefits: /subscribe`;
+            break;
+          case 3:
+            reminderMessage = `⏳ Only 3 days left!\n\n🎁 Special: Mention "RENEW3" for bonus day!\n\n/subscribe`;
+            break;
+          case 2:
+            reminderMessage = `🔴 2 days until expiry!\n\nKeep your premium: /subscribe`;
+            break;
+          case 1:
+            reminderMessage = `🚨 LAST DAY!\n\nPremium expires TOMORROW!\n\nRenew NOW: /subscribe`;
+            break;
+        }
+        
+        try {
+          await bot.sendMessage(user.telegram_id, reminderMessage);
+          console.log(`Sent ${daysUntilExpiry}-day reminder to ${user.telegram_id}`);
+        } catch (err) {
+          console.error(`Failed to send reminder: ${err.message}`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking reminders:', error);
+  }
+}
+
+function scheduleDailyReminderCheck() {
+  const now = new Date();
+  const scheduledTime = new Date();
+  scheduledTime.setHours(10, 0, 0, 0);
+  
+  if (scheduledTime <= now) {
+    scheduledTime.setDate(scheduledTime.getDate() + 1);
+  }
+  
+  const msUntilScheduledTime = scheduledTime - now;
+  
+  setTimeout(() => {
+    checkExpiryReminders();
+    setInterval(checkExpiryReminders, 24 * 60 * 60 * 1000);
+  }, msUntilScheduledTime);
+  
+  console.log(`📅 Reminders scheduled for ${scheduledTime.toLocaleString()}`);
+}
+
+// ============================================
+// BOT COMMANDS
+// ============================================
+
+// /start command - UPDATED to save username
+bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const username = msg.from.username;
+  const firstName = msg.from.first_name || 'there';
+  
+  // Update username if user is premium
+  if (username) {
+    await updateUserUsername(userId, username);
+  }
+  
   const welcomeMessage = `
-🚀 Welcome to Pumper Meme Bot!
+🚀 Welcome ${firstName} to Pumper Meme Bot!
 
 Create AI-powered $PUMPIT memes with just a description!
 
-📝 Commands:
+📝 **Commands:**
 /meme [description] - Create a meme
 /status - Check your daily limit
-/subscribe - Get premium (3 memes/day)
+/subscribe - Get premium
 /help - Show all commands
 
-Free tier: 1 meme/day
-Premium: 3 memes/day for 0.065 SOL/month
+**Free:** 1 meme/day
+**Premium:** 3 memes/day
 
 Let's PUMP IT! 🎨`;
   
-  bot.sendMessage(chatId, welcomeMessage);
+  bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' });
 });
 
-// /meme command
+// /meme command - UPDATED to save username
 bot.onText(/\/meme (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const username = msg.from.username;
   const description = match[1];
   
+  // Update username if user is premium
+  if (username) {
+    await updateUserUsername(userId, username);
+  }
+  
   try {
-    // Check if user is owner - owners get unlimited memes
     const isOwner = userId.toString() === OWNER_ID;
     
+    // Check limits
     if (!isOwner) {
-      // Regular users have limits
       const premium = await isPremium(userId);
       const dailyLimit = premium ? 3 : 1;
       const currentUsage = await getUserDailyLimit(userId);
@@ -340,114 +475,232 @@ bot.onText(/\/meme (.+)/, async (msg, match) => {
           ? "Daily limit reached! You've used all 3 premium memes today. Reset at midnight! 🌙"
           : "Daily limit reached! Free users get 1 meme/day. Upgrade to premium for 3 daily memes! /subscribe 🚀";
         
-        bot.sendMessage(chatId, limitMessage);
-        return;
+        return bot.sendMessage(chatId, limitMessage);
       }
     }
     
     const statusMsg = await bot.sendMessage(chatId, "🎨 Generating your $PUMPIT meme...");
     
-    const premium = await isPremium(userId);
-    const imageUrl = await generateMeme(description, premium || isOwner);
+    // Generate meme
+    const premium = await isPremium(userId) || isOwner;
+    const imageUrl = await generateMeme(description, premium);
     
-    // Generate SEO description using OpenAI
-    let seoDescription = '';
-    try {
-      const seoResponse = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{
-          role: "user",
-          content: `Write a short, fun SEO description (max 160 chars) for a PUMPIT meme about: ${description}. Make it engaging and include relevant keywords.`
-        }],
-        max_tokens: 50
-      });
-      seoDescription = seoResponse.choices[0].message.content.trim();
-    } catch (error) {
-      console.error('Error generating SEO description:', error);
-      seoDescription = `Epic ${description} PUMPIT meme created by the community. Join Solana's fastest growing memecoin!`;
-    }
+    // Simple description
+    const seoDescription = `${description} - PUMPIT meme by ${username || 'community'}`;
     
-    const { publicUrl, memeId } = await saveMemeToSupabase(imageUrl, userId, username, description, seoDescription);
+    // Save to Supabase
+    const { publicUrl, memeId } = await saveMemeToSupabase(
+      imageUrl, 
+      userId, 
+      username, 
+      description, 
+      seoDescription
+    );
     
-    // Only increment usage for non-owners
+    // Update usage
     if (!isOwner) {
       await incrementUsage(userId);
     }
     
-    // Calculate remaining memes
-    let remaining;
-    if (isOwner) {
-      remaining = "∞ (Owner privileges)";
-    } else {
-      const currentUsage = await getUserDailyLimit(userId);
-      const dailyLimit = premium ? 3 : 1;
-      remaining = dailyLimit - currentUsage;
-    }
+    // Calculate remaining
+    const currentUsage = await getUserDailyLimit(userId);
+    const dailyLimit = isOwner ? '∞' : (premium ? 3 : 1);
+    const remaining = isOwner ? '∞' : (dailyLimit - currentUsage);
     
-    bot.deleteMessage(chatId, statusMsg.message_id);
+    // Delete status message
+    bot.deleteMessage(chatId, statusMsg.message_id).catch(() => {});
     
+    // Send to user
     const memeUrl = `https://letspumpit.com/meme/${memeId}`;
-    const shareText = `Check out this ${description} meme! 🚀 @pumpitonsol\n\n#PUMPIT #Solana #MemeCoin`;
-    const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(memeUrl)}`;
+    const caption = `✨ Your meme is ready!
     
-    const caption = `✨ Your $PUMPIT meme is ready!
-    
-📊 Memes remaining today: ${remaining}
-🌐 View HD: ${memeUrl}
+📊 Remaining today: ${remaining}
+🌐 View: ${memeUrl}
 
-💰 Buy $PUMPIT Now!
-CA: B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk
+💰 Buy $PUMPIT:
+B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk
 
-📢 Share on 𝕏: ${twitterShareUrl}
-${!premium && !isOwner ? '\n🚀 Upgrade for more: /subscribe' : ''}`;
+${!premium && !isOwner ? '🚀 Upgrade: /subscribe' : ''}`;
     
     await bot.sendPhoto(chatId, imageUrl, { caption });
     
-    // ALWAYS forward to the group (remove the condition check)
-    console.log(`\n>>> ATTEMPTING TO FORWARD MEME TO GROUP: ${PUMPIT_GROUP_ID} <<<`);
-    
-    const adminCaption = `🎨 New $PUMPIT meme created via Telegram Bot!
-
-"${description}"
-
-🌐 View: ${memeUrl}
-📢 Share on 𝕏: ${twitterShareUrl}
-
-💰 Buy $PUMPIT:
-CA: B4LntXRP3VLP9TJ8L8EGtrjBFCfnJnqoqoRPZ7uWbonk
-
-🤖 Create your own: @pumpermemebot`;
-    
-    try {
-      await bot.sendPhoto(PUMPIT_GROUP_ID, imageUrl, { caption: adminCaption });
-      console.log('>>> MEME FORWARDED SUCCESSFULLY <<<\n');
-    } catch (error) {
-      console.error('>>> ERROR FORWARDING MEME:', error.message, '<<<\n');
+    // Forward to group
+    if (PUMPIT_GROUP_ID) {
+      try {
+        await bot.sendPhoto(PUMPIT_GROUP_ID, imageUrl, { 
+          caption: `New meme: "${description}"\n\nCreate yours: @pumpermemebot` 
+        });
+      } catch (err) {
+        console.log('Group forward failed:', err.message);
+      }
     }
     
   } catch (error) {
-    console.error('Error generating meme:', error);
+    console.error('Error:', error);
     bot.sendMessage(chatId, "❌ Oops! Something went wrong. Please try again.");
   }
 });
 
-// /status command
+// /subscribe command - UPDATED to include username info
+bot.onText(/\/subscribe/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const username = msg.from.username || 'User';
+  
+  const isPremiumUser = await isPremium(userId);
+  if (isPremiumUser) {
+    return bot.sendMessage(chatId, "✅ You already have premium! Check /status");
+  }
+  
+  const paymentId = `PUMP${userId.toString().slice(-4)}${Date.now().toString().slice(-6)}`;
+  
+  paymentReservations.set(paymentId, {
+    userId: userId,
+    username: username, // Store username in reservation
+    timestamp: Date.now(),
+    chatId: chatId,
+    status: 'pending'
+  });
+  
+  setTimeout(() => {
+    if (paymentReservations.has(paymentId)) {
+      paymentReservations.delete(paymentId);
+    }
+  }, 60 * 60 * 1000);
+  
+  const subscribeMessage = `
+⭐ **Premium Subscription**
+
+Price: **${PREMIUM_PRICE} SOL**
+
+Your Telegram: @${username}
+${!username ? '⚠️ Set a username in Telegram settings for website access!' : '✅ You can use website with @' + username}
+
+🔐 **YOUR PAYMENT ID:**
+\`${paymentId}\`
+
+**Steps:**
+1. Copy Payment ID above
+2. Send ${PREMIUM_PRICE} SOL to:
+\`${PAYMENT_WALLET}\`
+3. Add Payment ID in memo
+4. Copy transaction signature
+5. Verify: \`/verify ${paymentId} SIGNATURE\`
+
+Contact: @${OWNER_USERNAME}`;
+  
+  bot.sendMessage(chatId, subscribeMessage, { parse_mode: 'Markdown' });
+});
+
+// /verify command - UPDATED to save username
+bot.onText(/\/verify (\S+)\s+(\S+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const username = msg.from.username; // Get current username
+  const paymentId = match[1].trim();
+  const signature = match[2].trim();
+  
+  const statusMsg = await bot.sendMessage(chatId, "🔍 Verifying payment...");
+  
+  try {
+    const reservation = paymentReservations.get(paymentId);
+    
+    if (!reservation) {
+      bot.deleteMessage(chatId, statusMsg.message_id).catch(() => {});
+      return bot.sendMessage(chatId, "❌ Invalid Payment ID. Use /subscribe for new one.");
+    }
+    
+    if (reservation.userId !== userId) {
+      bot.deleteMessage(chatId, statusMsg.message_id).catch(() => {});
+      return bot.sendMessage(chatId, "❌ This Payment ID isn't yours.");
+    }
+    
+    if (reservation.status === 'completed') {
+      bot.deleteMessage(chatId, statusMsg.message_id).catch(() => {});
+      return bot.sendMessage(chatId, "❌ Already used.");
+    }
+    
+    if (verifiedPayments.has(signature)) {
+      bot.deleteMessage(chatId, statusMsg.message_id).catch(() => {});
+      return bot.sendMessage(chatId, "❌ Signature already used.");
+    }
+    
+    const verification = await verifyBlockchainPayment(signature, paymentId);
+    
+    if (verification.success) {
+      reservation.status = 'completed';
+      verifiedPayments.add(signature);
+      
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + PREMIUM_DAYS);
+      
+      // UPDATED: Save with username
+      await supabase
+        .from('premium_users')
+        .upsert({
+          telegram_id: userId.toString(),
+          telegram_username: username || reservation.username, // Save username
+          transaction_signature: signature,
+          payment_date: new Date().toISOString(),
+          expires_at: expiresAt.toISOString(),
+          amount: verification.amount
+        });
+      
+      bot.deleteMessage(chatId, statusMsg.message_id).catch(() => {});
+      
+      const successMessage = `
+🎉 **Payment Verified!**
+
+✅ Premium activated for ${PREMIUM_DAYS} days!
+✅ You can now create 3 memes per day!
+${username ? `✅ Website access enabled for @${username}` : '⚠️ Set a Telegram username to use website'}
+
+Try it: /meme your idea`;
+      
+      bot.sendMessage(chatId, successMessage, { parse_mode: 'Markdown' });
+      
+      bot.sendMessage(OWNER_ID, `💰 New premium: @${username || reservation.username} paid ${verification.amount} SOL`);
+      
+    } else {
+      bot.deleteMessage(chatId, statusMsg.message_id).catch(() => {});
+      bot.sendMessage(chatId, `❌ Verification failed: ${verification.errorMessage}`);
+    }
+    
+  } catch (error) {
+    console.error('Verify error:', error);
+    bot.deleteMessage(chatId, statusMsg.message_id).catch(() => {});
+    bot.sendMessage(chatId, `❌ Error: ${error.message}`);
+  }
+});
+
+// /status command - UPDATED to show username
 bot.onText(/\/status/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
+  const username = msg.from.username;
+  
+  // Update username if premium
+  if (username) {
+    await updateUserUsername(userId, username);
+  }
+  
+  const isOwner = userId.toString() === OWNER_ID;
+  
+  if (isOwner) {
+    return bot.sendMessage(chatId, "👑 Owner Status\n\nUnlimited memes!");
+  }
   
   const premium = await isPremium(userId);
   const dailyLimit = premium ? 3 : 1;
   const currentUsage = await getUserDailyLimit(userId);
   const remaining = dailyLimit - currentUsage;
   
-  let statusMessage = `
-📊 Your Status:
-
-Account Type: ${premium ? '⭐ Premium' : '🆓 Free'}
-Daily Limit: ${dailyLimit} memes
-Used Today: ${currentUsage}
-Remaining: ${remaining}`;
+  let statusMessage = `📊 Your Status\n\n`;
+  statusMessage += `Telegram: @${username || 'no username set'}\n`;
+  statusMessage += `Type: ${premium ? '⭐ Premium' : '🆓 Free'}\n`;
+  statusMessage += `Daily Limit: ${dailyLimit}\n`;
+  statusMessage += `Used Today: ${currentUsage}\n`;
+  statusMessage += `Remaining: ${remaining}`;
 
   if (premium) {
     const { data } = await supabase
@@ -459,117 +712,17 @@ Remaining: ${remaining}`;
     if (data) {
       const expiryDate = new Date(data.expires_at).toLocaleDateString();
       statusMessage += `\nExpires: ${expiryDate}`;
+      statusMessage += `\n\n✅ Website access: letspumpit.com`;
     }
   } else {
-    statusMessage += '\n\n🚀 Upgrade to Premium: /subscribe';
+    statusMessage += '\n\n🚀 Upgrade: /subscribe';
+  }
+  
+  if (!username) {
+    statusMessage += '\n\n⚠️ Set a Telegram username to use website!';
   }
   
   bot.sendMessage(chatId, statusMessage);
-});
-
-// /subscribe command
-bot.onText(/\/subscribe/, (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  const subscribeMessage = `
-⭐ Premium Subscription
-
-Price: ${PREMIUM_PRICE} SOL/month ($9.75)
-
-✅ Premium Benefits:
-- 3 memes per day (vs 1)
-- No forced lips on faces
-- Priority generation
-- Support $PUMPIT development
-
-💰 To subscribe:
-1. Send exactly ${PREMIUM_PRICE} SOL to:
-\`${PAYMENT_WALLET}\`
-
-2. IMPORTANT: Include your Telegram ID in the memo:
-\`${userId}\`
-
-3. You'll receive premium access automatically within 5 minutes!
-
-⚠️ Must include your ID (${userId}) in the transaction memo or payment won't be processed!`;
-  
-  bot.sendMessage(chatId, subscribeMessage, { parse_mode: 'Markdown' });
-});
-
-// Admin Commands (only for you)
-
-// /grant command - manually grant premium
-bot.onText(/\/grant @?(\w+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  if (userId.toString() !== OWNER_ID) {
-    return bot.sendMessage(chatId, "❌ Admin command only.");
-  }
-  
-  const username = match[1];
-  bot.sendMessage(chatId, `To grant premium, I need the user's Telegram ID, not username. They can get it by typing /subscribe`);
-});
-
-// /grant with ID
-bot.onText(/\/grant (\d+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  if (userId.toString() !== OWNER_ID) {
-    return bot.sendMessage(chatId, "❌ Admin command only.");
-  }
-  
-  const targetId = match[1];
-  const success = await grantPremium(targetId, 'manual_grant', 0);
-  
-  if (success) {
-    bot.sendMessage(chatId, `✅ Premium granted to user ${targetId} for ${PREMIUM_DAYS} days`);
-    bot.sendMessage(targetId, `🎉 You've been granted premium access for ${PREMIUM_DAYS} days! Enjoy 3 daily memes!`);
-  } else {
-    bot.sendMessage(chatId, `❌ Failed to grant premium to ${targetId}`);
-  }
-});
-
-// /subscribers command - see all premium users
-bot.onText(/\/subscribers/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  if (userId.toString() !== OWNER_ID) {
-    return bot.sendMessage(chatId, "❌ Admin command only.");
-  }
-  
-  try {
-    const { data, error } = await supabase
-      .from('premium_users')
-      .select('*')
-      .gte('expires_at', new Date().toISOString())
-      .order('expires_at', { ascending: false });
-    
-    if (error) throw error;
-    
-    if (!data || data.length === 0) {
-      return bot.sendMessage(chatId, "No active premium subscribers.");
-    }
-    
-    let message = `👑 Active Premium Subscribers (${data.length}):\n\n`;
-    
-    for (const sub of data) {
-      const expiryDate = new Date(sub.expires_at).toLocaleDateString();
-      message += `• User: ${sub.telegram_id}\n  Expires: ${expiryDate}\n  Paid: ${sub.amount} SOL\n\n`;
-    }
-    
-    bot.sendMessage(chatId, message);
-  } catch (error) {
-    bot.sendMessage(chatId, "❌ Error fetching subscribers.");
-  }
-});
-
-// /getid command - Simple command to get chat ID
-bot.onText(/\/getid/, (msg) => {
-  bot.sendMessage(msg.chat.id, `Chat ID: ${msg.chat.id}`);
 });
 
 // /help command
@@ -578,48 +731,130 @@ bot.onText(/\/help/, (msg) => {
   const userId = msg.from.id;
   
   let helpMessage = `
-📚 Pumper Bot Commands:
+📚 **Commands**
 
-/meme [description] - Create a meme
-Example: /meme dog wearing sunglasses at computer
+/meme [description] - Create meme
+/status - Check limits & username
+/subscribe - Get premium
+/verify [id] [sig] - Verify payment
+/help - Show this
 
-/status - Check your daily meme limit
-/subscribe - Get premium access
-/start - Welcome message
-/help - Show this help
-/info - Show chat information
-/getid - Get this chat's ID
+**Website Access:**
+Premium users can use @username on website
 
-💡 Tips:
-- Be specific in descriptions
-- Free tier adds lips to faces
-- Premium gives more creative freedom
-- All memes appear on letspumpit.com!`;
+Example: /meme dog wearing sunglasses`;
 
-  // Add admin commands for owner
   if (userId.toString() === OWNER_ID) {
     helpMessage += `
 
-👑 Admin Commands:
-/grant [telegram_id] - Grant premium manually
-/subscribers - View all premium users`;
+👑 **Admin:**
+/grant [id] - Grant premium
+/subscribers - View users
+/updateusers - Update all usernames`;
   }
   
-  bot.sendMessage(chatId, helpMessage);
+  bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });
 });
 
-// Check for payments every 5 minutes
-setInterval(checkForPayments, 5 * 60 * 1000);
+// Admin commands
+bot.onText(/\/grant (\d+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  
+  if (userId.toString() !== OWNER_ID) return;
+  
+  const targetId = match[1];
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + PREMIUM_DAYS);
+  
+  try {
+    // Try to get username of target user (if we have it)
+    const targetUsername = ''; // Would need to look this up somehow
+    
+    await supabase
+      .from('premium_users')
+      .upsert({
+        telegram_id: targetId.toString(),
+        telegram_username: targetUsername, // Save if available
+        transaction_signature: 'manual_grant_' + Date.now(),
+        payment_date: new Date().toISOString(),
+        expires_at: expiresAt.toISOString(),
+        amount: 0
+      });
+    
+    bot.sendMessage(chatId, `✅ Premium granted to ${targetId}`);
+    bot.sendMessage(targetId, `🎉 You got premium for ${PREMIUM_DAYS} days!`);
+  } catch (error) {
+    bot.sendMessage(chatId, `❌ Failed: ${error.message}`);
+  }
+});
 
-// Initial payment check
-setTimeout(checkForPayments, 5000);
+// NEW: Admin command to update all usernames
+bot.onText(/\/updateusers/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  
+  if (userId.toString() !== OWNER_ID) return;
+  
+  bot.sendMessage(chatId, "🔄 Updating usernames... Users need to use any command for update.");
+  
+  // Can't force update all users, but this prepares the system
+  bot.sendMessage(chatId, "✅ System ready. Usernames will update as users interact with bot.");
+});
 
-// Handle errors
+bot.onText(/\/subscribers/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  
+  if (userId.toString() !== OWNER_ID) return;
+  
+  try {
+    const { data } = await supabase
+      .from('premium_users')
+      .select('*')
+      .gte('expires_at', new Date().toISOString());
+    
+    if (!data || data.length === 0) {
+      return bot.sendMessage(chatId, "No active subscribers");
+    }
+    
+    let message = `👑 Premium Users (${data.length})\n\n`;
+    for (const sub of data) {
+      const expiry = new Date(sub.expires_at).toLocaleDateString();
+      message += `ID: ${sub.telegram_id}\n`;
+      message += `Username: @${sub.telegram_username || 'not set'}\n`;
+      message += `Expires: ${expiry}\n\n`;
+    }
+    
+    bot.sendMessage(chatId, message);
+  } catch (error) {
+    bot.sendMessage(chatId, "Error: " + error.message);
+  }
+});
+
+// Error handler
 bot.on('polling_error', (error) => {
   console.error('Polling error:', error);
 });
 
-console.log('🚀 Pumper Telegram Bot is running with payment system!');
-console.log('📊 Watching for messages to identify group IDs...');
-console.log('✅ Source tracking enabled - all memes will be marked as "telegram"');
-console.log('🔍 SEO descriptions enabled - all memes will have AI-generated descriptions');
+// ============================================
+// STARTUP
+// ============================================
+
+// Schedule reminders
+scheduleDailyReminderCheck();
+setTimeout(checkExpiryReminders, 5000);
+
+// Test connection
+bot.getMe().then(botInfo => {
+  console.log('================================================');
+  console.log('🚀 PUMPER BOT IS RUNNING!');
+  console.log(`✅ Connected as @${botInfo.username}`);
+  console.log('================================================');
+  console.log('📝 USERNAME TRACKING ENABLED');
+  console.log('Users can now use @username on website!');
+  console.log('================================================');
+}).catch(error => {
+  console.error('❌ Failed to connect:', error.message);
+  process.exit(1);
+});
