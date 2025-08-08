@@ -1684,11 +1684,7 @@ export default function Home() {
           </div>
         </div>
       )}
-	  // Add this to the END of your index.js file (after line 1685):
-
-      )}
-
-      {/* Mobile Top Buttons */}
+	  {/* Mobile Top Buttons */}
       <div className="mobile-top-buttons">
         {xConnected ? (
           <div className="x-connected-badge-mobile">
