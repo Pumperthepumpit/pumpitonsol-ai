@@ -117,7 +117,7 @@ export default function Home() {
     totalLikes: 0,
     totalShares: 0
   });
-
+  
   useEffect(() => {
     fetchCommunityMemes();
     fetchDailyMemeCount();
@@ -250,6 +250,7 @@ export default function Home() {
       };
     }
   }, [dragging, dragStart, startPos]);
+
   const connectWithX = async () => {
     setConnectingX(true);
     try {
@@ -298,7 +299,6 @@ export default function Home() {
         localStorage.setItem('xAccessToken', data.accessToken);
         
         calculateDailyLimit();
-        alert(`Successfully connected as @${data.profile.username}!`);
       }
     } catch (error) {
       console.error('Callback error:', error);
@@ -335,53 +335,45 @@ export default function Home() {
   };
 
   const verifyPremiumAccess = async (username) => {
-     if (!username) {
-       setError('Please enter your Telegram username');
-       return;
-     }
+    if (!username) {
+      setError('Please enter your Telegram username');
+      return;
+    }
   
-     console.log('Verifying premium for:', username);
-     setError(''); // Clear any previous errors
+    setError('');
   
-     try {
-       const response = await fetch('/api/verify-premium', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ username })
-       });
+    try {
+      const response = await fetch('/api/verify-premium', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
     
-       console.log('Response status:', response.status);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
     
-       if (!response.ok) {
-         throw new Error(`HTTP error! status: ${response.status}`);
-       }
+      const data = await response.json();
     
-       const data = await response.json();
-       console.log('Response data:', data);
-    
-       if (data.success && data.isPremium) {
-         setIsVerifiedPremium(true);
-         setPremiumExpiry(data.expiresAt);
-         localStorage.setItem('premiumUsername', username);
-         calculateDailyLimit();
-         // Removed alert - less annoying
-         setShowPremiumModal(false);  // Close modal on success
-         return true;
-       } else {
-         setIsVerifiedPremium(false);
-         setError(data.error || 'No active premium subscription found. Subscribe via @pumpermemebot');
-         // Removed alert - error shows in modal instead
-         // Don't close modal so user can see the error
-         return false;
-       }
-     } catch (error) {
-       console.error('Premium verification error:', error);
-       setError('Failed to verify premium status: ' + error.message);
-       // Removed alert
-       return false;
-     }
-   };
-
+      if (data.success && data.isPremium) {
+        setIsVerifiedPremium(true);
+        setPremiumExpiry(data.expiresAt);
+        localStorage.setItem('premiumUsername', username);
+        calculateDailyLimit();
+        setShowPremiumModal(false);
+        return true;
+      } else {
+        setIsVerifiedPremium(false);
+        setError(data.error || 'No active premium subscription found. Subscribe via @pumpermemebot');
+        return false;
+      }
+    } catch (error) {
+      console.error('Premium verification error:', error);
+      setError('Failed to verify premium status: ' + error.message);
+      return false;
+    }
+  };
+  
   const loadUserStats = async () => {
     try {
       const userId = xProfile?.id || localStorage.getItem('userId') || 'anonymous';
@@ -595,7 +587,7 @@ export default function Home() {
       setIsAnalyzingToken(false);
     }
   };
-  
+
   const memeifyContract = async () => {
     if (!contractCode) {
       setError('Please paste smart contract code');
@@ -662,7 +654,7 @@ export default function Home() {
       setIsAnalyzingContract(false);
     }
   };
-
+  
   const processWhitepaper = async () => {
     if (!whitepaperFile) {
       setError('Please upload a whitepaper PDF');
@@ -898,7 +890,7 @@ export default function Home() {
       [section]: !prev[section]
     }));
   };
-  
+
   const handleDragOver = (e) => {
     e.preventDefault();
     setIsDragOver(true);
@@ -963,7 +955,7 @@ export default function Home() {
       setShowXForm(false);
     }
   };
-
+  
   const generateMeme = async () => {
     if (!selectedFile) {
       setError('Please select an image first!');
@@ -1204,7 +1196,7 @@ export default function Home() {
   const handleMouseUp = () => {
     setDragging(null);
   };
-  
+
   const handleTouchStart = (e, element) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1301,7 +1293,7 @@ export default function Home() {
   const getExclamationTransform = () => {
     return `translate(${exclamationPosition.x}px, ${exclamationPosition.y}px) scale(${exclamationScale}) rotate(${exclamationRotation}deg)`;
   };
-
+  
   const handleLike = async (memeId) => {
     const isLiked = likedMemes.includes(memeId);
     
@@ -1462,7 +1454,8 @@ export default function Home() {
         
         <script src="https://terminal.jup.ag/main-v2.js" data-preload></script>
       </Head>
-	  <div className="desktop-social-buttons">
+
+      <div className="desktop-social-buttons">
         {xConnected ? (
           <div className="x-connected-badge">
             <img src={xProfile?.profileImage} alt="" />
@@ -1503,7 +1496,8 @@ export default function Home() {
         >
           🚀 Buy $PUMPIT
         </button>
-     </div>
+      </div>
+
       {showPremiumModal && (
         <div className="premium-modal-backdrop" onClick={() => setShowPremiumModal(false)}>
           <div className="premium-modal" onClick={(e) => e.stopPropagation()}>
@@ -1536,6 +1530,12 @@ export default function Home() {
               </form>
             </div>
             
+            {error && (
+              <div className="error-message">
+                ⚠️ {error}
+              </div>
+            )}
+            
             <div className="premium-benefits">
               <h3>Premium Benefits:</h3>
               <ul>
@@ -1555,7 +1555,7 @@ export default function Home() {
           </div>
         </div>
       )}
-
+      
       {showShareModal && (
         <div className="share-modal-backdrop" onClick={handleCloseShareModal}>
           <div className="share-modal">
@@ -1837,7 +1837,8 @@ export default function Home() {
               </button>
             </div>
           </section>
-		  <section id="generator" className="reveal">
+          
+          <section id="generator" className="reveal">
             <h2>🎨 AI-Powered Meme Generator</h2>
             <p>
               Transform any image into a $PUMPIT meme! Just upload, position the overlays, and download!
@@ -2126,7 +2127,8 @@ export default function Home() {
               <li>📋 Phase 7: Pumper Comic Series - Exclusive stories for $PUMPIT holders!</li>
             </ul>
           </section>
-		  <section id="community" className="reveal">
+          
+          <section id="community" className="reveal">
             <h2>🔥 Top Community Memes</h2>
             <div className="community-memes">
               {isLoadingMemes ? (
@@ -2311,901 +2313,8 @@ export default function Home() {
           </div>
         </footer>
       </div>
-	  <style jsx global>{`
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-          background: #0a0a0a;
-          color: #ffffff;
-          min-height: 100vh;
-          overflow-x: hidden;
-          margin: 0;
-          padding: 0;
-        }
-
-        body::before {
-          content: '';
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: 
-            radial-gradient(circle at 20% 50%, rgba(255, 255, 0, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 80% 80%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 40% 20%, rgba(255, 255, 0, 0.05) 0%, transparent 50%);
-          pointer-events: none;
-          z-index: 1;
-        }
-
-        .container {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 0 20px;
-          width: 100%;
-          position: relative;
-          z-index: 2;
-        }
-
-        .desktop-social-buttons {
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          display: flex;
-          gap: 0.75rem;
-          z-index: 1000;
-          flex-wrap: wrap;
-          max-width: calc(100vw - 40px);
-        }
-
-        .mobile-top-buttons {
-          display: none;
-          position: fixed;
-          top: 10px;
-          right: 10px;
-          gap: 0.5rem;
-          z-index: 1000;
-          background: rgba(0, 0, 0, 0.8);
-          padding: 0.5rem;
-          border-radius: 30px;
-          backdrop-filter: blur(10px);
-        }
-
-        .mobile-social-icons {
-          display: none;
-          gap: 1rem;
-          margin-top: 1rem;
-          font-size: 1.5rem;
-          justify-content: center;
-        }
-
-        .mobile-social-icons a {
-          text-decoration: none;
-          transition: transform 0.3s ease;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 50%;
-          width: 50px;
-          height: 50px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.3rem;
-        }
-
-        .mobile-social-icons a:hover {
-          transform: scale(1.2);
-          background: rgba(255, 255, 255, 0.1);
-          border-color: #FFFF00;
-        }
-
-        .social-button {
-          padding: 0.6rem 1.2rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 50px;
-          color: white;
-          text-decoration: none;
-          transition: all 0.3s ease;
-          backdrop-filter: blur(10px);
-          font-size: 0.9rem;
-          white-space: nowrap;
-          cursor: pointer;
-          font-weight: 500;
-        }
-
-        .social-button:hover {
-          background: rgba(255, 255, 255, 0.1);
-          transform: translateY(-2px);
-          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .social-button.telegram-bot {
-          background: #0088cc;
-          color: white;
-          border: none;
-        }
-
-        .social-button.telegram-bot:hover {
-          background: #0077b3;
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(0, 136, 204, 0.5);
-        }
-
-        .social-button.buy-button {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          font-weight: bold;
-          border: none;
-        }
-
-        .social-button.buy-button:hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.5);
-        }
-
-        .social-button.wallet-button {
-          background: rgba(255, 255, 0, 0.1);
-          border-color: rgba(255, 255, 0, 0.3);
-        }
-
-        .x-connected-badge {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          background: rgba(29, 161, 242, 0.1);
-          border: 1px solid rgba(29, 161, 242, 0.3);
-          border-radius: 50px;
-        }
-
-        .x-connected-badge img {
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-        }
-
-        .x-connected-badge .verified-badge {
-          color: #1DA1F2;
-          font-weight: bold;
-        }
-
-        .x-connected-badge .disconnect-btn {
-          background: none;
-          border: none;
-          color: #999;
-          cursor: pointer;
-          font-size: 1.2rem;
-          padding: 0 0.25rem;
-        }
-
-        .x-connected-badge .disconnect-btn:hover {
-          color: #ff4444;
-        }
-
-        .premium-modal-backdrop {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.9);
-          backdrop-filter: blur(10px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 10000;
-          padding: 1rem;
-        }
-
-        .premium-modal {
-          background: rgba(20, 20, 20, 0.98);
-          border: 2px solid #FFFF00;
-          border-radius: 20px;
-          max-width: 500px;
-          width: 100%;
-          max-height: 90vh;
-          overflow-y: auto;
-          padding: 2rem;
-          position: relative;
-        }
-
-        .premium-modal .modal-close {
-          position: absolute;
-          top: 1rem;
-          right: 1rem;
-          background: none;
-          border: none;
-          color: #FFFF00;
-          font-size: 1.5rem;
-          cursor: pointer;
-        }
-
-        .premium-modal h2 {
-          color: #FFFF00;
-          margin-bottom: 1rem;
-        }
-
-        .premium-input {
-          width: 100%;
-          padding: 1rem;
-          margin: 1rem 0;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 0, 0.3);
-          border-radius: 10px;
-          color: white;
-          font-size: 1rem;
-        }
-
-        .verify-premium-btn, .get-premium-btn {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          padding: 1rem 2rem;
-          border-radius: 50px;
-          font-weight: bold;
-          cursor: pointer;
-          width: 100%;
-          margin-top: 1rem;
-          text-align: center;
-          text-decoration: none;
-          display: block;
-        }
-
-        .premium-benefits {
-          margin-top: 2rem;
-          padding-top: 2rem;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .premium-benefits h3 {
-          color: #FFD700;
-          margin-bottom: 1rem;
-        }
-
-        .premium-benefits ul {
-          list-style: none;
-          padding: 0;
-        }
-
-        .premium-benefits li {
-          padding: 0.5rem 0;
-          color: #ccc;
-        }
-
-        .user-stats-display {
-          display: flex;
-          gap: 1rem;
-          justify-content: center;
-          margin-top: 1rem;
-          flex-wrap: wrap;
-        }
-
-        .stat-badge {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 20px;
-          padding: 0.5rem 1rem;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .stat-badge.premium {
-          background: rgba(255, 215, 0, 0.1);
-          border-color: #FFD700;
-          color: #FFD700;
-        }
-
-        .stat-badge.verified {
-          background: rgba(29, 161, 242, 0.1);
-          border-color: #1DA1F2;
-          color: #1DA1F2;
-        }
-
-        .stat-label {
-          color: #999;
-          font-size: 0.85rem;
-        }
-
-        .stat-value {
-          color: #FFFF00;
-          font-weight: bold;
-        }
-
-        header {
-          text-align: center;
-          padding: 5rem 1rem 3rem;
-          position: relative;
-          overflow: hidden;
-          margin-top: 80px;
-          background: transparent;
-        }
-
-        .header-content {
-          position: relative;
-          z-index: 2;
-        }
-
-        .pumper-float {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          opacity: 0.15;
-          animation: float 6s ease-in-out infinite;
-          pointer-events: none;
-          filter: blur(2px) drop-shadow(0 0 60px rgba(255, 255, 0, 0.6));
-          z-index: 0;
-        }
-
-        .pumper-float img {
-          width: 250px;
-          height: 250px;
-        }
-
-        @keyframes float {
-          0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
-          50% { transform: translate(-50%, -50%) translateY(-20px); }
-        }
-
-        h1 {
-          font-size: 4rem;
-          font-weight: 900;
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          margin-bottom: 1rem;
-          letter-spacing: -2px;
-        }
-
-        .main-nav {
-          position: sticky;
-          top: 0;
-          z-index: 99;
-          background: rgba(0, 0, 0, 0.8);
-          backdrop-filter: blur(20px);
-          padding: 1rem 0;
-          margin: 0 0 3rem 0;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .nav-container {
-          display: flex;
-          justify-content: center;
-          gap: 2rem;
-          flex-wrap: wrap;
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 0 1rem;
-        }
-
-        .main-nav a {
-          color: #ffffff;
-          text-decoration: none;
-          padding: 0.5rem 1.5rem;
-          transition: all 0.3s ease;
-          border-radius: 25px;
-          font-weight: 500;
-          font-size: 0.95rem;
-        }
-
-        .main-nav a:hover {
-          background: rgba(255, 255, 0, 0.1);
-          transform: translateY(-2px);
-        }
-
-        section {
-          margin: 4rem auto;
-          padding: 3rem;
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 20px;
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        h2 {
-          font-size: 2.5rem;
-          margin-bottom: 2rem;
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          font-weight: 800;
-        }
-
-        .expandable-content {
-          position: relative;
-          overflow: hidden;
-          transition: all 0.3s ease;
-        }
-
-        .preview-text {
-          margin-bottom: 1rem;
-          line-height: 1.8;
-        }
-
-        .full-content {
-          animation: fadeIn 0.5s ease;
-          line-height: 1.8;
-        }
-
-        .full-content ul {
-          margin: 1rem 0 1rem 2rem;
-        }
-
-        .full-content li {
-          margin: 0.5rem 0;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .read-more-btn {
-          background: none;
-          border: 2px solid #FFFF00;
-          color: #FFFF00;
-          padding: 0.6rem 1.5rem;
-          border-radius: 25px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-weight: 600;
-          margin-top: 1rem;
-        }
-
-        .read-more-btn:hover {
-          background: #FFFF00;
-          color: black;
-          transform: scale(1.05);
-        }
-
-        .token-stats {
-          background: rgba(255, 255, 0, 0.05);
-          padding: 2rem;
-          border-radius: 15px;
-          margin-top: 2rem;
-          border: 1px solid rgba(255, 255, 0, 0.2);
-        }
-
-        .token-stats h3 {
-          color: #FFFF00;
-          margin-bottom: 1rem;
-        }
-
-        .token-stats p {
-          margin: 0.75rem 0;
-          font-family: 'Courier New', monospace;
-          word-break: break-all;
-          opacity: 0.9;
-        }
-
-        .token-info-section {
-          background: linear-gradient(135deg, rgba(255, 255, 0, 0.03), rgba(255, 215, 0, 0.03));
-          border: 1px solid rgba(255, 255, 0, 0.1);
-        }
-
-        .token-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1.5rem;
-          margin: 2rem 0;
-        }
-
-        .token-card {
-          background: rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 0, 0.2);
-          border-radius: 15px;
-          padding: 2rem;
-          text-align: center;
-          transition: all 0.3s ease;
-        }
-
-        .token-card:hover {
-          transform: translateY(-5px);
-          border-color: #FFFF00;
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.2);
-        }
-
-        .token-card h4 {
-          color: #FFFF00;
-          margin-bottom: 1rem;
-          font-size: 0.9rem;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-        }
-
-        .token-card .price {
-          font-size: 1.8rem;
-          font-weight: bold;
-          color: #ffffff;
-          margin: 0.5rem 0;
-        }
-
-        .token-card .value {
-          font-size: 1.4rem;
-          font-weight: bold;
-          color: #ffffff;
-        }
-
-        .price-change {
-          font-size: 1rem;
-          font-weight: 600;
-        }
-
-        .price-change.positive {
-          color: #00ff00;
-        }
-
-        .price-change.negative {
-          color: #ff3333;
-        }
-
-        .loading {
-          color: #666;
-          font-style: italic;
-        }
-
-        .buy-section {
-          text-align: center;
-          margin-top: 3rem;
-        }
-
-        .buy-button-large {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          padding: 1.2rem 3rem;
-          font-size: 1.2rem;
-          font-weight: bold;
-          border-radius: 50px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.3);
-        }
-
-        .buy-button-large:hover {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 15px 40px rgba(255, 255, 0, 0.5);
-        }
-
-        .buy-info {
-          color: #999;
-          margin-top: 1rem;
-          font-size: 0.9rem;
-        }
-
-        .token-link {
-          display: inline-block;
-          margin-top: 1rem;
-          color: #FFFF00;
-          text-decoration: none;
-          font-weight: 600;
-          transition: all 0.3s ease;
-        }
-
-        .token-link:hover {
-          color: #FFD700;
-          text-decoration: underline;
-        }
-
-        .daily-counter {
-          text-align: center;
-          margin: 1.5rem 0;
-          padding: 1rem;
-          background: rgba(255, 255, 0, 0.05);
-          border-radius: 50px;
-          border: 1px solid rgba(255, 255, 0, 0.2);
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        .fire-icon {
-          font-size: 1.5rem;
-          animation: flicker 1.5s ease-in-out infinite;
-        }
-
-        @keyframes flicker {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.2); }
-        }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 0.8; }
-          50% { transform: scale(1.02); opacity: 1; }
-        }
-
-        .counter-text {
-          font-size: 1.1rem;
-          font-weight: 600;
-          color: #FFFF00;
-        }
-
-        .x-form-modal {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.9);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 2000;
-          backdrop-filter: blur(10px);
-        }
-
-        .x-form {
-          background: rgba(20, 20, 20, 0.95);
-          padding: 3rem;
-          border-radius: 20px;
-          border: 1px solid rgba(255, 255, 0, 0.3);
-          text-align: center;
-          max-width: 400px;
-          width: 90%;
-        }
-
-        .x-form h3 {
-          color: #FFFF00;
-          margin-bottom: 2rem;
-          font-size: 1.5rem;
-        }
-
-        .x-form input {
-          width: 100%;
-          padding: 1rem;
-          margin-bottom: 1.5rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 0, 0.3);
-          border-radius: 10px;
-          color: white;
-          font-size: 1rem;
-        }
-
-        .x-form input:focus {
-          outline: none;
-          border-color: #FFFF00;
-          box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.2);
-        }
-
-        .x-form button {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          padding: 1rem 2.5rem;
-          border-radius: 50px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-size: 1rem;
-        }
-
-        .x-form button:hover {
-          transform: scale(1.05);
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
-        }
-
-        .x-handle-section {
-          background: rgba(255, 255, 0, 0.05);
-          padding: 2rem;
-          border-radius: 15px;
-          margin-bottom: 2rem;
-          border: 1px solid rgba(255, 255, 0, 0.2);
-        }
-
-        .x-handle-inline-form label {
-          display: block;
-          margin-bottom: 1rem;
-          color: #FFFF00;
-          font-weight: 600;
-        }
-
-        .x-handle-input-group {
-          display: flex;
-          gap: 1rem;
-          align-items: center;
-        }
-
-        .x-handle-input-group input {
-          flex: 1;
-          padding: 0.8rem 1rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 0, 0.3);
-          border-radius: 10px;
-          color: white;
-          font-size: 1rem;
-        }
-
-        .x-handle-input-group input:focus {
-          outline: none;
-          border-color: #FFFF00;
-          box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.2);
-        }
-
-        .x-handle-input-group button {
-          padding: 0.8rem 2rem;
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-          border: none;
-          border-radius: 50px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          white-space: nowrap;
-        }
-
-        .x-handle-input-group button:hover {
-          transform: scale(1.05);
-          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
-        }
-
-        .meme-upload {
-          margin-top: 2rem;
-        }
-
-        .modern-upload-zone {
-          width: 100%;
-          min-height: 500px;
-          border: 2px dashed rgba(255, 255, 0, 0.3);
-          border-radius: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.3s ease;
-          cursor: pointer;
-          position: relative;
-          overflow: hidden;
-          background: rgba(255, 255, 255, 0.02);
-        }
-
-        .modern-upload-zone:hover {
-          border-color: rgba(255, 255, 0, 0.5);
-          background: rgba(255, 255, 0, 0.05);
-        }
-
-        .modern-upload-zone.drag-over {
-          border-color: #FFFF00;
-          background: rgba(255, 255, 0, 0.1);
-          transform: scale(1.02);
-        }
-
-        .modern-upload-zone.has-file {
-          cursor: default;
-          border-style: solid;
-        }
-
-        .upload-content {
-          text-align: center;
-          padding: 3rem;
-          cursor: pointer;
-        }
-
-        .upload-icon {
-          font-size: 4rem;
-          margin-bottom: 1rem;
-          animation: pulse 2s ease-in-out infinite;
-        }
-
-        .upload-content h3 {
-          font-size: 1.5rem;
-          margin-bottom: 0.5rem;
-          color: #FFFF00;
-        }
-
-        .upload-content p {
-          color: #999;
-          margin-bottom: 1rem;
-        }
-
-        .supported-formats {
-          font-size: 0.85rem;
-          color: #666;
-          background: rgba(255, 255, 255, 0.05);
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          display: inline-block;
-        }
-
-        .preview-container {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          overflow: visible;
-          touch-action: none;
-        }
-
-        .preview-image {
-          max-width: 100%;
-          max-height: 500px;
-          border-radius: 10px;
-          user-select: none;
-          -webkit-user-drag: none;
-        }
-
-        .overlay-element {
-          position: absolute;
-          cursor: grab;
-          touch-action: none;
-          user-select: none;
-          transition: filter 0.2s ease;
-          transform-origin: center;
-          left: 50%;
-          top: 50%;
-          z-index: 10;
-        }
-
-        .overlay-element::before {
-          content: '';
-          position: absolute;
-          width: 200%;
-          height: 200%;
-          top: -50%;
-          left: -50%;
-          z-index: -1;
-        }
-
-        .overlay-element:active {
-          cursor: grabbing;
-        }
-
-        .overlay-element.dragging {
-          filter: drop-shadow(0 10px 30px rgba(255, 255, 0, 0.5));
-          cursor: grabbing;
-          z-index: 20;
-        }
-
-        .overlay-element img {
-          width: 120px;
-          height: auto;
-          pointer-events: none;
-          display: block;
-          transform: translate(-50%, -50%);
-          user-select: none;
-          -webkit-user-drag: none;
-        }
-
-        .action-buttons {
-          display: flex;
-          gap: 1rem;
-          justify-content: center;
-          margin-top: 2rem;
-          flex-wrap: wrap;
-        }
-
-        .primary-button, .secondary-button, .download-button, .complete-button {
-          padding: 1rem 2rem;
-          border-radius: 50px;
-          font-weight: bold;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          border: none;
-          font-size: 1rem;
-        }
-
-        .primary-button {
-          background: linear-gradient(135deg, #FFFF00, #FFD700);
-          color: black;
-        }
-
-        .primary-button:hover:not(:disabled) {
-          transform: translateY(-2px) scale(1.05);
-          box-shadow: 0 10px 30px rgba(255, 255, 0, 0.4);
-        }
-
-        .secondary-button {
-          background: rgba(255, 255, 255, 0.1);
-          color: white;
-          border: 1px solid rgba(255, 255, 255, 0.2);
+      
+      solid rgba(255, 255, 255, 0.2);
         }
 
         .secondary-button:hover {
@@ -4151,6 +3260,4 @@ export default function Home() {
           }
         }
       `}</style>
-    </>
-  );
-}
+      
