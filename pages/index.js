@@ -1489,36 +1489,38 @@ export default function Home() {
         >
           🚀 Buy $PUMPIT
         </button>
-      </div>
-
+     </div>
       {showPremiumModal && (
         <div className="premium-modal-backdrop" onClick={() => setShowPremiumModal(false)}>
           <div className="premium-modal" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setShowPremiumModal(false)}>✕</button>
             <h2>⭐ Premium Feature</h2>
             
-            {!premiumUsername ? (
-              <>
-                <p>Enter your Telegram username to verify premium access</p>
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  verifyPremiumAccess(premiumUsername);
-                }}>
+            <div className="x-handle-section">
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const formData = new FormData(e.target);
+                const inputValue = formData.get('premiumusername');
+                if (inputValue && inputValue.trim().length >= 2) {
+                  setPremiumUsername(inputValue.trim());
+                  verifyPremiumAccess(inputValue.trim());
+                }
+              }} className="x-handle-inline-form">
+                <label>Enter your Telegram username to verify premium:</label>
+                <div className="x-handle-input-group">
                   <input
                     type="text"
+                    name="premiumusername"
                     placeholder="@yourusername"
-                    value={premiumUsername}
-                    onChange={(e) => setPremiumUsername(e.target.value)}
-                    className="premium-input"
+                    required
+                    minLength="2"
+                    autoComplete="off"
                   />
-                  <button type="submit" className="verify-premium-btn">
-                    Verify Premium
-                  </button>
-                </form>
-              </>
-            ) : (
-              <p>This feature requires a premium subscription</p>
-            )}
+                  <button type="submit">Verify Premium</button>
+                </div>
+              </form>
+            </div>
             
             <div className="premium-benefits">
               <h3>Premium Benefits:</h3>
@@ -1542,7 +1544,7 @@ export default function Home() {
 
       {showShareModal && (
         <div className="share-modal-backdrop" onClick={handleCloseShareModal}>
-		<div className="share-modal">
+          <div className="share-modal">
             <button className="modal-close" onClick={() => setShowShareModal(false)}>✕</button>
             
             <div className="modal-content">
