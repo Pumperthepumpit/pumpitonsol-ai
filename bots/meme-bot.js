@@ -456,6 +456,8 @@ bot.onText(/\/meme (.+)/, async (msg, match) => {
   const username = msg.from.username;
   const description = match[1];
   
+  console.log(`User info - ID: ${userId}, Username: @${username}, Name: ${msg.from.first_name}`);
+  
   // Update username if user is premium
   if (username) {
     await updateUserUsername(userId, username);
