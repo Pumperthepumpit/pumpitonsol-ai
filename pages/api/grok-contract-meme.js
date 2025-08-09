@@ -14,14 +14,19 @@ export default async function handler(req, res) {
   try {
     const { contractCode, username } = req.body;
     
+    // Clean the username - ensure it has @ at the beginning
+    let cleanUsername = username?.trim();
+    if (!cleanUsername?.startsWith('@')) {
+      cleanUsername = '@' + cleanUsername;
+    }
+    
     // Verify premium
     const { data: premiumUser } = await supabase
       .from('premium_users')
       .select('*')
-      .eq('telegram_username', username?.replace('@', ''))
+      .eq('telegram_username', cleanUsername)  // Now checking WITH @ symbol
       .gte('expires_at', new Date().toISOString())
       .single();
-
     if (!premiumUser) {
       return res.status(403).json({ success: false, message: 'Premium required' });
     }
