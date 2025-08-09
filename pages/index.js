@@ -439,14 +439,15 @@ export default function Home() {
     setError('');
     
     try {
-      const response = await fetch('/api/ai-trending', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username: premiumUsername,
-          xProfile: xConnected ? xProfile : null
-        })
-      });
+      const response = await fetch('/api/premium-tools', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ 
+    tool: 'trending',
+    username: premiumUsername,
+    xProfile: xConnected ? xProfile : null
+  })
+  });
       
       const data = await response.json();
       if (data.success && data.topics) {
@@ -473,15 +474,15 @@ export default function Home() {
     setError('');
     
     try {
-      const response = await fetch('/api/ai-trend-meme', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          topic,
-          username: premiumUsername
-        })
-      });
-      
+      const response = await fetch('/api/premium-tools', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ 
+    tool: 'trend-meme',
+    topic,
+    username: premiumUsername
+  })
+    });  
       const data = await response.json();
       if (data.success && data.memeUrl) {
         setTrendMeme(data.memeUrl);
@@ -540,15 +541,15 @@ export default function Home() {
     setError('');
     
     try {
-      const response = await fetch('/api/ai-analyze-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          tokenAddress,
-          username: premiumUsername
-        })
+      const response = await fetch('/api/premium-tools', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ 
+    tool: 'analyze-token',
+    tokenAddress,
+    username: premiumUsername
+  })
       });
-      
       const data = await response.json();
       if (data.success && data.analysis) {
         setTokenAnalysis(data.analysis);
@@ -606,15 +607,15 @@ export default function Home() {
     setError('');
     
     try {
-      const response = await fetch('/api/ai-contract-meme', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          contractCode,
-          username: premiumUsername
-        })
-      });
-      
+      const response = await fetch('/api/premium-tools', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ 
+    tool: 'contract-meme',
+    contractCode,
+    username: premiumUsername
+  })
+     }); 
       const data = await response.json();
       if (data.success && data.memeUrl) {
         setContractMeme(data.memeUrl);
@@ -740,16 +741,16 @@ export default function Home() {
     setError('');
     
     try {
-      const response = await fetch('/api/ai-translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          text: translationText,
-          languages: selectedLanguages,
-          username: premiumUsername
-        })
+      const response = await fetch('/api/premium-tools', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ 
+    tool: 'translate',
+    text: translationText,
+    languages: selectedLanguages,
+    username: premiumUsername
+  })
       });
-      
       const data = await response.json();
       if (data.success && data.translations) {
         setTranslations(data.translations);
