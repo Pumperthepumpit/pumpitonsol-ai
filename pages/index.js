@@ -439,7 +439,7 @@ export default function Home() {
     setError('');
     
     try {
-      const response = await fetch('/api/grok-trending', {
+      const response = await fetch('/api/ai-trending', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -473,7 +473,7 @@ export default function Home() {
     setError('');
     
     try {
-      const response = await fetch('/api/grok-trend-meme', {
+      const response = await fetch('/api/ai-trend-meme', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -540,7 +540,7 @@ export default function Home() {
     setError('');
     
     try {
-      const response = await fetch('/api/grok-analyze-token', {
+      const response = await fetch('/api/ai-analyze-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -606,7 +606,7 @@ export default function Home() {
     setError('');
     
     try {
-      const response = await fetch('/api/grok-contract-meme', {
+      const response = await fetch('/api/ai-contract-meme', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -677,7 +677,7 @@ export default function Home() {
       formData.append('whitepaper', whitepaperFile);
       formData.append('username', premiumUsername);
       
-      const response = await fetch('/api/grok-whitepaper-memes', {
+      const response = await fetch('/api/ai-whitepaper-memes', {
         method: 'POST',
         body: formData
       });
@@ -740,7 +740,7 @@ export default function Home() {
     setError('');
     
     try {
-      const response = await fetch('/api/grok-translate', {
+      const response = await fetch('/api/ai-translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
