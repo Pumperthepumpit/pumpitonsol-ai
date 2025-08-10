@@ -18,13 +18,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'Username required' });
     }
     
-    // Clean the username - ensure it has @ at the beginning (SAME AS premium-tools.js)
+    // Just trim the username, don't add @
     let cleanUsername = username?.trim();
-    if (!cleanUsername?.startsWith('@')) {
-      cleanUsername = '@' + cleanUsername;
-    }
     
-    console.log('Verifying premium for cleaned username:', cleanUsername);
+    console.log('Verifying premium for username:', cleanUsername);
     
     // Check if user has active premium
     const { data: premiumUser, error } = await supabase

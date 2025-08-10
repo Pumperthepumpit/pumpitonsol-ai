@@ -22,11 +22,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'Username required' });
     }
     
-    // Clean the username - ensure it has @ at the beginning
+    // Just trim the username, don't add @
     let cleanUsername = username?.trim();
-    if (!cleanUsername?.startsWith('@')) {
-      cleanUsername = '@' + cleanUsername;
-    }
     
     // Verify premium
     const { data: premiumUser } = await supabase
