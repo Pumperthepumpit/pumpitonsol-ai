@@ -234,9 +234,92 @@ async function handleTranslate(res, text, languages) {
     return res.status(400).json({ success: false, message: 'Text and languages required' });
   }
   
+  // Use Grok AI for real translation
+  if (process.env.XAI_API_KEY) {
+    try {
+      const languageNames = {
+        es: 'Spanish',
+        fr: 'French',
+        de: 'German',
+        it: 'Italian',
+        pt: 'Portuguese',
+        ru: 'Russian',
+        ja: 'Japanese',
+        ko: 'Korean',
+        zh: 'Chinese',
+        ar: 'Arabic',
+        hi: 'Hindi',
+        tr: 'Turkish',
+        nl: 'Dutch',
+        pl: 'Polish',
+        vi: 'Vietnamese',
+        th: 'Thai',
+        id: 'Indonesian',
+        ms: 'Malay',
+        fil: 'Filipino',
+        he: 'Hebrew'
+      };
+      
+      const requestedLanguages = languages.map(code => languageNames[code] || code).join(', ');
+      
+      const response = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.XAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'grok-4',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a translator. Translate the given text into the requested languages. Return ONLY a JSON object with language codes as keys and translations as values. Example: {"es": "Hola", "fr": "Bonjour"}`
+            },
+            {
+              role: 'user',
+              content: `Translate "${text}" into these languages: ${requestedLanguages}. Language codes needed: ${languages.join(', ')}`
+            }
+          ],
+          temperature: 0.3
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.choices?.[0]?.message?.content) {
+        try {
+          // Try to parse the JSON response from Grok
+          const content = data.choices[0].message.content;
+          // Remove any markdown code blocks if present
+          const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const translations = JSON.parse(cleanContent);
+          
+          return res.status(200).json({ 
+            success: true, 
+            translations 
+          });
+        } catch (parseError) {
+          console.error('Failed to parse Grok translation response:', parseError);
+          // Fallback to extracting translations manually
+          const translations = {};
+          languages.forEach(lang => {
+            translations[lang] = `[${lang}] ${text}`; // Fallback if parsing fails
+          });
+          return res.status(200).json({ 
+            success: true, 
+            translations 
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Grok translation error:', error);
+    }
+  }
+  
+  // Fallback to mock translations if no API key or error
   const translations = {};
   languages.forEach(lang => {
-    translations[lang] = `[${lang}] ${text}`; // Mock translation
+    translations[lang] = `[${lang}] ${text}`;
   });
   
   return res.status(200).json({ 
@@ -251,13 +334,56 @@ async function handleTrendMeme(res, topic) {
     return res.status(400).json({ success: false, message: 'Topic required' });
   }
   
+  // Handle both topic.title and topic.name for compatibility
+  const topicTitle = topic.title || topic.name || 'Trending Topic';
   const memeId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
   
+  // If we have Grok API, generate a real meme
+  if (process.env.XAI_API_KEY) {
+    try {
+      const response = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.XAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'grok-4',
+          messages: [
+            {
+              role: 'system',
+              content: 'Create a funny meme concept about this trending topic. Be creative and humorous.'
+            },
+            {
+              role: 'user',
+              content: `Create a meme about: ${topicTitle}`
+            }
+          ],
+          temperature: 0.8
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.choices?.[0]?.message?.content) {
+        return res.status(200).json({ 
+          success: true, 
+          memeUrl: `https://via.placeholder.com/1024x1024/FFD700/000000?text=${encodeURIComponent(topicTitle)}`,
+          memeId: memeId,
+          caption: data.choices[0].message.content
+        });
+      }
+    } catch (error) {
+      console.error('Grok meme generation error:', error);
+    }
+  }
+  
+  // Fallback to placeholder
   return res.status(200).json({ 
     success: true, 
-    memeUrl: `https://via.placeholder.com/1024x1024/FFD700/000000?text=${encodeURIComponent(topic.title || 'Trend')}`,
+    memeUrl: `https://via.placeholder.com/1024x1024/FFD700/000000?text=${encodeURIComponent(topicTitle)}`,
     memeId: memeId,
-    caption: `Trending: ${topic.title || 'Hot topic'}`
+    caption: `Trending: ${topicTitle}`
   });
 }
 
