@@ -6,6 +6,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+// Use environment variable for API key
+const XAI_API_KEY = process.env.XAI_API_KEY;
+console.log('API Key configured:', !!XAI_API_KEY);
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Method not allowed' });
@@ -65,19 +69,62 @@ export default async function handler(req, res) {
   }
 }
 
-// SIMPLE MEME GENERATION - ALWAYS WORKS
-function generateSimpleMeme(topText, bottomText = 'PUMPIT_MEME') {
-  const templates = ['drake', 'buzz', 'doge', 'success', 'disaster', 'fry', 'aliens', 'batman', 'oprah', 'stonks'];
+// Helper function to generate cool images (used by trending and contract memeifier)
+async function generateCoolMemeImage(prompt) {
+  console.log('Attempting to generate cool meme with prompt:', prompt);
+  
+  // First try to use Grok if we have the API key
+  if (XAI_API_KEY) {
+    try {
+      // Get a creative meme concept from Grok
+      const conceptResponse = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${XAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'grok-2-1212',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a creative meme designer. Create vivid, detailed descriptions for meme images.'
+            },
+            {
+              role: 'user',
+              content: `Create a detailed visual description for a meme about: ${prompt}. Be creative and specific about the visual elements.`
+            }
+          ],
+          temperature: 0.9,
+          max_tokens: 150
+        })
+      });
+      
+      if (conceptResponse.ok) {
+        const conceptData = await conceptResponse.json();
+        const concept = conceptData.choices[0].message.content;
+        console.log('Grok concept generated:', concept);
+      }
+    } catch (error) {
+      console.error('Grok concept generation failed:', error);
+    }
+  }
+  
+  // Use a better meme generation service
+  // Since Aurora isn't available, we'll use a creative approach with memegen
+  const templates = ['custom', 'aag', 'ackbar', 'afraid', 'apcr', 'older', 'ptj', 'rollsafe', 'cmm', 'ggg'];
   const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
   
-  // Clean text for URL
-  const cleanTop = topText.slice(0, 50).replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
-  const cleanBottom = bottomText.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+  // Create more dynamic text
+  const cleanPrompt = prompt.slice(0, 100).replace(/[^a-zA-Z0-9\s]/g, '');
+  const words = cleanPrompt.split(' ');
+  const topText = words.slice(0, Math.floor(words.length / 2)).join(' ') || 'CRYPTO';
+  const bottomText = words.slice(Math.floor(words.length / 2)).join(' ') || 'PUMPIT';
   
-  // This URL pattern ALWAYS works
-  const memeUrl = `https://api.memegen.link/images/${randomTemplate}/${cleanTop}/${cleanBottom}.png`;
+  // Generate a unique meme URL
+  const memeUrl = `https://api.memegen.link/images/${randomTemplate}/${encodeURIComponent(topText)}/${encodeURIComponent(bottomText)}.png?watermark=none&height=512&width=512`;
   
-  console.log('Generated meme URL:', memeUrl);
+  console.log('Generated cool meme URL:', memeUrl);
   return memeUrl;
 }
 
@@ -85,28 +132,70 @@ function generateSimpleMeme(topText, bottomText = 'PUMPIT_MEME') {
 async function handleTrending(res) {
   console.log('Fetching trending topics...');
   
-  // Return mock trending topics that work
-  const topics = [
-    { name: 'Bitcoin ETF Approved', tweet_count: '45.2K' },
-    { name: 'Solana Memecoins Hot', tweet_count: '23.1K' },
-    { name: '$PUMPIT Mooning', tweet_count: '12.5K' },
-    { name: 'Base Chain Surge', tweet_count: '8.9K' },
-    { name: 'Trump Crypto Pump', tweet_count: '7.2K' },
-    { name: 'Meme Season 2025', tweet_count: '6.8K' },
-    { name: 'DeFi Summer Returns', tweet_count: '5.4K' },
-    { name: 'NFT Comeback', tweet_count: '4.2K' },
-    { name: 'L2 Wars Begin', tweet_count: '3.9K' },
-    { name: 'Airdrop Season', tweet_count: '3.1K' }
-  ];
+  try {
+    if (XAI_API_KEY) {
+      const response = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${XAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'grok-2-1212',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a crypto trends analyst. Return ONLY a JSON array of trending crypto topics.'
+            },
+            {
+              role: 'user',
+              content: 'List the top 10 trending crypto topics right now. Return as JSON array with format: [{"name": "topic", "tweet_count": "number"}]'
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500
+        })
+      });
+      
+      console.log('Grok trending response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+        
+        try {
+          const cleanContent = content.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
+          const topics = JSON.parse(cleanContent);
+          
+          return res.status(200).json({ 
+            success: true, 
+            topics: topics,
+            source: 'grok-live'
+          });
+        } catch (e) {
+          console.log('Failed to parse Grok response, using structured topics');
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Grok trending error:', error);
+  }
   
+  // Fallback topics
   return res.status(200).json({ 
     success: true, 
-    topics: topics,
-    source: 'trending'
+    topics: [
+      { name: 'Bitcoin ETF Approved', tweet_count: '45.2K' },
+      { name: 'Solana Memecoins', tweet_count: '23.1K' },
+      { name: '$PUMPIT Mooning', tweet_count: '12.5K' },
+      { name: 'Base Chain TVL ATH', tweet_count: '8.9K' },
+      { name: 'Trump Crypto Policy', tweet_count: '7.2K' }
+    ],
+    source: 'fallback'
   });
 }
 
-// TOKEN ANALYZER - FIXED TO WORK
+// TOKEN ANALYZER - REAL ANALYSIS, NO MEME
 async function handleAnalyzeToken(res, tokenAddress) {
   if (!tokenAddress) {
     return res.status(400).json({ success: false, message: 'Token address required' });
@@ -115,55 +204,126 @@ async function handleAnalyzeToken(res, tokenAddress) {
   console.log('Analyzing token:', tokenAddress);
   
   try {
-    // Create a short version of the address for the meme
-    const shortAddress = tokenAddress.slice(0, 8);
-    
-    // Generate different memes based on "random" analysis
-    const riskLevels = ['LOW', 'MEDIUM', 'HIGH', 'RUGPULL'];
-    const riskLevel = riskLevels[Math.floor(Math.random() * riskLevels.length)];
-    
-    let topText, bottomText, template;
-    
-    if (riskLevel === 'RUGPULL') {
-      template = 'disaster';
-      topText = `Token_${shortAddress}`;
-      bottomText = 'ITS_A_RUGPULL';
-    } else if (riskLevel === 'HIGH') {
-      template = 'drake';
-      topText = 'Buying_safe_tokens';
-      bottomText = `Aping_into_${shortAddress}`;
-    } else if (riskLevel === 'MEDIUM') {
-      template = 'doge';
-      topText = 'Much_risk';
-      bottomText = 'Very_token';
-    } else {
-      template = 'success';
-      topText = 'Found_a_gem';
-      bottomText = `${shortAddress}_to_moon`;
-    }
-    
-    // Generate the meme URL directly
-    const memeUrl = `https://api.memegen.link/images/${template}/${topText}/${bottomText}.png`;
-    
-    console.log('Token meme URL:', memeUrl);
-    
-    // Create mock analysis
-    const analysis = {
-      summary: `Token ${shortAddress}... analyzed. Risk Level: ${riskLevel}. ${
-        riskLevel === 'RUGPULL' ? 'RUN! This is definitely a scam!' :
-        riskLevel === 'HIGH' ? 'Very risky, probably going to zero.' :
-        riskLevel === 'MEDIUM' ? 'Could pump or dump, pure gambling.' :
-        'Might actually be legitimate, but still DYOR!'
-      }`,
-      riskLevel: riskLevel,
-      memeUrl: memeUrl,
-      details: {
-        marketCap: Math.floor(Math.random() * 100000),
-        liquidity: Math.floor(Math.random() * 50000),
-        holders: Math.floor(Math.random() * 1000)
-      }
+    let analysis = {
+      summary: '',
+      riskLevel: 'Unknown',
+      details: {},
+      memeUrl: null // NO MEME
     };
     
+    // First, get real token data from DexScreener for THIS SPECIFIC TOKEN
+    try {
+      const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
+      const dexData = await dexResponse.json();
+      
+      console.log('DexScreener data received for:', tokenAddress);
+      
+      if (dexData.pairs && dexData.pairs.length > 0) {
+        // Get the first pair data for this specific token
+        const pair = dexData.pairs[0];
+        analysis.details = {
+          tokenAddress: tokenAddress,
+          price: pair.priceUsd || 0,
+          marketCap: pair.fdv || 0,
+          liquidity: pair.liquidity?.usd || 0,
+          volume24h: pair.volume?.h24 || 0,
+          priceChange24h: pair.priceChange?.h24 || 0,
+          createdAt: pair.pairCreatedAt,
+          txCount24h: (pair.txns?.h24?.buys || 0) + (pair.txns?.h24?.sells || 0),
+          holders: pair.txns?.h24?.users || 'Unknown'
+        };
+        
+        console.log('Token details:', analysis.details);
+      } else {
+        // No data found for this token
+        analysis.details = {
+          tokenAddress: tokenAddress,
+          error: 'No trading data found for this token'
+        };
+      }
+    } catch (e) {
+      console.error('DexScreener fetch failed:', e);
+      analysis.details = {
+        tokenAddress: tokenAddress,
+        error: 'Failed to fetch token data'
+      };
+    }
+    
+    // Now use Grok to analyze the token with REAL data
+    if (XAI_API_KEY && analysis.details && !analysis.details.error) {
+      const grokResponse = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${XAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'grok-2-1212',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a crypto token analyst. Analyze tokens for rugpull risks and provide honest, direct assessments. Be specific about the risks.'
+            },
+            {
+              role: 'user',
+              content: `Analyze this Solana token with address ${tokenAddress}:
+                Price: $${analysis.details.price}
+                Market Cap: $${analysis.details.marketCap?.toLocaleString() || '0'}
+                Liquidity: $${analysis.details.liquidity?.toLocaleString() || '0'}
+                24h Volume: $${analysis.details.volume24h?.toLocaleString() || '0'}
+                24h Price Change: ${analysis.details.priceChange24h}%
+                24h Transactions: ${analysis.details.txCount24h}
+                
+                Provide:
+                1. A detailed analysis of the token's safety and investment potential
+                2. Specific red flags or positive indicators
+                3. Risk level: LOW, MEDIUM, HIGH, or RUGPULL
+                4. Clear reasoning for your assessment`
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 400
+        })
+      });
+      
+      if (grokResponse.ok) {
+        const grokData = await grokResponse.json();
+        const grokAnalysis = grokData.choices[0].message.content;
+        
+        // Parse risk level from response
+        if (grokAnalysis.toLowerCase().includes('rugpull') || grokAnalysis.toLowerCase().includes('scam')) {
+          analysis.riskLevel = 'RUGPULL';
+        } else if (grokAnalysis.toLowerCase().includes('high risk')) {
+          analysis.riskLevel = 'HIGH';
+        } else if (grokAnalysis.toLowerCase().includes('medium risk')) {
+          analysis.riskLevel = 'MEDIUM';
+        } else if (grokAnalysis.toLowerCase().includes('low risk')) {
+          analysis.riskLevel = 'LOW';
+        }
+        
+        analysis.summary = grokAnalysis;
+      } else {
+        // Grok failed, provide basic analysis based on data
+        if (analysis.details.liquidity < 1000) {
+          analysis.riskLevel = 'RUGPULL';
+          analysis.summary = `This token has extremely low liquidity ($${analysis.details.liquidity}). High risk of rugpull.`;
+        } else if (analysis.details.liquidity < 10000) {
+          analysis.riskLevel = 'HIGH';
+          analysis.summary = `Low liquidity ($${analysis.details.liquidity}) indicates high risk. Be very careful.`;
+        } else if (analysis.details.liquidity < 50000) {
+          analysis.riskLevel = 'MEDIUM';
+          analysis.summary = `Moderate liquidity ($${analysis.details.liquidity}). Some risk involved.`;
+        } else {
+          analysis.riskLevel = 'LOW';
+          analysis.summary = `Good liquidity ($${analysis.details.liquidity}). Lower risk profile.`;
+        }
+      }
+    } else if (analysis.details.error) {
+      analysis.summary = analysis.details.error;
+      analysis.riskLevel = 'UNKNOWN';
+    }
+    
+    // NO MEME URL - just return the analysis
     return res.status(200).json({ 
       success: true, 
       analysis 
@@ -179,51 +339,55 @@ async function handleAnalyzeToken(res, tokenAddress) {
   }
 }
 
-// CONTRACT MEME - FIXED TO WORK
+// CONTRACT MEME - USE COOL IMAGE GENERATION LIKE TRENDING
 async function handleContractMeme(res, contractCode) {
   if (!contractCode) {
     return res.status(400).json({ success: false, message: 'Contract code required' });
   }
   
-  console.log('Creating contract meme...');
+  console.log('Analyzing contract code...');
   
   try {
-    // Different meme templates for contract code
-    const memeOptions = [
-      { template: 'buzz', top: 'Smart_contracts', bottom: 'Smart_contracts_everywhere' },
-      { template: 'disaster', top: 'My_code_works', bottom: 'In_production_it_breaks' },
-      { template: 'drake', top: 'Writing_tests', bottom: 'YOLO_to_mainnet' },
-      { template: 'doge', top: 'Much_code', bottom: 'Very_bug' },
-      { template: 'fry', top: 'Not_sure_if_feature', bottom: 'Or_just_a_bug' },
-      { template: 'aliens', top: 'Contract_has_no_bugs', bottom: 'Aliens' },
-      { template: 'batman', top: 'My_contract_is_perfect', bottom: 'Check_line_42' },
-      { template: 'oprah', top: 'You_get_a_bug', bottom: 'Everyone_gets_bugs' }
-    ];
+    let memeCaption = "When your smart contract has more bugs than features";
     
-    // Pick a random meme
-    const meme = memeOptions[Math.floor(Math.random() * memeOptions.length)];
+    if (XAI_API_KEY) {
+      const response = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${XAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'grok-2-1212',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a funny code reviewer. Make savage but funny observations about smart contract code.'
+            },
+            {
+              role: 'user',
+              content: `Roast this smart contract code in one funny sentence (keep it short and meme-worthy):\n${contractCode.substring(0, 500)}`
+            }
+          ],
+          temperature: 0.9,
+          max_tokens: 100
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        memeCaption = data.choices[0].message.content.substring(0, 100);
+        console.log('Contract roast:', memeCaption);
+      }
+    }
     
-    // Generate the meme URL
-    const memeUrl = `https://api.memegen.link/images/${meme.template}/${meme.top}/${meme.bottom}.png`;
-    
-    console.log('Contract meme URL:', memeUrl);
-    
-    // Funny captions about the contract
-    const captions = [
-      "When your smart contract has more bugs than features",
-      "This contract is held together by hopes and prayers",
-      "I've seen spaghetti code, but this is the whole Italian restaurant",
-      "The auditor took one look and retired",
-      "99 bugs in the code, patch one up, 117 bugs in the code",
-      "This contract makes me want to go back to Web2"
-    ];
-    
-    const caption = captions[Math.floor(Math.random() * captions.length)];
+    // Generate cool meme image using same method as trending
+    const memeUrl = await generateCoolMemeImage(memeCaption);
     
     return res.status(200).json({ 
       success: true, 
       memeUrl: memeUrl,
-      caption: caption
+      caption: memeCaption
     });
     
   } catch (error) {
@@ -236,7 +400,7 @@ async function handleContractMeme(res, contractCode) {
   }
 }
 
-// TRANSLATOR - SIMPLE VERSION
+// TRANSLATOR - RESTORED ORIGINAL GROK VERSION
 async function handleTranslate(res, text, languages) {
   if (!text || !languages || languages.length === 0) {
     return res.status(400).json({ success: false, message: 'Text and languages required' });
@@ -244,33 +408,64 @@ async function handleTranslate(res, text, languages) {
   
   console.log('Translating text to:', languages);
   
-  // Mock translations (you can add real translation API later)
-  const translations = {};
-  const endings = {
-    es: '¡Vamos!',
-    fr: 'Allons-y!',
-    de: 'Los gehts!',
-    it: 'Andiamo!',
-    pt: 'Vamos lá!',
-    ru: 'Поехали!',
-    ja: '行こう！',
-    ko: '가자!',
-    zh: '走吧！',
-    ar: 'هيا بنا!',
-    hi: 'चलो!',
-    tr: 'Hadi!',
-    nl: 'Laten we gaan!',
-    pl: 'Chodźmy!',
-    vi: 'Đi nào!',
-    th: 'ไปกันเถอะ!',
-    id: 'Ayo!',
-    ms: 'Jom!',
-    fil: 'Tara na!',
-    he: 'בואו!'
-  };
+  if (XAI_API_KEY) {
+    try {
+      const languageNames = {
+        es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese',
+        ru: 'Russian', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', ar: 'Arabic',
+        hi: 'Hindi', tr: 'Turkish', nl: 'Dutch', pl: 'Polish', vi: 'Vietnamese',
+        th: 'Thai', id: 'Indonesian', ms: 'Malay', fil: 'Filipino', he: 'Hebrew'
+      };
+      
+      const requestedLanguages = languages.map(code => languageNames[code] || code).join(', ');
+      
+      const response = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${XAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'grok-2-1212',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a translator. Translate text to multiple languages. Return ONLY a JSON object with language codes as keys and translations as values.`
+            },
+            {
+              role: 'user',
+              content: `Translate "${text}" to these languages: ${requestedLanguages}. Return as JSON: {"es": "...", "fr": "..."} with language codes: ${languages.join(', ')}`
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 500
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        try {
+          const content = data.choices[0].message.content;
+          const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const translations = JSON.parse(cleanContent);
+          
+          return res.status(200).json({ 
+            success: true, 
+            translations 
+          });
+        } catch (parseError) {
+          console.error('Translation parse error:', parseError);
+        }
+      }
+    } catch (error) {
+      console.error('Grok translation error:', error);
+    }
+  }
   
+  // Fallback if no API key or error
+  const translations = {};
   languages.forEach(lang => {
-    translations[lang] = `${text} - ${endings[lang] || 'PUMPIT!'}`;
+    translations[lang] = `[${lang}] ${text}`;
   });
   
   return res.status(200).json({ 
@@ -279,7 +474,7 @@ async function handleTranslate(res, text, languages) {
   });
 }
 
-// TREND MEME - FIXED TO WORK
+// TREND MEME - USE COOL IMAGE GENERATION
 async function handleTrendMeme(res, topic) {
   if (!topic) {
     return res.status(400).json({ success: false, message: 'Topic required' });
@@ -289,33 +484,37 @@ async function handleTrendMeme(res, topic) {
   console.log('Generating trend meme for:', topicTitle);
   
   try {
-    // Clean the topic for URL
-    const cleanTopic = topicTitle.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 30);
+    let caption = `${topicTitle} is trending! 🚀`;
     
-    // Different templates for different topics
-    const templates = ['drake', 'buzz', 'doge', 'success', 'stonks', 'batman'];
-    const template = templates[Math.floor(Math.random() * templates.length)];
-    
-    // Generate meme based on topic
-    let topText = cleanTopic;
-    let bottomText = 'PUMPIT_TIME';
-    
-    if (topicTitle.toLowerCase().includes('moon')) {
-      bottomText = 'TO_THE_MOON';
-    } else if (topicTitle.toLowerCase().includes('rug')) {
-      bottomText = 'RUG_INCOMING';
-    } else if (topicTitle.toLowerCase().includes('pump')) {
-      bottomText = 'PUMP_IT_UP';
-    } else if (topicTitle.toLowerCase().includes('bear')) {
-      bottomText = 'BEAR_R_FUK';
+    // Get a funny caption from Grok
+    if (XAI_API_KEY) {
+      const captionResponse = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${XAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'grok-2-1212',
+          messages: [
+            {
+              role: 'user',
+              content: `Create a short, funny meme caption about: ${topicTitle}. Make it viral and crypto-related.`
+            }
+          ],
+          temperature: 0.9,
+          max_tokens: 50
+        })
+      });
+      
+      if (captionResponse.ok) {
+        const captionData = await captionResponse.json();
+        caption = captionData.choices[0].message.content;
+      }
     }
     
-    // Generate the meme URL
-    const memeUrl = `https://api.memegen.link/images/${template}/${topText}/${bottomText}.png`;
-    
-    console.log('Trend meme URL:', memeUrl);
-    
-    const caption = `${topicTitle} is trending! Time to PUMP IT! 🚀`;
+    // Generate cool meme image
+    const memeUrl = await generateCoolMemeImage(`${topicTitle}: ${caption}`);
     
     return res.status(200).json({ 
       success: true, 
@@ -334,49 +533,28 @@ async function handleTrendMeme(res, topic) {
   }
 }
 
-// WHITEPAPER MEMES - SIMPLE VERSION
+// WHITEPAPER MEMES
 async function handleWhitepaperMemes(res, whitepaperContent) {
   if (!whitepaperContent) {
     return res.status(400).json({ success: false, message: 'Whitepaper content required' });
   }
   
-  console.log('Processing whitepaper for memes...');
+  console.log('Processing whitepaper...');
   
   const memes = [];
   
   try {
-    // Generate 3 different memes about whitepapers
-    const memeTemplates = [
-      { 
-        template: 'buzz',
-        top: 'Revolutionary_technology',
-        bottom: 'Its_just_a_database',
-        topic: 'Introduction',
-        caption: 'Every whitepaper intro ever'
-      },
-      {
-        template: 'drake',
-        top: 'Reading_the_whitepaper',
-        bottom: 'Aping_in_blindly',
-        topic: 'Tokenomics',
-        caption: 'Who actually reads these?'
-      },
-      {
-        template: 'disaster',
-        top: 'Q4_2025_mainnet',
-        bottom: 'Its_already_2026',
-        topic: 'Roadmap',
-        caption: 'Roadmap vs Reality'
-      }
-    ];
+    // Generate 3 memes from whitepaper using cool image generation
+    const topics = ['Introduction', 'Tokenomics', 'Roadmap'];
     
-    for (const meme of memeTemplates) {
-      const memeUrl = `https://api.memegen.link/images/${meme.template}/${meme.top}/${meme.bottom}.png`;
+    for (const topic of topics) {
+      const caption = `${topic}: When the whitepaper says "revolutionary" for the 50th time`;
+      const memeUrl = await generateCoolMemeImage(caption);
       
       memes.push({
         url: memeUrl,
-        topic: meme.topic,
-        caption: meme.caption
+        topic: topic,
+        caption: caption
       });
     }
     
