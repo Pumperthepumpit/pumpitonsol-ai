@@ -1,4 +1,6 @@
 // pages/api/premium-tools.js
+// PART 1 OF 5 - IMPORTS AND MAIN HANDLER
+
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -6,9 +8,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-// Use environment variable for API key
+// Test if API key exists and log it (remove in production)
 const XAI_API_KEY = process.env.XAI_API_KEY;
-console.log('API Key configured:', !!XAI_API_KEY);
+console.log('API Key exists:', !!XAI_API_KEY);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -68,64 +70,53 @@ export default async function handler(req, res) {
     });
   }
 }
+// PART 2 OF 5 - IMAGE GENERATION AND TRENDING
 
-// Helper function to generate cool images (used by trending and contract memeifier)
-async function generateCoolMemeImage(prompt) {
-  console.log('Attempting to generate cool meme with prompt:', prompt);
+// Helper function to generate images with Grok/Aurora - ORIGINAL VERSION
+async function generateGrokImage(prompt) {
+  console.log('Attempting to generate image with prompt:', prompt);
   
-  // First try to use Grok if we have the API key
-  if (XAI_API_KEY) {
-    try {
-      // Get a creative meme concept from Grok
-      const conceptResponse = await fetch('https://api.x.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${XAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'grok-2-1212',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a creative meme designer. Create vivid, detailed descriptions for meme images.'
-            },
-            {
-              role: 'user',
-              content: `Create a detailed visual description for a meme about: ${prompt}. Be creative and specific about the visual elements.`
-            }
-          ],
-          temperature: 0.9,
-          max_tokens: 150
-        })
-      });
+  try {
+    // Try Aurora image generation endpoint
+    const response = await fetch('https://api.x.ai/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${XAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        n: 1,
+        size: "1024x1024",
+        model: "aurora" // or try "grok-2-image"
+      })
+    });
+    
+    console.log('Aurora response status:', response.status);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Aurora response data:', JSON.stringify(data).substring(0, 200));
       
-      if (conceptResponse.ok) {
-        const conceptData = await conceptResponse.json();
-        const concept = conceptData.choices[0].message.content;
-        console.log('Grok concept generated:', concept);
+      if (data.data && data.data[0] && data.data[0].url) {
+        return data.data[0].url;
       }
-    } catch (error) {
-      console.error('Grok concept generation failed:', error);
+    } else {
+      const errorData = await response.json();
+      console.error('Aurora error:', errorData);
     }
+  } catch (error) {
+    console.error('Aurora generation failed:', error);
   }
   
-  // Use a better meme generation service
-  // Since Aurora isn't available, we'll use a creative approach with memegen
-  const templates = ['custom', 'aag', 'ackbar', 'afraid', 'apcr', 'older', 'ptj', 'rollsafe', 'cmm', 'ggg'];
+  // Fallback to memegen.link if Aurora fails
+  console.log('Falling back to memegen.link');
+  const templates = ['drake', 'buzz', 'doge', 'success', 'disaster', 'fry', 'aliens', 'batman', 'oprah'];
   const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+  const topText = prompt.slice(0, 50).replace(/[^a-zA-Z0-9\s]/g, '');
+  const bottomText = 'PUMPIT TO THE MOON';
   
-  // Create more dynamic text
-  const cleanPrompt = prompt.slice(0, 100).replace(/[^a-zA-Z0-9\s]/g, '');
-  const words = cleanPrompt.split(' ');
-  const topText = words.slice(0, Math.floor(words.length / 2)).join(' ') || 'CRYPTO';
-  const bottomText = words.slice(Math.floor(words.length / 2)).join(' ') || 'PUMPIT';
-  
-  // Generate a unique meme URL
-  const memeUrl = `https://api.memegen.link/images/${randomTemplate}/${encodeURIComponent(topText)}/${encodeURIComponent(bottomText)}.png?watermark=none&height=512&width=512`;
-  
-  console.log('Generated cool meme URL:', memeUrl);
-  return memeUrl;
+  return `https://api.memegen.link/images/${randomTemplate}/${encodeURIComponent(topText)}/${encodeURIComponent(bottomText)}.png`;
 }
 
 // TRENDING TOPICS
@@ -141,7 +132,7 @@ async function handleTrending(res) {
           'Authorization': `Bearer ${XAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'grok-2-1212',
+          model: 'grok-2-1212', // Using correct model name
           messages: [
             {
               role: 'system',
@@ -194,6 +185,7 @@ async function handleTrending(res) {
     source: 'fallback'
   });
 }
+// PART 3 OF 5 - TOKEN ANALYZER (KEEP CURRENT WORKING VERSION)
 
 // TOKEN ANALYZER - REAL ANALYSIS, NO MEME
 async function handleAnalyzeToken(res, tokenAddress) {
@@ -338,8 +330,9 @@ async function handleAnalyzeToken(res, tokenAddress) {
     });
   }
 }
+// PART 4 OF 5 - CONTRACT MEME & TRANSLATOR
 
-// CONTRACT MEME - USE COOL IMAGE GENERATION LIKE TRENDING
+// CONTRACT MEME - USING SAME METHOD AS TRENDING
 async function handleContractMeme(res, contractCode) {
   if (!contractCode) {
     return res.status(400).json({ success: false, message: 'Contract code required' });
@@ -381,8 +374,8 @@ async function handleContractMeme(res, contractCode) {
       }
     }
     
-    // Generate cool meme image using same method as trending
-    const memeUrl = await generateCoolMemeImage(memeCaption);
+    // Generate actual meme image using same method as trending
+    const memeUrl = await generateGrokImage(memeCaption);
     
     return res.status(200).json({ 
       success: true, 
@@ -400,7 +393,7 @@ async function handleContractMeme(res, contractCode) {
   }
 }
 
-// TRANSLATOR - RESTORED ORIGINAL GROK VERSION
+// TRANSLATOR - KEEP CURRENT WORKING VERSION
 async function handleTranslate(res, text, languages) {
   if (!text || !languages || languages.length === 0) {
     return res.status(400).json({ success: false, message: 'Text and languages required' });
@@ -473,15 +466,16 @@ async function handleTranslate(res, text, languages) {
     translations 
   });
 }
+// PART 5 OF 5 - TREND MEME & WHITEPAPER
 
-// TREND MEME - USE COOL IMAGE GENERATION
+// TREND MEME - ORIGINAL VERSION THAT WAS GENERATING COOL IMAGES
 async function handleTrendMeme(res, topic) {
   if (!topic) {
     return res.status(400).json({ success: false, message: 'Topic required' });
   }
   
   const topicTitle = topic.title || topic.name || topic || 'Trending Topic';
-  console.log('Generating trend meme for:', topicTitle);
+  const memeId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
   
   try {
     let caption = `${topicTitle} is trending! 🚀`;
@@ -513,13 +507,13 @@ async function handleTrendMeme(res, topic) {
       }
     }
     
-    // Generate cool meme image
-    const memeUrl = await generateCoolMemeImage(`${topicTitle}: ${caption}`);
+    // Generate the meme image using the same method that was working
+    const memeUrl = await generateGrokImage(`${topicTitle}: ${caption}`);
     
     return res.status(200).json({ 
       success: true, 
       memeUrl: memeUrl,
-      memeId: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      memeId: memeId,
       caption: caption
     });
     
@@ -544,12 +538,12 @@ async function handleWhitepaperMemes(res, whitepaperContent) {
   const memes = [];
   
   try {
-    // Generate 3 memes from whitepaper using cool image generation
+    // Generate 3 memes from whitepaper
     const topics = ['Introduction', 'Tokenomics', 'Roadmap'];
     
     for (const topic of topics) {
       const caption = `${topic}: When the whitepaper says "revolutionary" for the 50th time`;
-      const memeUrl = await generateCoolMemeImage(caption);
+      const memeUrl = await generateGrokImage(caption);
       
       memes.push({
         url: memeUrl,
