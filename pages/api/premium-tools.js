@@ -1,5 +1,5 @@
 // pages/api/premium-tools.js
-// PART 1 OF 5 - IMPORTS AND MAIN HANDLER
+// COMPLETE VERSION WITH CACHING, RATE LIMITING, AND FIXED IMAGE GENERATION
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -8,10 +8,179 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-// Test if API key exists and log it (remove in production)
 const XAI_API_KEY = process.env.XAI_API_KEY;
 console.log('API Key exists:', !!XAI_API_KEY);
 
+// ============= CACHE SYSTEM =============
+class GrokCache {
+  constructor() {
+    this.memoryCache = new Map();
+    this.cacheTimers = new Map();
+  }
+
+  getCacheKey(tool, params) {
+    const paramString = JSON.stringify(params || {});
+    return `${tool}:${paramString}`;
+  }
+
+  getCacheDuration(tool, isPremium = false, isEnterprise = false) {
+    const durations = {
+      free: {
+        trending: 6 * 60 * 60 * 1000,      // 6 hours
+        'analyze-token': 24 * 60 * 60 * 1000, // 24 hours
+        'contract-meme': 12 * 60 * 60 * 1000, // 12 hours
+        translate: 24 * 60 * 60 * 1000,    // 24 hours
+        'trend-meme': 3 * 60 * 60 * 1000,  // 3 hours
+        default: 6 * 60 * 60 * 1000        // 6 hours
+      },
+      premium: {
+        trending: 1 * 60 * 60 * 1000,      // 1 hour
+        'analyze-token': 6 * 60 * 60 * 1000,  // 6 hours
+        'contract-meme': 3 * 60 * 60 * 1000,  // 3 hours
+        translate: 12 * 60 * 60 * 1000,    // 12 hours
+        'trend-meme': 30 * 60 * 1000,      // 30 minutes
+        default: 1 * 60 * 60 * 1000        // 1 hour
+      },
+      enterprise: {
+        trending: 5 * 60 * 1000,           // 5 minutes
+        'analyze-token': 15 * 60 * 1000,   // 15 minutes
+        'contract-meme': 10 * 60 * 1000,   // 10 minutes
+        translate: 1 * 60 * 60 * 1000,     // 1 hour
+        'trend-meme': 5 * 60 * 1000,       // 5 minutes
+        default: 5 * 60 * 1000             // 5 minutes
+      }
+    };
+
+    const tier = isEnterprise ? 'enterprise' : (isPremium ? 'premium' : 'free');
+    return durations[tier][tool] || durations[tier].default;
+  }
+
+  async getFromMemory(key) {
+    const cached = this.memoryCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+      console.log(`[Cache] Memory hit for ${key}`);
+      return cached.data;
+    }
+    return null;
+  }
+
+  async getFromDatabase(key) {
+    try {
+      const { data, error } = await supabase
+        .from('api_cache')
+        .select('*')
+        .eq('cache_key', key)
+        .gte('expires_at', new Date().toISOString())
+        .single();
+
+      if (data && !error) {
+        console.log(`[Cache] Database hit for ${key}`);
+        this.memoryCache.set(key, {
+          data: data.response_data,
+          expiresAt: new Date(data.expires_at).getTime()
+        });
+        return data.response_data;
+      }
+    } catch (error) {
+      console.error('[Cache] Database read error:', error);
+    }
+    return null;
+  }
+
+  async get(tool, params, userTier = 'free') {
+    const key = this.getCacheKey(tool, params);
+    
+    let cached = await this.getFromMemory(key);
+    if (cached) return cached;
+
+    cached = await this.getFromDatabase(key);
+    if (cached) return cached;
+
+    console.log(`[Cache] Miss for ${key}`);
+    return null;
+  }
+
+  async set(tool, params, data, userTier = 'free') {
+    const key = this.getCacheKey(tool, params);
+    const isPremium = userTier === 'premium' || userTier === 'enterprise';
+    const isEnterprise = userTier === 'enterprise';
+    const duration = this.getCacheDuration(tool, isPremium, isEnterprise);
+    const expiresAt = Date.now() + duration;
+
+    this.memoryCache.set(key, {
+      data: data,
+      expiresAt: expiresAt
+    });
+
+    if (this.cacheTimers.has(key)) {
+      clearTimeout(this.cacheTimers.get(key));
+    }
+
+    const timer = setTimeout(() => {
+      this.memoryCache.delete(key);
+      this.cacheTimers.delete(key);
+    }, duration);
+    this.cacheTimers.set(key, timer);
+
+    try {
+      await supabase
+        .from('api_cache')
+        .upsert({
+          cache_key: key,
+          tool: tool,
+          request_params: params,
+          response_data: data,
+          expires_at: new Date(expiresAt).toISOString(),
+          created_at: new Date().toISOString()
+        }, {
+          onConflict: 'cache_key'
+        });
+      
+      console.log(`[Cache] Stored ${key} for ${duration/1000/60} minutes`);
+    } catch (error) {
+      console.error('[Cache] Database write error:', error);
+    }
+
+    return data;
+  }
+}
+
+const cache = new GrokCache();
+
+// ============= RATE LIMITER =============
+const rateLimiter = new Map();
+
+function checkRateLimit(userId, tier = 'free') {
+  const limits = {
+    free: { requests: 1, window: 24 * 60 * 60 * 1000 },
+    premium: { requests: 20, window: 24 * 60 * 60 * 1000 },
+    enterprise: { requests: 1000, window: 24 * 60 * 60 * 1000 }
+  };
+
+  const limit = limits[tier];
+  const now = Date.now();
+  const userLimits = rateLimiter.get(userId) || { count: 0, resetAt: now + limit.window };
+
+  if (now > userLimits.resetAt) {
+    userLimits.count = 0;
+    userLimits.resetAt = now + limit.window;
+  }
+
+  if (userLimits.count >= limit.requests) {
+    return { allowed: false, remaining: 0, resetAt: userLimits.resetAt };
+  }
+
+  userLimits.count++;
+  rateLimiter.set(userId, userLimits);
+
+  return { 
+    allowed: true, 
+    remaining: limit.requests - userLimits.count,
+    resetAt: userLimits.resetAt 
+  };
+}
+
+// ============= MAIN HANDLER =============
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Method not allowed' });
@@ -24,42 +193,112 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'Tool parameter required' });
     }
     
-    if (!username) {
-      return res.status(400).json({ success: false, message: 'Username required' });
-    }
-    
-    // Just trim the username, don't add @
     let cleanUsername = username?.trim();
+    let userTier = 'free';
+    let userId = cleanUsername || 'anonymous';
     
-    // Verify premium
-    const { data: premiumUser } = await supabase
-      .from('premium_users')
-      .select('*')
-      .eq('telegram_username', cleanUsername)
-      .gte('expires_at', new Date().toISOString())
-      .single();
-    
-    if (!premiumUser) {
-      return res.status(403).json({ success: false, message: 'Premium required' });
+    // Check if user is premium
+    if (cleanUsername) {
+      const { data: premiumUser } = await supabase
+        .from('premium_users')
+        .select('*')
+        .eq('telegram_username', cleanUsername)
+        .gte('expires_at', new Date().toISOString())
+        .single();
+      
+      if (premiumUser) {
+        userTier = premiumUser.tier || 'premium';
+        userId = premiumUser.id || cleanUsername;
+      }
     }
     
-    // Route to appropriate tool function
+    // Check rate limits
+    const rateLimit = checkRateLimit(userId, userTier);
+    if (!rateLimit.allowed) {
+      const resetIn = Math.ceil((rateLimit.resetAt - Date.now()) / 1000 / 60);
+      return res.status(429).json({ 
+        success: false, 
+        message: `Rate limit exceeded. Try again in ${resetIn} minutes.`,
+        resetAt: rateLimit.resetAt
+      });
+    }
+
+    res.setHeader('X-RateLimit-Remaining', rateLimit.remaining);
+    res.setHeader('X-RateLimit-Reset', new Date(rateLimit.resetAt).toISOString());
+
+    // Try cache first
+    const cacheParams = { ...params, tool };
+    const cachedResponse = await cache.get(tool, cacheParams, userTier);
+    
+    if (cachedResponse) {
+      console.log(`[API] Serving cached response for ${tool}`);
+      return res.status(200).json({
+        ...cachedResponse,
+        cached: true,
+        tier: userTier
+      });
+    }
+
+    // Free users get limited features
+    if (userTier === 'free' && !cachedResponse) {
+      if (tool === 'trending') {
+        const staticTrending = {
+          success: true,
+          topics: [
+            { name: 'Bitcoin Halving', tweet_count: '10K+' },
+            { name: 'Solana Season', tweet_count: '5K+' },
+            { name: '$PUMPIT Rising', tweet_count: '2K+' }
+          ],
+          source: 'static',
+          message: 'Upgrade to Premium for real-time trends'
+        };
+        
+        await cache.set(tool, cacheParams, staticTrending, userTier);
+        return res.status(200).json(staticTrending);
+      }
+      
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Premium required for this feature',
+        upgrade_url: '/premium'
+      });
+    }
+
+    // Premium/Enterprise get fresh data
+    let response;
+    
     switch(tool) {
       case 'trending':
-        return await handleTrending(res);
+        response = await handleTrending();
+        break;
       case 'analyze-token':
-        return await handleAnalyzeToken(res, params.tokenAddress);
+        response = await handleAnalyzeToken(params.tokenAddress);
+        break;
       case 'contract-meme':
-        return await handleContractMeme(res, params.contractCode);
+        response = await handleContractMeme(params.contractCode);
+        break;
       case 'translate':
-        return await handleTranslate(res, params.text, params.languages);
+        response = await handleTranslate(params.text, params.languages);
+        break;
       case 'trend-meme':
-        return await handleTrendMeme(res, params.topic);
+        response = await handleTrendMeme(params.topic);
+        break;
       case 'whitepaper-memes':
-        return await handleWhitepaperMemes(res, params.whitepaperContent);
+        response = await handleWhitepaperMemes(params.whitepaperContent);
+        break;
       default:
-        return res.status(400).json({ success: false, message: 'Invalid tool specified' });
+        return res.status(400).json({ success: false, message: 'Invalid tool' });
     }
+    
+    if (response && response.success) {
+      await cache.set(tool, cacheParams, response, userTier);
+    }
+    
+    response.cached = false;
+    response.tier = userTier;
+    response.remaining = rateLimit.remaining;
+    
+    return res.status(200).json(response);
     
   } catch (error) {
     console.error('Premium tools error:', error);
@@ -70,57 +309,57 @@ export default async function handler(req, res) {
     });
   }
 }
-// PART 2 OF 5 - IMAGE GENERATION AND TRENDING
 
-// Helper function to generate images with Grok/Aurora - ORIGINAL VERSION
+// ============= IMAGE GENERATION HELPER =============
 async function generateGrokImage(prompt) {
-  console.log('Attempting to generate image with prompt:', prompt);
+  console.log('Generating image with prompt:', prompt);
   
-  try {
-    // Try Aurora image generation endpoint
-    const response = await fetch('https://api.x.ai/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${XAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        prompt: prompt,
-        n: 1,
-        size: "1024x1024",
-        model: "aurora" // or try "grok-2-image"
-      })
-    });
-    
-    console.log('Aurora response status:', response.status);
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log('Aurora response data:', JSON.stringify(data).substring(0, 200));
+  // Try Grok's image generation if API key exists
+  if (XAI_API_KEY) {
+    try {
+      const response = await fetch('https://api.x.ai/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${XAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          model: "grok-2-image", // Correct model name
+          n: 1,
+          response_format: "url"
+        })
+      });
       
-      if (data.data && data.data[0] && data.data[0].url) {
-        return data.data[0].url;
+      console.log('Grok image response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.data && data.data[0] && data.data[0].url) {
+          console.log('Successfully generated Grok image');
+          return data.data[0].url;
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('Grok image generation failed:', errorText);
       }
-    } else {
-      const errorData = await response.json();
-      console.error('Aurora error:', errorData);
+    } catch (error) {
+      console.error('Grok image generation error:', error);
     }
-  } catch (error) {
-    console.error('Aurora generation failed:', error);
   }
   
-  // Fallback to memegen.link if Aurora fails
-  console.log('Falling back to memegen.link');
+  // Fallback to memegen.link
+  console.log('Using memegen.link fallback');
   const templates = ['drake', 'buzz', 'doge', 'success', 'disaster', 'fry', 'aliens', 'batman', 'oprah'];
   const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
-  const topText = prompt.slice(0, 50).replace(/[^a-zA-Z0-9\s]/g, '');
-  const bottomText = 'PUMPIT TO THE MOON';
+  const topText = prompt.slice(0, 50).replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+  const bottomText = 'PUMPIT_TO_THE_MOON';
   
-  return `https://api.memegen.link/images/${randomTemplate}/${encodeURIComponent(topText)}/${encodeURIComponent(bottomText)}.png`;
+  return `https://api.memegen.link/images/${randomTemplate}/${topText}/${bottomText}.png`;
 }
 
-// TRENDING TOPICS
-async function handleTrending(res) {
+// ============= HANDLER FUNCTIONS =============
+async function handleTrending() {
   console.log('Fetching trending topics...');
   
   try {
@@ -132,7 +371,7 @@ async function handleTrending(res) {
           'Authorization': `Bearer ${XAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'grok-2-1212', // Using correct model name
+          model: 'grok-2-1212',
           messages: [
             {
               role: 'system',
@@ -148,8 +387,6 @@ async function handleTrending(res) {
         })
       });
       
-      console.log('Grok trending response status:', response.status);
-      
       if (response.ok) {
         const data = await response.json();
         const content = data.choices[0].message.content;
@@ -158,13 +395,14 @@ async function handleTrending(res) {
           const cleanContent = content.replace(/```json\n?/gi, '').replace(/```\n?/gi, '').trim();
           const topics = JSON.parse(cleanContent);
           
-          return res.status(200).json({ 
+          return { 
             success: true, 
             topics: topics,
-            source: 'grok-live'
-          });
+            source: 'grok-live',
+            timestamp: new Date().toISOString()
+          };
         } catch (e) {
-          console.log('Failed to parse Grok response, using structured topics');
+          console.log('Failed to parse Grok response');
         }
       }
     }
@@ -173,7 +411,7 @@ async function handleTrending(res) {
   }
   
   // Fallback topics
-  return res.status(200).json({ 
+  return { 
     success: true, 
     topics: [
       { name: 'Bitcoin ETF Approved', tweet_count: '45.2K' },
@@ -182,168 +420,132 @@ async function handleTrending(res) {
       { name: 'Base Chain TVL ATH', tweet_count: '8.9K' },
       { name: 'Trump Crypto Policy', tweet_count: '7.2K' }
     ],
-    source: 'fallback'
-  });
+    source: 'fallback',
+    timestamp: new Date().toISOString()
+  };
 }
-// PART 3 OF 5 - TOKEN ANALYZER (KEEP CURRENT WORKING VERSION)
 
-// TOKEN ANALYZER - REAL ANALYSIS, NO MEME
-async function handleAnalyzeToken(res, tokenAddress) {
+async function handleAnalyzeToken(tokenAddress) {
   if (!tokenAddress) {
-    return res.status(400).json({ success: false, message: 'Token address required' });
+    throw new Error('Token address required');
   }
   
   console.log('Analyzing token:', tokenAddress);
   
+  let analysis = {
+    summary: '',
+    riskLevel: 'Unknown',
+    details: {},
+    memeUrl: null,
+    timestamp: new Date().toISOString()
+  };
+  
+  // Get real token data from DexScreener
   try {
-    let analysis = {
-      summary: '',
-      riskLevel: 'Unknown',
-      details: {},
-      memeUrl: null // NO MEME
-    };
+    const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
+    const dexData = await dexResponse.json();
     
-    // First, get real token data from DexScreener for THIS SPECIFIC TOKEN
-    try {
-      const dexResponse = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`);
-      const dexData = await dexResponse.json();
-      
-      console.log('DexScreener data received for:', tokenAddress);
-      
-      if (dexData.pairs && dexData.pairs.length > 0) {
-        // Get the first pair data for this specific token
-        const pair = dexData.pairs[0];
-        analysis.details = {
-          tokenAddress: tokenAddress,
-          price: pair.priceUsd || 0,
-          marketCap: pair.fdv || 0,
-          liquidity: pair.liquidity?.usd || 0,
-          volume24h: pair.volume?.h24 || 0,
-          priceChange24h: pair.priceChange?.h24 || 0,
-          createdAt: pair.pairCreatedAt,
-          txCount24h: (pair.txns?.h24?.buys || 0) + (pair.txns?.h24?.sells || 0),
-          holders: pair.txns?.h24?.users || 'Unknown'
-        };
-        
-        console.log('Token details:', analysis.details);
-      } else {
-        // No data found for this token
-        analysis.details = {
-          tokenAddress: tokenAddress,
-          error: 'No trading data found for this token'
-        };
-      }
-    } catch (e) {
-      console.error('DexScreener fetch failed:', e);
+    if (dexData.pairs && dexData.pairs.length > 0) {
+      const pair = dexData.pairs[0];
       analysis.details = {
         tokenAddress: tokenAddress,
-        error: 'Failed to fetch token data'
+        price: pair.priceUsd || 0,
+        marketCap: pair.fdv || 0,
+        liquidity: pair.liquidity?.usd || 0,
+        volume24h: pair.volume?.h24 || 0,
+        priceChange24h: pair.priceChange?.h24 || 0,
+        createdAt: pair.pairCreatedAt,
+        txCount24h: (pair.txns?.h24?.buys || 0) + (pair.txns?.h24?.sells || 0),
+        holders: pair.txns?.h24?.users || 'Unknown'
       };
-    }
-    
-    // Now use Grok to analyze the token with REAL data
-    if (XAI_API_KEY && analysis.details && !analysis.details.error) {
-      const grokResponse = await fetch('https://api.x.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${XAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'grok-2-1212',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a crypto token analyst. Analyze tokens for rugpull risks and provide honest, direct assessments. Be specific about the risks.'
-            },
-            {
-              role: 'user',
-              content: `Analyze this Solana token with address ${tokenAddress}:
-                Price: $${analysis.details.price}
-                Market Cap: $${analysis.details.marketCap?.toLocaleString() || '0'}
-                Liquidity: $${analysis.details.liquidity?.toLocaleString() || '0'}
-                24h Volume: $${analysis.details.volume24h?.toLocaleString() || '0'}
-                24h Price Change: ${analysis.details.priceChange24h}%
-                24h Transactions: ${analysis.details.txCount24h}
-                
-                Provide:
-                1. A detailed analysis of the token's safety and investment potential
-                2. Specific red flags or positive indicators
-                3. Risk level: LOW, MEDIUM, HIGH, or RUGPULL
-                4. Clear reasoning for your assessment`
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 400
-        })
-      });
       
-      if (grokResponse.ok) {
-        const grokData = await grokResponse.json();
-        const grokAnalysis = grokData.choices[0].message.content;
+      // Use Grok for analysis
+      if (XAI_API_KEY) {
+        const grokResponse = await fetch('https://api.x.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${XAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'grok-2-1212',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a crypto token analyst. Analyze tokens for rugpull risks and provide honest assessments.'
+              },
+              {
+                role: 'user',
+                content: `Analyze this Solana token:
+                  Address: ${tokenAddress}
+                  Price: $${analysis.details.price}
+                  Market Cap: $${analysis.details.marketCap?.toLocaleString() || '0'}
+                  Liquidity: $${analysis.details.liquidity?.toLocaleString() || '0'}
+                  24h Volume: $${analysis.details.volume24h?.toLocaleString() || '0'}
+                  
+                  Provide a brief risk assessment.`
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 400
+          })
+        });
         
-        // Parse risk level from response
-        if (grokAnalysis.toLowerCase().includes('rugpull') || grokAnalysis.toLowerCase().includes('scam')) {
-          analysis.riskLevel = 'RUGPULL';
-        } else if (grokAnalysis.toLowerCase().includes('high risk')) {
-          analysis.riskLevel = 'HIGH';
-        } else if (grokAnalysis.toLowerCase().includes('medium risk')) {
-          analysis.riskLevel = 'MEDIUM';
-        } else if (grokAnalysis.toLowerCase().includes('low risk')) {
-          analysis.riskLevel = 'LOW';
+        if (grokResponse.ok) {
+          const grokData = await grokResponse.json();
+          analysis.summary = grokData.choices[0].message.content;
+          
+          // Determine risk level
+          const summary = analysis.summary.toLowerCase();
+          if (summary.includes('rugpull') || summary.includes('scam')) {
+            analysis.riskLevel = 'RUGPULL';
+          } else if (summary.includes('high risk')) {
+            analysis.riskLevel = 'HIGH';
+          } else if (summary.includes('medium risk')) {
+            analysis.riskLevel = 'MEDIUM';
+          } else {
+            analysis.riskLevel = 'LOW';
+          }
         }
-        
-        analysis.summary = grokAnalysis;
       } else {
-        // Grok failed, provide basic analysis based on data
+        // Basic analysis without Grok
         if (analysis.details.liquidity < 1000) {
           analysis.riskLevel = 'RUGPULL';
-          analysis.summary = `This token has extremely low liquidity ($${analysis.details.liquidity}). High risk of rugpull.`;
+          analysis.summary = `Extremely low liquidity ($${analysis.details.liquidity}). High rugpull risk.`;
         } else if (analysis.details.liquidity < 10000) {
           analysis.riskLevel = 'HIGH';
-          analysis.summary = `Low liquidity ($${analysis.details.liquidity}) indicates high risk. Be very careful.`;
+          analysis.summary = `Low liquidity ($${analysis.details.liquidity}). Be careful.`;
         } else if (analysis.details.liquidity < 50000) {
           analysis.riskLevel = 'MEDIUM';
-          analysis.summary = `Moderate liquidity ($${analysis.details.liquidity}). Some risk involved.`;
+          analysis.summary = `Moderate liquidity ($${analysis.details.liquidity}). Some risk.`;
         } else {
           analysis.riskLevel = 'LOW';
-          analysis.summary = `Good liquidity ($${analysis.details.liquidity}). Lower risk profile.`;
+          analysis.summary = `Good liquidity ($${analysis.details.liquidity}). Lower risk.`;
         }
       }
-    } else if (analysis.details.error) {
-      analysis.summary = analysis.details.error;
-      analysis.riskLevel = 'UNKNOWN';
+    } else {
+      analysis.details = { tokenAddress, error: 'No trading data found' };
+      analysis.summary = 'Unable to find trading data for this token';
     }
-    
-    // NO MEME URL - just return the analysis
-    return res.status(200).json({ 
-      success: true, 
-      analysis 
-    });
-    
-  } catch (error) {
-    console.error('Token analysis error:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Failed to analyze token',
-      error: error.message 
-    });
+  } catch (e) {
+    console.error('Token analysis error:', e);
+    analysis.summary = 'Unable to analyze token at this time';
   }
+  
+  return { success: true, analysis };
 }
-// PART 4 OF 5 - CONTRACT MEME & TRANSLATOR
 
-// CONTRACT MEME - USING SAME METHOD AS TRENDING
-async function handleContractMeme(res, contractCode) {
+async function handleContractMeme(contractCode) {
   if (!contractCode) {
-    return res.status(400).json({ success: false, message: 'Contract code required' });
+    throw new Error('Contract code required');
   }
   
   console.log('Analyzing contract code...');
   
-  try {
-    let memeCaption = "When your smart contract has more bugs than features";
-    
-    if (XAI_API_KEY) {
+  let memeCaption = "When your smart contract has more bugs than features";
+  
+  if (XAI_API_KEY) {
+    try {
       const response = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -372,34 +574,30 @@ async function handleContractMeme(res, contractCode) {
         memeCaption = data.choices[0].message.content.substring(0, 100);
         console.log('Contract roast:', memeCaption);
       }
+    } catch (error) {
+      console.error('Grok caption error:', error);
     }
-    
-    // Generate actual meme image using same method as trending
-    const memeUrl = await generateGrokImage(memeCaption);
-    
-    return res.status(200).json({ 
-      success: true, 
-      memeUrl: memeUrl,
-      caption: memeCaption
-    });
-    
-  } catch (error) {
-    console.error('Contract meme error:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Failed to create contract meme',
-      error: error.message
-    });
   }
+  
+  // Generate meme image
+  const memeUrl = await generateGrokImage(memeCaption);
+  
+  return { 
+    success: true, 
+    memeUrl: memeUrl,
+    caption: memeCaption,
+    timestamp: new Date().toISOString()
+  };
 }
 
-// TRANSLATOR - KEEP CURRENT WORKING VERSION
-async function handleTranslate(res, text, languages) {
+async function handleTranslate(text, languages) {
   if (!text || !languages || languages.length === 0) {
-    return res.status(400).json({ success: false, message: 'Text and languages required' });
+    throw new Error('Text and languages required');
   }
   
   console.log('Translating text to:', languages);
+  
+  const translations = {};
   
   if (XAI_API_KEY) {
     try {
@@ -423,11 +621,11 @@ async function handleTranslate(res, text, languages) {
           messages: [
             {
               role: 'system',
-              content: `You are a translator. Translate text to multiple languages. Return ONLY a JSON object with language codes as keys and translations as values.`
+              content: 'You are a translator. Return ONLY a JSON object with language codes as keys and translations as values.'
             },
             {
               role: 'user',
-              content: `Translate "${text}" to these languages: ${requestedLanguages}. Return as JSON: {"es": "...", "fr": "..."} with language codes: ${languages.join(', ')}`
+              content: `Translate "${text}" to these languages: ${requestedLanguages}. Return as JSON with codes: ${languages.join(', ')}`
             }
           ],
           temperature: 0.3,
@@ -440,12 +638,8 @@ async function handleTranslate(res, text, languages) {
         try {
           const content = data.choices[0].message.content;
           const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-          const translations = JSON.parse(cleanContent);
-          
-          return res.status(200).json({ 
-            success: true, 
-            translations 
-          });
+          const parsed = JSON.parse(cleanContent);
+          Object.assign(translations, parsed);
         } catch (parseError) {
           console.error('Translation parse error:', parseError);
         }
@@ -455,23 +649,23 @@ async function handleTranslate(res, text, languages) {
     }
   }
   
-  // Fallback if no API key or error
-  const translations = {};
-  languages.forEach(lang => {
-    translations[lang] = `[${lang}] ${text}`;
-  });
+  // Fallback if no translations
+  if (Object.keys(translations).length === 0) {
+    languages.forEach(lang => {
+      translations[lang] = `[${lang}] ${text}`;
+    });
+  }
   
-  return res.status(200).json({ 
+  return { 
     success: true, 
-    translations 
-  });
+    translations,
+    timestamp: new Date().toISOString()
+  };
 }
-// PART 5 OF 5 - TREND MEME & WHITEPAPER
 
-// TREND MEME - ORIGINAL VERSION THAT WAS GENERATING COOL IMAGES
-async function handleTrendMeme(res, topic) {
+async function handleTrendMeme(topic) {
   if (!topic) {
-    return res.status(400).json({ success: false, message: 'Topic required' });
+    throw new Error('Topic required');
   }
   
   const topicTitle = topic.title || topic.name || topic || 'Trending Topic';
@@ -507,42 +701,75 @@ async function handleTrendMeme(res, topic) {
       }
     }
     
-    // Generate the meme image using the same method that was working
+    // Generate the meme image
     const memeUrl = await generateGrokImage(`${topicTitle}: ${caption}`);
     
-    return res.status(200).json({ 
+    return { 
       success: true, 
       memeUrl: memeUrl,
       memeId: memeId,
-      caption: caption
-    });
+      caption: caption,
+      timestamp: new Date().toISOString()
+    };
     
   } catch (error) {
     console.error('Trend meme generation error:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Failed to generate trend meme',
-      error: error.message
-    });
+    // Return fallback meme
+    const fallbackUrl = await generateGrokImage(`${topicTitle} TO THE MOON`);
+    return { 
+      success: true, 
+      memeUrl: fallbackUrl,
+      memeId: memeId,
+      caption: `${topicTitle} is pumping! 🚀`,
+      timestamp: new Date().toISOString()
+    };
   }
 }
 
-// WHITEPAPER MEMES
-async function handleWhitepaperMemes(res, whitepaperContent) {
+async function handleWhitepaperMemes(whitepaperContent) {
   if (!whitepaperContent) {
-    return res.status(400).json({ success: false, message: 'Whitepaper content required' });
+    throw new Error('Whitepaper content required');
   }
   
   console.log('Processing whitepaper...');
   
   const memes = [];
+  const topics = ['Introduction', 'Tokenomics', 'Roadmap'];
   
   try {
-    // Generate 3 memes from whitepaper
-    const topics = ['Introduction', 'Tokenomics', 'Roadmap'];
-    
     for (const topic of topics) {
-      const caption = `${topic}: When the whitepaper says "revolutionary" for the 50th time`;
+      let caption = `${topic}: When the whitepaper says "revolutionary" for the 50th time`;
+      
+      if (XAI_API_KEY) {
+        try {
+          const response = await fetch('https://api.x.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${XAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'grok-2-1212',
+              messages: [
+                {
+                  role: 'user',
+                  content: `Make a funny meme caption about the ${topic} section of a crypto whitepaper. Keep it short.`
+                }
+              ],
+              temperature: 0.9,
+              max_tokens: 50
+            })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            caption = data.choices[0].message.content;
+          }
+        } catch (e) {
+          console.error('Caption generation error:', e);
+        }
+      }
+      
       const memeUrl = await generateGrokImage(caption);
       
       memes.push({
@@ -552,17 +779,18 @@ async function handleWhitepaperMemes(res, whitepaperContent) {
       });
     }
     
-    return res.status(200).json({ 
+    return { 
       success: true, 
-      memes 
-    });
+      memes,
+      timestamp: new Date().toISOString()
+    };
     
   } catch (error) {
     console.error('Whitepaper memes error:', error);
-    return res.status(500).json({ 
+    return { 
       success: false, 
       message: 'Failed to process whitepaper',
       error: error.message
-    });
+    };
   }
 }

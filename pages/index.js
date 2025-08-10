@@ -87,6 +87,12 @@ export default function Home() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [translations, setTranslations] = useState({});
   
+  const [viralSituation, setViralSituation] = useState('');
+  const [isGeneratingViral, setIsGeneratingViral] = useState(false);
+  const [viralResult, setViralResult] = useState(null);
+  const [selectedVariation, setSelectedVariation] = useState(0);
+  const [viralStats, setViralStats] = useState(null);
+  
   const availableLanguages = [
     { code: 'es', name: 'Spanish' },
     { code: 'fr', name: 'French' },
@@ -431,6 +437,10 @@ export default function Home() {
     setDailyMemeCount(prev => prev + count);
   };
   
+  const generateViralMeme = async () => {
+  // (copy the generateViralMeme function from the second artifact)
+  };
+
   // ========== PART 4: PREMIUM TOOLS FUNCTIONS ==========
   const fetchTrendingTopics = async () => {
     if (!isVerifiedPremium) {
@@ -1962,27 +1972,147 @@ export default function Home() {
               </div>
             ) : (
               <div className="premium-tools-grid">
-                <div className="premium-tool-card">
-                  <h3>🔥 Trending Meme Generator</h3>
-                  <p>Create memes from trending topics using Grok AI</p>
-                  <button onClick={fetchTrendingTopics} disabled={isLoadingTrending}>
-                    {isLoadingTrending ? 'Loading...' : 'Fetch Trends'}
-                  </button>
-                  {trendingTopics.length > 0 && (
-                    <div className="trending-topics">
-                      {trendingTopics.map((topic, index) => (
-                        <div key={index} className="trend-item">
-                          <span>{topic.title || topic.name}</span>
-                          <button 
-                            onClick={() => generateTrendMeme(topic)}
-                            disabled={selectedTrend === topic && isLoadingTrending}
-                          >
-                            {selectedTrend === topic && isLoadingTrending ? 'Generating...' : 'Generate'}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+               <div className="premium-tool-card">
+                 <h3>🔥 Trending Meme Generator</h3>
+                 <p>Create memes from trending topics using Grok AI</p>
+                 <button onClick={fetchTrendingTopics} disabled={isLoadingTrending}>
+                   {isLoadingTrending ? 'Loading...' : 'Fetch Trends'}
+                 </button>
+                 {trendingTopics.length > 0 && (
+                   <div className="trending-topics">
+                     {trendingTopics.map((topic, index) => (
+                       <div key={index} className="trend-item">
+                         <span>{topic.title || topic.name}</span>
+                         <button 
+                           onClick={() => generateTrendMeme(topic)}
+                           disabled={selectedTrend === topic && isLoadingTrending}
+                         >
+                           {selectedTrend === topic && isLoadingTrending ? 'Generating...' : 'Generate'}
+                         </button>
+                       </div>
+                     ))}
+                   </div>
+                 )}
+               </div>
+               
+               <div className="premium-tool-card viral-guarantee-card">
+                 <h3>🔥 Viral Guarantee™ - Wake Up to Viral Memes</h3>
+                 <p>Generate 5 variations, AI picks the best, posts at optimal time. If it doesn't get 100+ likes, we retry!</p>
+                 
+                 <div className="viral-input-section">
+                   <textarea
+                     placeholder="Describe your situation... 
+Examples:
+- 'When you buy the dip but it keeps dipping'
+- 'Me watching my portfolio pump at 3am'
+- 'That feeling when your shitcoin actually moons'"
+                     value={viralSituation}
+                     onChange={(e) => setViralSituation(e.target.value)}
+                     rows="4"
+                     className="viral-situation-input"
+                   />
+                   
+                   <button 
+                     onClick={generateViralMeme} 
+                     disabled={isGeneratingViral || !viralSituation}
+                     className="viral-generate-btn"
+                   >
+                     {isGeneratingViral ? (
+                       <>
+                         <span className="spinner"></span> AI is cooking 5 variations...
+                       </>
+                     ) : (
+                       '🚀 Generate Viral Meme'
+                     )}
+                   </button>
+                 </div>
+                 
+                 {viralResult && (
+                   <div className="viral-result">
+                     <div className="viral-header">
+                       <h4>✅ Your Viral Meme is Ready!</h4>
+                       <div className="viral-guarantee-badge">
+                         <span>100+ Likes Guaranteed</span>
+                         <span className="guarantee-info">or we'll regenerate</span>
+                       </div>
+                     </div>
+                     
+                     <div className="optimal-time-notice">
+                       📅 Will post at: {new Date(viralResult.optimalPostTime).toLocaleString()} 
+                       <span className="time-reason">(Peak engagement time)</span>
+                     </div>
+                     
+                     <div className="viral-best-meme">
+                       <h5>🏆 AI Selected Best Version:</h5>
+                       <div className="meme-display">
+                         <img src={viralResult.meme.url} alt="Viral meme" />
+                         <p className="meme-caption">{viralResult.meme.caption}</p>
+                       </div>
+                       
+                       <div className="viral-actions">
+                         <button 
+                           onClick={() => {
+                             const a = document.createElement('a');
+                             a.href = viralResult.meme.url;
+                             a.download = 'viral-meme.png';
+                             a.click();
+                           }}
+                           className="download-viral-btn"
+                         >
+                           💾 Download
+                         </button>
+                         
+                         {xConnected ? (
+                           <button className="auto-post-status">
+                             ✅ Will Auto-Post to X
+                           </button>
+                         ) : (
+                           <button 
+                             onClick={connectWithX}
+                             className="connect-for-auto"
+                           >
+                             Connect X for Auto-Post
+                           </button>
+                         )}
+                       </div>
+                     </div>
+                     
+                     <div className="viral-variations">
+                       <h5>All 5 Variations (AI picked #{selectedVariation + 1} as best):</h5>
+                       <div className="variations-grid">
+                         {viralResult.variations.map((variation, index) => (
+                           <div 
+                             key={index} 
+                             className={`variation-card ${index === selectedVariation ? 'selected' : ''}`}
+                             onClick={() => setSelectedVariation(index)}
+                           >
+                             <span className="variation-style">{variation.style}</span>
+                             <img src={variation.url} alt={`${variation.style} style`} />
+                             <p className="variation-caption">{variation.caption}</p>
+                             {index === selectedVariation && <span className="ai-pick">AI PICK</span>}
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   </div>
+                 )}
+                 
+                 {viralStats && (
+                   <div className="viral-stats-display">
+                     <h5>📊 Your Viral Performance:</h5>
+                     <div className="stats-grid">
+                       <div className="stat">
+                         <span className="stat-number">{viralStats.viralSuccess}/{viralStats.totalAttempts}</span>
+                         <span className="stat-label">Went Viral</span>
+                       </div>
+                       <div className="stat">
+                         <span className="stat-number">{Math.round(viralStats.averageLikes)}</span>
+                         <span className="stat-label">Avg Likes</span>
+                       </div>
+                     </div>
+                   </div>
+                 )}
+               </div>
                   {trendMeme && (
                     <div className="generated-trend-meme">
                       <h4>Generated Trend Meme:</h4>
@@ -3809,6 +3939,270 @@ export default function Home() {
             height: 150px;
           }
         }
+        .viral-guarantee-card {
+  background: linear-gradient(135deg, rgba(255, 0, 0, 0.05), rgba(255, 215, 0, 0.05));
+  border: 2px solid rgba(255, 215, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.viral-guarantee-card::before {
+  content: '🔥';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  font-size: 100px;
+  opacity: 0.1;
+  animation: float 3s ease-in-out infinite;
+}
+
+.viral-situation-input {
+  width: 100%;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 0, 0.3);
+  border-radius: 10px;
+  color: white;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  resize: vertical;
+}
+
+.viral-generate-btn {
+  width: 100%;
+  padding: 1.2rem;
+  background: linear-gradient(135deg, #ff0000, #ffff00);
+  color: black;
+  border: none;
+  border-radius: 50px;
+  font-weight: bold;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.viral-generate-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(255, 255, 0, 0.5);
+}
+
+.viral-generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(0, 0, 0, 0.3);
+  border-top-color: black;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.viral-result {
+  margin-top: 2rem;
+  padding: 2rem;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 0, 0.3);
+}
+
+.viral-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.viral-guarantee-badge {
+  background: linear-gradient(135deg, #00ff00, #00cc00);
+  color: black;
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.guarantee-info {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.optimal-time-notice {
+  background: rgba(255, 255, 0, 0.1);
+  border: 1px solid rgba(255, 255, 0, 0.3);
+  padding: 1rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.time-reason {
+  display: block;
+  font-size: 0.85rem;
+  color: #999;
+  margin-top: 0.25rem;
+}
+
+.viral-best-meme {
+  margin-bottom: 2rem;
+}
+
+.meme-display {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.meme-display img {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 10px;
+  margin: 0 auto;
+  display: block;
+}
+
+.meme-caption {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  text-align: center;
+  color: #ffff00;
+}
+
+.viral-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.download-viral-btn, .auto-post-status, .connect-for-auto {
+  padding: 0.75rem 2rem;
+  border-radius: 25px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.download-viral-btn {
+  background: linear-gradient(135deg, #ffff00, #ffd700);
+  color: black;
+}
+
+.auto-post-status {
+  background: rgba(0, 255, 0, 0.2);
+  border: 1px solid #00ff00;
+  color: #00ff00;
+  cursor: default;
+}
+
+.connect-for-auto {
+  background: #1da1f2;
+  color: white;
+}
+
+.variations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.variation-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 0.75rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.variation-card:hover {
+  transform: scale(1.05);
+  border-color: rgba(255, 255, 0, 0.5);
+}
+
+.variation-card.selected {
+  border: 2px solid #ffff00;
+  background: rgba(255, 255, 0, 0.1);
+}
+
+.variation-style {
+  display: block;
+  font-size: 0.8rem;
+  color: #999;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.variation-card img {
+  width: 100%;
+  border-radius: 5px;
+}
+
+.variation-caption {
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  color: #ccc;
+}
+
+.ai-pick {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: #ffff00;
+  color: black;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.viral-stats-display {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: rgba(255, 255, 0, 0.05);
+  border-radius: 10px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-number {
+  display: block;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #ffff00;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #999;
+  margin-top: 0.25rem;
+}
       `}</style>
     </>
   );
