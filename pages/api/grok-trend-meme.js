@@ -43,7 +43,7 @@ export default async function handler(req, res) {
           'Authorization': `Bearer ${process.env.XAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'grok-beta',
+          model: 'grok-4',
           messages: [
             {
               role: 'system',
