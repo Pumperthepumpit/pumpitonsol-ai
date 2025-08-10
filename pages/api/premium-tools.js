@@ -118,28 +118,29 @@ async function handleTrending(res) {
     }
     
     try {
-  const content = data.choices[0].message.content;
-  const topics = JSON.parse(content);
-  
-  return res.status(200).json({ 
-    success: true, 
-    topics: topics,
-    source: 'grok'
-  });
-} catch (parseError) {
-  console.error('Parse error:', parseError);
-  console.error('Raw content:', data.choices[0].message.content);
-  // Return mock data if parsing fails
-  return res.status(200).json({ 
-    success: true, 
-    topics: [
-      { name: 'Bitcoin Rally', tweet_count: '45.2K' },
-      { name: 'Solana Season', tweet_count: '23.1K' },
-      { name: '$PUMPIT Trending', tweet_count: '12.5K' }
-    ],
-    source: 'mock-parse-error'
-  });
-}
+      const content = data.choices[0].message.content;
+      const topics = JSON.parse(content);
+      
+      return res.status(200).json({ 
+        success: true, 
+        topics: topics,
+        source: 'grok'
+      });
+    } catch (parseError) {
+      console.error('Parse error:', parseError);
+      console.error('Raw content:', data.choices[0].message.content);
+      // Return mock data if parsing fails
+      return res.status(200).json({ 
+        success: true, 
+        topics: [
+          { name: 'Bitcoin Rally', tweet_count: '45.2K' },
+          { name: 'Solana Season', tweet_count: '23.1K' },
+          { name: '$PUMPIT Trending', tweet_count: '12.5K' }
+        ],
+        source: 'mock-parse-error'
+      });
+    }
+    
   } catch (error) {
     console.error('Grok API error:', error);
     return res.status(200).json({ 
@@ -149,6 +150,7 @@ async function handleTrending(res) {
       source: 'error'
     });
   }
+}
 
 // TOKEN ANALYZER
 async function handleAnalyzeToken(res, tokenAddress) {
