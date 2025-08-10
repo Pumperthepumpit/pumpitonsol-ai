@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import html2canvas from 'html2canvas';
 
 export default function Home() {
+  // ========== PART 1: STATE VARIABLES ==========
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState('/pumper.png');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -117,7 +118,8 @@ export default function Home() {
     totalLikes: 0,
     totalShares: 0
   });
-
+  
+  // ========== PART 2: USE EFFECTS ==========
   useEffect(() => {
     fetchCommunityMemes();
     fetchDailyMemeCount();
@@ -251,6 +253,7 @@ export default function Home() {
     }
   }, [dragging, dragStart, startPos]);
   
+  // ========== PART 3: X CONNECTION & PREMIUM FUNCTIONS ==========
   const connectWithX = async () => {
     setConnectingX(true);
     try {
@@ -427,7 +430,8 @@ export default function Home() {
     
     setDailyMemeCount(prev => prev + count);
   };
-
+  
+  // ========== PART 4: PREMIUM TOOLS FUNCTIONS ==========
   const fetchTrendingTopics = async () => {
     if (!isVerifiedPremium) {
       setShowPremiumModal(true);
@@ -440,14 +444,14 @@ export default function Home() {
     
     try {
       const response = await fetch('/api/premium-tools', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ 
-    tool: 'trending',
-    username: premiumUsername,
-    xProfile: xConnected ? xProfile : null
-  })
-  });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          tool: 'trending',
+          username: premiumUsername,
+          xProfile: xConnected ? xProfile : null
+        })
+      });
       
       const data = await response.json();
       if (data.success && data.topics) {
@@ -475,14 +479,15 @@ export default function Home() {
     
     try {
       const response = await fetch('/api/premium-tools', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ 
-    tool: 'trend-meme',
-    topic,
-    username: premiumUsername
-  })
-    });  
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          tool: 'trend-meme',
+          topic,
+          username: premiumUsername
+        })
+      });
+      
       const data = await response.json();
       if (data.success && data.memeUrl) {
         setTrendMeme(data.memeUrl);
@@ -496,8 +501,8 @@ export default function Home() {
             likes_count: 0,
             shares_count: 0,
             views_count: 0,
-            topic: topic.title || 'Trending Topic',
-            description: data.caption || `Trending meme about ${topic.title}`,
+            topic: topic.title || topic.name || 'Trending Topic',
+            description: data.caption || `Trending meme about ${topic.title || topic.name}`,
             source: 'grok-trending',
             from_telegram_bot: false,
             is_premium: true,
@@ -542,14 +547,15 @@ export default function Home() {
     
     try {
       const response = await fetch('/api/premium-tools', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ 
-    tool: 'analyze-token',
-    tokenAddress,
-    username: premiumUsername
-  })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          tool: 'analyze-token',
+          tokenAddress,
+          username: premiumUsername
+        })
       });
+      
       const data = await response.json();
       if (data.success && data.analysis) {
         setTokenAnalysis(data.analysis);
@@ -608,14 +614,15 @@ export default function Home() {
     
     try {
       const response = await fetch('/api/premium-tools', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ 
-    tool: 'contract-meme',
-    contractCode,
-    username: premiumUsername
-  })
-     }); 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          tool: 'contract-meme',
+          contractCode,
+          username: premiumUsername
+        })
+      });
+      
       const data = await response.json();
       if (data.success && data.memeUrl) {
         setContractMeme(data.memeUrl);
@@ -656,7 +663,8 @@ export default function Home() {
       setIsAnalyzingContract(false);
     }
   };
-
+  
+  // ========== PART 5: MORE PREMIUM & HELPER FUNCTIONS ==========
   const processWhitepaper = async () => {
     if (!whitepaperFile) {
       setError('Please upload a whitepaper PDF');
@@ -742,15 +750,16 @@ export default function Home() {
     
     try {
       const response = await fetch('/api/premium-tools', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ 
-    tool: 'translate',
-    text: translationText,
-    languages: selectedLanguages,
-    username: premiumUsername
-  })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          tool: 'translate',
+          text: translationText,
+          languages: selectedLanguages,
+          username: premiumUsername
+        })
       });
+      
       const data = await response.json();
       if (data.success && data.translations) {
         setTranslations(data.translations);
@@ -892,7 +901,8 @@ export default function Home() {
       [section]: !prev[section]
     }));
   };
-
+  
+  // ========== PART 6: MEME GENERATION & DRAG FUNCTIONS ==========
   const handleDragOver = (e) => {
     e.preventDefault();
     setIsDragOver(true);
@@ -1120,7 +1130,8 @@ export default function Home() {
       setError('Failed to save meme: ' + error.message);
     }
   };
-
+  
+  // ========== PART 7: MOUSE/TOUCH HANDLERS & SOCIAL FUNCTIONS ==========
   const handleMouseDown = (e, element) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1199,7 +1210,6 @@ export default function Home() {
     setDragging(null);
   };
 
-  // Add missing handler functions
   const handleCloseShareModal = () => {
     setShowShareModal(false);
   };
@@ -1385,6 +1395,7 @@ export default function Home() {
     }
   };
   
+  // ========== PART 8: RETURN JSX - HEAD & MODALS ==========
   return (
     <>
       <Head>
@@ -1591,7 +1602,8 @@ export default function Home() {
           🚀 Buy
         </button>
       </div>
-
+      
+      {/* ========== PART 9: MAIN CONTENT - HEADER TO PREMIUM TOOLS ========== */}
       <div className="container">
         <header>
           <div className="pumper-float">
@@ -1781,7 +1793,8 @@ export default function Home() {
               </button>
             </div>
           </section>
-
+          
+          {/* ========== PART 10: GENERATOR, PREMIUM TOOLS & FOOTER ========== */}
           <section id="generator" className="reveal">
             <h2>🎨 AI-Powered Meme Generator</h2>
             <p>
@@ -1959,10 +1972,35 @@ export default function Home() {
                     <div className="trending-topics">
                       {trendingTopics.map((topic, index) => (
                         <div key={index} className="trend-item">
-                          <span>{topic.title}</span>
-                          <button onClick={() => generateTrendMeme(topic)}>Generate</button>
+                          <span>{topic.title || topic.name}</span>
+                          <button 
+                            onClick={() => generateTrendMeme(topic)}
+                            disabled={selectedTrend === topic && isLoadingTrending}
+                          >
+                            {selectedTrend === topic && isLoadingTrending ? 'Generating...' : 'Generate'}
+                          </button>
                         </div>
                       ))}
+                    </div>
+                  )}
+                  {trendMeme && (
+                    <div className="generated-trend-meme">
+                      <h4>Generated Trend Meme:</h4>
+                      <img src={trendMeme} alt="Trending meme" style={{ 
+                        width: '100%', 
+                        maxWidth: '400px', 
+                        borderRadius: '10px',
+                        marginTop: '1rem' 
+                      }} />
+                      <div className="meme-actions">
+                        <button onClick={() => {
+                          const a = document.createElement('a');
+                          a.href = trendMeme;
+                          a.download = 'trend-meme.png';
+                          a.click();
+                        }}>Download</button>
+                        <button onClick={() => shareOnTwitter(currentMemeId)}>Share on X</button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1982,7 +2020,35 @@ export default function Home() {
                   {tokenAnalysis && (
                     <div className="token-analysis">
                       <p>{tokenAnalysis.summary}</p>
-                      {tokenAnalysis.memeUrl && <img src={tokenAnalysis.memeUrl} alt="Token meme" />}
+                      {tokenAnalysis.riskLevel && (
+                        <div className="risk-level">
+                          Risk Level: <span className={`risk-${tokenAnalysis.riskLevel.toLowerCase()}`}>
+                            {tokenAnalysis.riskLevel}
+                          </span>
+                        </div>
+                      )}
+                      {tokenAnalysis.memeUrl && (
+                        <div className="analysis-meme">
+                          <img 
+                            src={tokenAnalysis.memeUrl} 
+                            alt="Token analysis meme" 
+                            style={{ 
+                              width: '100%', 
+                              maxWidth: '400px', 
+                              borderRadius: '10px',
+                              marginTop: '1rem' 
+                            }}
+                          />
+                          <div className="meme-actions">
+                            <button onClick={() => {
+                              const a = document.createElement('a');
+                              a.href = tokenAnalysis.memeUrl;
+                              a.download = 'token-meme.png';
+                              a.click();
+                            }}>Download</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1999,6 +2065,30 @@ export default function Home() {
                   <button onClick={memeifyContract} disabled={isAnalyzingContract}>
                     {isAnalyzingContract ? 'Processing...' : 'Meme-ify Contract'}
                   </button>
+                  {contractMeme && (
+                    <div className="contract-meme-result">
+                      <h4>Your Contract Meme:</h4>
+                      <img 
+                        src={contractMeme} 
+                        alt="Contract meme" 
+                        style={{ 
+                          width: '100%', 
+                          maxWidth: '400px', 
+                          borderRadius: '10px',
+                          marginTop: '1rem' 
+                        }}
+                      />
+                      <div className="meme-actions">
+                        <button onClick={() => {
+                          const a = document.createElement('a');
+                          a.href = contractMeme;
+                          a.download = 'contract-meme.png';
+                          a.click();
+                        }}>Download</button>
+                        <button onClick={() => shareOnTwitter(currentMemeId)}>Share</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="premium-tool-card">
@@ -2058,7 +2148,8 @@ export default function Home() {
               </div>
             )}
           </section>
-
+          
+          {/* ========== PART 11: ROADMAP, COMMUNITY, SOCIAL & FOOTER ========== */}
           <section id="roadmap" className="reveal">
             <h2>🗺️ Roadmap</h2>
             <ul>
@@ -2252,14 +2343,10 @@ export default function Home() {
           </div>
         </footer>
       </div>
-
-      <style jsx global>{`">
-                <span className="stat-label">Daily Limit:</span>
-                <span className="stat-value">{userStats.dailyLimit}</span>
-              </div>
-              <div className="stat-badge
-              
-              * {
+      
+      {/* ========== PART 12: ALL CSS STYLES ========== */}
+      <style jsx global>{`
+        * {
           margin: 0;
           padding: 0;
           box-sizing: border-box;
@@ -3278,6 +3365,64 @@ export default function Home() {
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s ease;
+        }
+
+        .generated-trend-meme, .analysis-meme, .contract-meme-result {
+          margin-top: 1.5rem;
+          padding: 1.5rem;
+          background: rgba(255, 255, 0, 0.05);
+          border-radius: 15px;
+          border: 1px solid rgba(255, 255, 0, 0.2);
+        }
+        
+        .meme-actions {
+          display: flex;
+          gap: 1rem;
+          margin-top: 1rem;
+          justify-content: center;
+        }
+        
+        .meme-actions button {
+          padding: 0.5rem 1.5rem;
+          background: linear-gradient(135deg, #FFFF00, #FFD700);
+          color: black;
+          border: none;
+          border-radius: 25px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        
+        .meme-actions button:hover {
+          transform: scale(1.05);
+          box-shadow: 0 5px 20px rgba(255, 255, 0, 0.4);
+        }
+        
+        .risk-level {
+          margin: 1rem 0;
+          padding: 0.5rem 1rem;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+          display: inline-block;
+        }
+        
+        .risk-low { color: #00ff00; }
+        .risk-medium { color: #ffff00; }
+        .risk-high { color: #ff0000; }
+        
+        .trend-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.75rem;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 10px;
+          margin: 0.5rem 0;
+        }
+        
+        .trend-item button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         .community-memes {
