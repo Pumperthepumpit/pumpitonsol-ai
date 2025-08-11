@@ -439,7 +439,8 @@ export default function Home() {
   
   const generateViralMeme = async () => {
   if (!viralSituation) {
-    setError('Please describe your situation');
+    console.error('Please describe your situation');
+alert('Please describe your situation');
     return;
   }
   
@@ -496,11 +497,13 @@ export default function Home() {
         fetchCommunityMemes();
       }
     } else {
-      setError(data.message || 'Failed to generate viral meme');
+      console.error(data.message || 'Failed to generate viral meme');
+alert(data.message || 'Failed to generate viral meme');
     }
   } catch (error) {
     console.error('Viral generation error:', error);
-    setError('Failed to generate viral meme');
+    console.error('Failed to generate viral meme');
+alert('Failed to generate viral meme');
   } finally {
     setIsGeneratingViral(false);
   }
