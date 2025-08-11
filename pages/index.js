@@ -594,17 +594,6 @@ Be specific! The more detail, the better the result."
   )}
 </div>
 
-// Add this CSS for the user description display:
-.user-description {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-left: 3px solid #FFFF00;
-  font-style: italic;
-  color: #ccc;
-  font-size: 0.9rem;
-}
-
   // ========== PART 4: PREMIUM TOOLS FUNCTIONS ==========
   const fetchTrendingTopics = async () => {
     if (!isVerifiedPremium) {
