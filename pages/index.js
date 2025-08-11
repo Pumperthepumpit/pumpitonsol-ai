@@ -2113,28 +2113,6 @@ Examples:
                    </div>
                  )}
                </div>
-                  {trendMeme && (
-                    <div className="generated-trend-meme">
-                      <h4>Generated Trend Meme:</h4>
-                      <img src={trendMeme} alt="Trending meme" style={{ 
-                        width: '100%', 
-                        maxWidth: '400px', 
-                        borderRadius: '10px',
-                        marginTop: '1rem' 
-                      }} />
-                      <div className="meme-actions">
-                        <button onClick={() => {
-                          const a = document.createElement('a');
-                          a.href = trendMeme;
-                          a.download = 'trend-meme.png';
-                          a.click();
-                        }}>Download</button>
-                        <button onClick={() => shareOnTwitter(currentMemeId)}>Share on X</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                </div>
                 
                 <div className="premium-tool-card">
                   <h3>💰 Token Analyzer</h3>
