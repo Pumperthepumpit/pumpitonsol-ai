@@ -2236,7 +2236,7 @@ Be specific! The more detail, the better the result."
                          
                          {xConnected ? (
                            <button className="auto-post-status">
-                             ✅ Will Auto-Post to X
+                            ✅ Will Auto-Post to X
                            </button>
                          ) : (
                            <button 
@@ -2248,8 +2248,11 @@ Be specific! The more detail, the better the result."
                          )}
                        </div>
                      </div>
-
-                 {viralStats && (
+                   </div>
+                 )}
+               </div>
+                
+                {viralStats && (
                    <div className="viral-stats-display">
                      <h5>📊 Your Viral Performance:</h5>
                      <div className="stats-grid">
@@ -2264,7 +2267,6 @@ Be specific! The more detail, the better the result."
                      </div>
                    </div>
                  )}
-               </div>
                 
                 <div className="premium-tool-card">
                   <h3>💰 Token Analyzer</h3>
