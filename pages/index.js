@@ -2134,6 +2134,7 @@ Examples:
                     </div>
                   )}
                 </div>
+                </div>  {/* ADDED: closing div for viral-guarantee-card */}
 
                 <div className="premium-tool-card">
                   <h3>💰 Token Analyzer</h3>
