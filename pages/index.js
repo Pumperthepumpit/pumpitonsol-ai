@@ -437,10 +437,9 @@ export default function Home() {
     setDailyMemeCount(prev => prev + count);
   };
   
-  const generateViralMeme = async () => {
+const generateViralMeme = async () => {
   if (!viralSituation) {
-    console.error('Please describe your situation');
-alert('Please describe your situation');
+    setError('Please describe what you want to generate');
     return;
   }
   
@@ -459,10 +458,9 @@ alert('Please describe your situation');
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: premiumUsername,
-        situation: viralSituation,
+        situation: viralSituation,  // This is now the exact image description
         targetLikes: 100,
-        autoPost: xConnected,
-        xAccessToken: localStorage.getItem('xAccessToken')
+        autoPost: false
       })
     });
     
@@ -471,7 +469,7 @@ alert('Please describe your situation');
     if (data.success) {
       setViralResult(data);
       
-      // Save to memes database
+      // Save to database
       const { data: memeData, error: dbError } = await supabase
         .from('memes')
         .insert({
@@ -481,8 +479,8 @@ alert('Please describe your situation');
           likes_count: 0,
           shares_count: 0,
           views_count: 0,
-          topic: 'Viral Guarantee Meme',
-          description: data.meme.caption,
+          topic: 'Premium Custom Meme',
+          description: data.meme.userDescription,
           source: 'viral-guarantee',
           from_telegram_bot: false,
           is_premium: true,
@@ -497,17 +495,115 @@ alert('Please describe your situation');
         fetchCommunityMemes();
       }
     } else {
-      console.error(data.message || 'Failed to generate viral meme');
-alert(data.message || 'Failed to generate viral meme');
+      setError(data.message || 'Failed to generate meme');
     }
   } catch (error) {
-    console.error('Viral generation error:', error);
-    console.error('Failed to generate viral meme');
-alert('Failed to generate viral meme');
+    console.error('Generation error:', error);
+    setError('Failed to generate meme');
   } finally {
     setIsGeneratingViral(false);
   }
 };
+
+// And update the UI component in your premium tools section:
+// Replace the entire viral-guarantee-card div with this simpler version:
+
+<div className="premium-tool-card viral-guarantee-card">
+  <h3>🎨 Premium AI Image Generator</h3>
+  <p>Generate ANY image you can imagine with Grok AI. Describe it and we'll create it!</p>
+  
+  <div className="viral-input-section">
+    <textarea
+      placeholder="Describe your image in detail...
+
+Examples:
+• 'A cat wearing a business suit giving a presentation about cryptocurrency'
+• 'Wojak crying while watching Bitcoin price chart going up'
+• 'Drake meme but with Pepe the frog instead'
+• 'Realistic photo of a golden retriever on the moon holding a $PUMPIT flag'
+• 'Anime style girl holding a Solana logo with laser eyes'
+
+Be specific! The more detail, the better the result."
+      value={viralSituation}
+      onChange={(e) => setViralSituation(e.target.value)}
+      rows="6"
+      className="viral-situation-input"
+    />
+    
+    <button 
+      onClick={generateViralMeme} 
+      disabled={isGeneratingViral || !viralSituation}
+      className="viral-generate-btn"
+    >
+      {isGeneratingViral ? (
+        <>
+          <span className="spinner"></span> Creating your custom image...
+        </>
+      ) : (
+        '🎨 Generate Custom Image'
+      )}
+    </button>
+  </div>
+  
+  {viralResult && (
+    <div className="viral-result">
+      <div className="viral-header">
+        <h4>✅ Your Custom Image is Ready!</h4>
+      </div>
+      
+      {viralResult.optimalPostTime && (
+        <div className="optimal-time-notice">
+          💡 Best time to post: {new Date(viralResult.optimalPostTime).toLocaleString()}
+          <span className="time-reason">(Peak engagement time for maximum reach)</span>
+        </div>
+      )}
+      
+      <div className="viral-best-meme">
+        <div className="meme-display">
+          <img src={viralResult.meme.url} alt="Your custom creation" />
+          <p className="user-description">Your prompt: "{viralResult.meme.userDescription}"</p>
+        </div>
+        
+        <div className="viral-actions">
+          <button 
+            onClick={() => {
+              const a = document.createElement('a');
+              a.href = viralResult.meme.url;
+              a.download = 'custom-meme.png';
+              a.click();
+            }}
+            className="download-viral-btn"
+          >
+            💾 Download
+          </button>
+          
+          <button 
+            onClick={() => {
+              const text = viralResult.meme.caption || `Check out my custom $PUMPIT creation! 🚀`;
+              const url = `${window.location.origin}`;
+              const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=PUMPIT,Solana,AIArt`;
+              window.open(twitterUrl, '_blank');
+            }}
+            className="share-viral-btn"
+          >
+            𝕏 Share on X
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+
+// Add this CSS for the user description display:
+.user-description {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid #FFFF00;
+  font-style: italic;
+  color: #ccc;
+  font-size: 0.9rem;
+}
 
   // ========== PART 4: PREMIUM TOOLS FUNCTIONS ==========
   const fetchTrendingTopics = async () => {
@@ -2064,83 +2160,90 @@ alert('Failed to generate viral meme');
                </div>
                
                <div className="premium-tool-card viral-guarantee-card">
-                 <h3>🔥 Viral Guarantee™ - Wake Up to Viral Memes</h3>
-                 <p>Generate 5 variations, AI picks the best, posts at optimal time. If it doesn't get 100+ likes, we retry!</p>
-                 
-                 <div className="viral-input-section">
-                   <textarea
-                     placeholder="Describe your situation... 
-Examples:
-- 'When you buy the dip but it keeps dipping'
-- 'Me watching my portfolio pump at 3am'
-- 'That feeling when your shitcoin actually moons'"
-                     value={viralSituation}
-                     onChange={(e) => setViralSituation(e.target.value)}
-                     rows="4"
-                     className="viral-situation-input"
-                   />
-                   
-                   <button 
-                     onClick={generateViralMeme} 
-                     disabled={isGeneratingViral || !viralSituation}
-                     className="viral-generate-btn"
-                   >
-                     {isGeneratingViral ? (
-                       <>
-                         <span className="spinner"></span> AI is cooking 5 variations...
-                       </>
-                     ) : (
-                       '🚀 Generate Viral Meme'
-                     )}
-                   </button>
-                 </div>
-                 
-                 {viralResult && (
-                   <div className="viral-result">
-                     <div className="viral-header">
-                       <h4>✅ Your Viral Meme is Ready!</h4>
-                       <div className="viral-guarantee-badge">
-                         <span>100+ Likes Guaranteed</span>
-                         <span className="guarantee-info">or we'll regenerate</span>
-                       </div>
-                     </div>
-                     
-                     <div className="optimal-time-notice">
-                       📅 Will post at: {new Date(viralResult.optimalPostTime).toLocaleString()} 
-                       <span className="time-reason">(Peak engagement time)</span>
-                     </div>
-                     
-                     <div className="viral-best-meme">
-                       <h5>🏆 AI Selected Best Version:</h5>
-                       <div className="meme-display">
-                         <img src={viralResult.meme.url} alt="Viral meme" />
-                         <p className="meme-caption">{viralResult.meme.caption}</p>
-                       </div>
-                       
-                       <div className="viral-actions">
-                         <button 
-  onClick={() => {
-    const a = document.createElement('a');
-    a.href = viralResult.meme.url;
-    a.download = 'viral-meme.png';
-    a.click();
-  }}
-  className="download-viral-btn"
->
-  💾 Download
-</button>
+  <h3>🎨 Premium AI Image Generator</h3>
+  <p>Generate ANY image you can imagine with Grok AI. Describe it and we'll create it!</p>
+  
+  <div className="viral-input-section">
+    <textarea
+      placeholder="Describe your image in detail...
 
-<button 
-  onClick={() => {
-    const text = viralResult.meme.caption || `Check out this $PUMPIT meme! 🚀`;
-    const url = `${window.location.origin}`;
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=PUMPIT,Solana`;
-    window.open(twitterUrl, '_blank');
-  }}
-  className="share-viral-btn"
->
-  𝕏 Share on X
-</button>
+Examples:
+• 'A cat wearing a business suit giving a presentation about cryptocurrency'
+• 'Wojak crying while watching Bitcoin price chart going up'
+• 'Drake meme but with Pepe the frog instead'
+• 'Realistic photo of a golden retriever on the moon holding a $PUMPIT flag'
+• 'Anime style girl holding a Solana logo with laser eyes'
+
+Be specific! The more detail, the better the result."
+      value={viralSituation}
+      onChange={(e) => setViralSituation(e.target.value)}
+      rows="6"
+      className="viral-situation-input"
+    />
+    
+    <button 
+      onClick={generateViralMeme} 
+      disabled={isGeneratingViral || !viralSituation}
+      className="viral-generate-btn"
+    >
+      {isGeneratingViral ? (
+        <>
+          <span className="spinner"></span> Creating your custom image...
+        </>
+      ) : (
+        '🎨 Generate Custom Image'
+      )}
+    </button>
+  </div>
+  
+  {viralResult && (
+    <div className="viral-result">
+      <div className="viral-header">
+        <h4>✅ Your Custom Image is Ready!</h4>
+      </div>
+      
+      {viralResult.optimalPostTime && (
+        <div className="optimal-time-notice">
+          💡 Best time to post: {new Date(viralResult.optimalPostTime).toLocaleString()}
+          <span className="time-reason">(Peak engagement time for maximum reach)</span>
+        </div>
+      )}
+      
+      <div className="viral-best-meme">
+        <div className="meme-display">
+          <img src={viralResult.meme.url} alt="Your custom creation" />
+          <p className="user-description">Your prompt: "{viralResult.meme.userDescription}"</p>
+        </div>
+        
+        <div className="viral-actions">
+          <button 
+            onClick={() => {
+              const a = document.createElement('a');
+              a.href = viralResult.meme.url;
+              a.download = 'custom-meme.png';
+              a.click();
+            }}
+            className="download-viral-btn"
+          >
+            💾 Download
+          </button>
+          
+          <button 
+            onClick={() => {
+              const text = viralResult.meme.caption || `Check out my custom $PUMPIT creation! 🚀`;
+              const url = `${window.location.origin}`;
+              const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=PUMPIT,Solana,AIArt`;
+              window.open(twitterUrl, '_blank');
+            }}
+            className="share-viral-btn"
+          >
+            𝕏 Share on X
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
                          
                          {xConnected ? (
                            <button className="auto-post-status">
@@ -4277,7 +4380,16 @@ Examples:
   background: #1a8cd8;
   transform: scale(1.05);
 }
-      
+      .user-description {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid #FFFF00;
+  font-style: italic;
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
       `}</style>
     </>
   );
