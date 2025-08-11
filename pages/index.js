@@ -2119,16 +2119,28 @@ Examples:
                        
                        <div className="viral-actions">
                          <button 
-                           onClick={() => {
-                             const a = document.createElement('a');
-                             a.href = viralResult.meme.url;
-                             a.download = 'viral-meme.png';
-                             a.click();
-                           }}
-                           className="download-viral-btn"
-                         >
-                           💾 Download
-                         </button>
+  onClick={() => {
+    const a = document.createElement('a');
+    a.href = viralResult.meme.url;
+    a.download = 'viral-meme.png';
+    a.click();
+  }}
+  className="download-viral-btn"
+>
+  💾 Download
+</button>
+
+<button 
+  onClick={() => {
+    const text = viralResult.meme.caption || `Check out this $PUMPIT meme! 🚀`;
+    const url = `${window.location.origin}`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=PUMPIT,Solana`;
+    window.open(twitterUrl, '_blank');
+  }}
+  className="share-viral-btn"
+>
+  𝕏 Share on X
+</button>
                          
                          {xConnected ? (
                            <button className="auto-post-status">
@@ -4250,6 +4262,22 @@ Examples:
   color: #999;
   margin-top: 0.25rem;
 }
+.share-viral-btn {
+  background: #1DA1F2;
+  color: white;
+  padding: 0.75rem 2rem;
+  border-radius: 25px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.share-viral-btn:hover {
+  background: #1a8cd8;
+  transform: scale(1.05);
+}
+      
       `}</style>
     </>
   );
