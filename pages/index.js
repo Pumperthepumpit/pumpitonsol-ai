@@ -2204,7 +2204,7 @@ Be specific! The more detail, the better the result."
           <p className="user-description">Your prompt: "{viralResult.meme.userDescription}"</p>
         </div>
         
-        <div className="viral-actions">
+       <div className="viral-actions">
           <button 
             onClick={() => {
               const a = document.createElement('a');
@@ -2233,24 +2233,22 @@ Be specific! The more detail, the better the result."
     </div>
   )}
 </div>
-                         
-                         {xConnected ? (
-                           <button className="auto-post-status">
-                            ✅ Will Auto-Post to X
-                           </button>
-                         ) : (
-                           <button 
-                             onClick={connectWithX}
-                             className="connect-for-auto"
-                           >
-                             Connect X for Auto-Post
-                           </button>
-                         )}
-                       </div>
-                     </div>
-                   </div>
-                 )}
-               </div>
+
+{viralStats && (
+  <div className="viral-stats-display">
+    <h5>📊 Your Viral Performance:</h5>
+    <div className="stats-grid">
+      <div className="stat">
+        <span className="stat-number">{viralStats.viralSuccess}/{viralStats.totalAttempts}</span>
+        <span className="stat-label">Went Viral</span>
+      </div>
+      <div className="stat">
+        <span className="stat-number">{Math.round(viralStats.averageLikes)}</span>
+        <span className="stat-label">Avg Likes</span>
+      </div>
+    </div>
+  </div>
+)}
                 
                 {viralStats && (
                    <div className="viral-stats-display">
