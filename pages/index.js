@@ -438,8 +438,73 @@ export default function Home() {
   };
   
   const generateViralMeme = async () => {
-  // (copy the generateViralMeme function from the second artifact)
-  };
+  if (!viralSituation) {
+    setError('Please describe your situation');
+    return;
+  }
+  
+  if (!isVerifiedPremium) {
+    setShowPremiumModal(true);
+    return;
+  }
+  
+  setIsGeneratingViral(true);
+  setError('');
+  setViralResult(null);
+  
+  try {
+    const response = await fetch('/api/viral-guarantee', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: premiumUsername,
+        situation: viralSituation,
+        targetLikes: 100,
+        autoPost: xConnected,
+        xAccessToken: localStorage.getItem('xAccessToken')
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      setViralResult(data);
+      
+      // Save to memes database
+      const { data: memeData, error: dbError } = await supabase
+        .from('memes')
+        .insert({
+          image_url: data.meme.url,
+          creator_x_handle: xConnected && xProfile ? xProfile.username : premiumUsername,
+          creator_wallet: walletAddress,
+          likes_count: 0,
+          shares_count: 0,
+          views_count: 0,
+          topic: 'Viral Guarantee Meme',
+          description: data.meme.caption,
+          source: 'viral-guarantee',
+          from_telegram_bot: false,
+          is_premium: true,
+          is_x_verified: xVerified,
+          viral_guarantee_id: data.viralId
+        })
+        .select()
+        .single();
+      
+      if (!dbError) {
+        incrementMemeCount();
+        fetchCommunityMemes();
+      }
+    } else {
+      setError(data.message || 'Failed to generate viral meme');
+    }
+  } catch (error) {
+    console.error('Viral generation error:', error);
+    setError('Failed to generate viral meme');
+  } finally {
+    setIsGeneratingViral(false);
+  }
+};
 
   // ========== PART 4: PREMIUM TOOLS FUNCTIONS ==========
   const fetchTrendingTopics = async () => {
