@@ -2248,27 +2248,7 @@ Be specific! The more detail, the better the result."
                          )}
                        </div>
                      </div>
-                     
-                     <div className="viral-variations">
-                       <h5>All 5 Variations (AI picked #{selectedVariation + 1} as best):</h5>
-                       <div className="variations-grid">
-                         {viralResult.variations.map((variation, index) => (
-                           <div 
-                             key={index} 
-                             className={`variation-card ${index === selectedVariation ? 'selected' : ''}`}
-                             onClick={() => setSelectedVariation(index)}
-                           >
-                             <span className="variation-style">{variation.style}</span>
-                             <img src={variation.url} alt={`${variation.style} style`} />
-                             <p className="variation-caption">{variation.caption}</p>
-                             {index === selectedVariation && <span className="ai-pick">AI PICK</span>}
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   </div>
-                 )}
-                 
+
                  {viralStats && (
                    <div className="viral-stats-display">
                      <h5>📊 Your Viral Performance:</h5>
